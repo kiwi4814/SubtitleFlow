@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .fonts import audit_fonts
+from .fonts import audit_fonts, configured_font_map_path, configured_font_registry_path
 from .formats.ass import parse_ass
 from .glossary import forbidden_hits, load_glossary
-from .io import read_json, write_json
-from .review import pending_count
+from .io import write_json
+from .review import approved_review_errors, pending_count, unimported_proposal_files
 from .state import invalidate_after_qa, update_stage
 from .style import ass_style_values, layout_settings, load_style_profile
 from .util import sha256_file
@@ -21,14 +21,19 @@ def qa_input_snapshot(paths: TitlePaths) -> dict[str, str]:
     candidates = [
         paths.title_config,
         paths.manifest,
-        paths.project_canon / "glossary.json",
-        paths.title_canon / "glossary.json",
         paths.review / "candidates.json",
         paths.qa / "fonts.json",
     ]
+    # Canon is repository memory, not only glossary.json. Manual edits to approved
+    # character/decision/title-canon files must stale terminology/semantic QA too.
+    candidates.extend(sorted(paths.project_canon.glob("*.json")))
+    candidates.extend(sorted(paths.title_canon.glob("*.json")))
+    candidates.append(configured_font_map_path(paths))
+    candidates.append(configured_font_registry_path(paths))
     for branch in ("clean", "tw", "jp"):
         candidates.append(paths.work / f"{branch}.json")
         candidates.append(paths.release / branch_release_filename(paths.title_id, branch))
+    candidates.extend(unimported_proposal_files(paths))
     try:
         profile = load_style_profile(paths)
         candidates.append(Path(str(profile["_profile_path"])))
@@ -101,6 +106,7 @@ def structural_qa(paths: TitlePaths) -> dict[str, Any]:
             previous_end = max(previous_end, unit.end_ms)
             if any("low-" in flag and "alignment-confidence" in flag for flag in unit.flags):
                 warnings.append({"branch": branch, "unit": unit.id, "kind": "low-alignment-confidence"})
+    errors.extend(approved_review_errors(paths))
     pending = pending_count(paths)
     if pending:
         errors.append({"kind": "pending-human-review", "count": pending})

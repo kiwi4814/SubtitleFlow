@@ -5,12 +5,13 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from .errors import GateError, ValidationError
-from .io import read_json, write_json
+from .fonts import require_font_attachments
+from .io import read_json
 from .state import invalidate_stages, update_stage
-from .util import run_checked, which
+from .util import file_identity, run_checked, sha256_file, which
 from .workflow import branch_release_filename
 from .workspace import TitlePaths
 from .workfile import load_workfile
@@ -46,6 +47,75 @@ def _seconds(milliseconds: int) -> str:
     return f"{milliseconds / 1000:.3f}"
 
 
+def _font_evidence(attachments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        [
+            {
+                "attachment_name": str(item["attachment_name"]),
+                "sha256": str(item["sha256"]),
+                "size": int(item["size"]),
+            }
+            for item in attachments
+        ],
+        key=lambda item: item["attachment_name"].casefold(),
+    )
+
+
+def _frame_evidence(output_dir: Path) -> dict[str, str]:
+    return {
+        path.name: sha256_file(path)
+        for path in sorted(output_dir.glob("*.png"))
+        if path.is_file() and path.stat().st_size > 0
+    }
+
+
+def current_render_evidence(paths: TitlePaths, branch: str) -> dict[str, Any]:
+    """Validate and return the durable evidence for a previously completed render.
+
+    This is intentionally strict: a passed render is not proof once its ASS, external video,
+    audited fonts, or any preview PNG has changed.
+    """
+    if branch not in {"clean", "tw", "jp"}:
+        raise ValidationError("branch must be clean, tw, or jp")
+    state = read_json(paths.state)
+    stage = state.get("stages", {}).get(f"render_{branch}", {})
+    if stage.get("status") != "passed":
+        raise GateError(f"render_{branch} is not passed")
+    expected = stage.get("evidence")
+    if not isinstance(expected, dict):
+        raise GateError(f"render_{branch} predates render evidence snapshots; rerender this branch")
+
+    ass_path = paths.release / branch_release_filename(paths.title_id, branch)
+    if not ass_path.is_file():
+        raise GateError(f"Rendered ASS disappeared: {ass_path}")
+    ass_expected = expected.get("ass", {})
+    if not isinstance(ass_expected, dict) or sha256_file(ass_path) != ass_expected.get("sha256"):
+        raise GateError(f"render_{branch} is stale: compiled ASS changed after rendering")
+
+    video_expected = expected.get("video", {})
+    if not isinstance(video_expected, dict) or not video_expected.get("path"):
+        raise GateError(f"render_{branch} has no frozen video identity; rerender this branch")
+    video = Path(str(video_expected["path"]))
+    if not video.is_file() or file_identity(video) != video_expected:
+        raise GateError(f"render_{branch} is stale: reviewed video changed or disappeared")
+
+    attachments = require_font_attachments(paths)
+    fonts_current = _font_evidence(attachments)
+    if fonts_current != expected.get("fonts"):
+        raise GateError(f"render_{branch} is stale: audited font set changed after rendering")
+
+    frames_current = _frame_evidence(paths.qa / "previews" / branch)
+    if not frames_current or frames_current != expected.get("frames"):
+        raise GateError(f"render_{branch} is stale: preview frame evidence changed after rendering")
+
+    return {
+        "ass": {"path": str(ass_path.relative_to(paths.title)), "sha256": sha256_file(ass_path)},
+        "video": file_identity(video),
+        "fonts": fonts_current,
+        "frames": frames_current,
+    }
+
+
 def render_previews(
     paths: TitlePaths,
     branch: str,
@@ -59,11 +129,33 @@ def render_previews(
     video = video or expand_media_path(config.get("media", {}).get("video"))
     if video is None or not video.is_file():
         raise ValidationError("A readable video path is required for visual preview")
+    video = video.resolve()
     if branch not in {"clean", "tw", "jp"}:
         raise ValidationError("branch must be clean, tw, or jp")
+    if max_frames <= 0:
+        raise ValidationError("max_frames must be greater than zero")
     ass_path = paths.release / branch_release_filename(paths.title_id, branch)
     if not ass_path.exists():
         raise ValidationError(f"Compiled ASS not found: {ass_path}")
+
+    # Visual QA must render with the exact font files already resolved by the font audit.
+    # Without this, libass can silently use an OS font fallback and the screenshot ceases to
+    # represent the font-complete release that will be remuxed later.
+    attachments = require_font_attachments(paths)
+
+    # From this point onward this invocation is a real rerender attempt. Invalidate the old
+    # evidence before calling ffprobe/ffmpeg and remove old frames so a failed rerender cannot
+    # be approved accidentally.
+    invalidate_stages(
+        paths,
+        (f"render_{branch}", f"visual_{branch}", "release", "remux"),
+        reason=f"{branch} previews rerendered",
+    )
+    output_dir = paths.qa / "previews" / branch
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for old_frame in output_dir.glob("*.png"):
+        if old_frame.is_file():
+            old_frame.unlink()
 
     media_info = probe_media(video)
     try:
@@ -103,16 +195,25 @@ def render_previews(
     if not selected:
         raise ValidationError("No preview timestamp falls within the video duration")
 
-    invalidate_stages(paths, (f"visual_{branch}", "release", "remux"), reason=f"{branch} previews rerendered")
-    output_dir = paths.qa / "previews" / branch
-    output_dir.mkdir(parents=True, exist_ok=True)
     outputs: list[Path] = []
     with tempfile.TemporaryDirectory(prefix="subtitleflow-render-") as temp:
         temp_dir = Path(temp)
         local_ass = temp_dir / "subs.ass"
         shutil.copy2(ass_path, local_ass)
+        fonts_dir = temp_dir / "fonts"
+        fonts_dir.mkdir()
+        for attachment in attachments:
+            source = Path(str(attachment["path"]))
+            target = fonts_dir / str(attachment["attachment_name"])
+            if target.exists():
+                raise GateError(f"Duplicate staged font attachment name: {target.name}")
+            shutil.copy2(source, target)
+        filter_value = "ass=subs.ass" + (":fontsdir=fonts" if attachments else "")
+
+        staged_frames: list[tuple[Path, Path]] = []
         for index, timestamp in enumerate(selected, start=1):
-            output = output_dir / f"{index:02d}-{timestamp}ms.png"
+            final_output = output_dir / f"{index:02d}-{timestamp}ms.png"
+            staged_output = temp_dir / final_output.name
             run_checked(
                 [
                     "ffmpeg",
@@ -125,17 +226,31 @@ def render_previews(
                     "-i",
                     str(video),
                     "-vf",
-                    "ass=subs.ass",
+                    filter_value,
                     "-frames:v",
                     "1",
                     "-y",
-                    str(output),
+                    str(staged_output),
                 ],
                 cwd=temp_dir,
                 timeout=120,
             )
-            if not output.exists() or output.stat().st_size == 0:
-                raise GateError(f"FFmpeg returned without producing preview frame: {output}")
-            outputs.append(output)
-    update_stage(paths, f"render_{branch}", "passed", frames=len(outputs))
+            if not staged_output.exists() or staged_output.stat().st_size == 0:
+                raise GateError(f"FFmpeg returned without producing preview frame: {final_output}")
+            staged_frames.append((staged_output, final_output))
+
+        for staged_output, final_output in staged_frames:
+            shutil.copy2(staged_output, final_output)
+            outputs.append(final_output)
+
+    evidence = {
+        "ass": {
+            "path": str(ass_path.relative_to(paths.title)),
+            "sha256": sha256_file(ass_path),
+        },
+        "video": file_identity(video),
+        "fonts": _font_evidence(attachments),
+        "frames": _frame_evidence(output_dir),
+    }
+    update_stage(paths, f"render_{branch}", "passed", frames=len(outputs), evidence=evidence)
     return outputs

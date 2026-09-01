@@ -5,13 +5,13 @@ import json
 import shlex
 import sys
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from .canon import add_term
 from .compile import compile_all
 from .doctor import doctor_report
 from .errors import SubtitleFlowError
-from .fonts import audit_fonts
+from .fonts import audit_fonts, install_registered_fonts, verify_registered_fonts
 from .gates import mark_research_complete, mark_semantic_qa_complete, mark_visual_qa_complete
 from .io import read_json, write_json
 from .media import probe_media, render_previews
@@ -105,9 +105,10 @@ def cmd_style_set(args: argparse.Namespace) -> Any:
     paths = _paths(args)
     data = read_json(paths.title_config)
     data.setdefault("style", {})["profile"] = args.profile
+    # Validate the prospective configuration before persisting it. A typo must not
+    # leave title.json pointing at a profile that cannot be loaded.
+    profile = load_style_profile(paths, config=data)
     write_json(paths.title_config, data)
-    # Validate immediately so a typo cannot silently poison the project.
-    profile = load_style_profile(paths)
     invalidate_stages(
         paths,
         ("compile_clean", "compile_tw", "compile_jp", "fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
@@ -121,6 +122,22 @@ def cmd_fonts_audit(args: argparse.Namespace) -> Any:
         _paths(args),
         extra_dirs=[Path(value).expanduser().resolve() for value in args.font_dir],
         map_file=Path(args.map_file).expanduser().resolve() if args.map_file else None,
+    )
+
+
+def cmd_fonts_install(args: argparse.Namespace) -> Any:
+    return install_registered_fonts(
+        _repo(args),
+        Path(args.source),
+        registry_file=Path(args.registry_file).expanduser().resolve() if args.registry_file else None,
+        replace=args.replace,
+    )
+
+
+def cmd_fonts_verify(args: argparse.Namespace) -> Any:
+    return verify_registered_fonts(
+        _repo(args),
+        registry_file=Path(args.registry_file).expanduser().resolve() if args.registry_file else None,
     )
 
 
@@ -286,6 +303,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     fonts = sub.add_parser("fonts", help="Resolve and audit ASS font dependencies")
     fonts_sub = fonts.add_subparsers(dest="fonts_command", required=True)
+    p = fonts_sub.add_parser(
+        "install",
+        help="Import user-provided registered fonts into gitignored fonts/local",
+    )
+    p.add_argument("source", help="Font file, directory, or ZIP archive")
+    p.add_argument("--registry-file")
+    p.add_argument("--replace", action="store_true")
+    p.set_defaults(func=cmd_fonts_install)
+    p = fonts_sub.add_parser("verify", help="Verify local registered fonts by SHA and Name Table")
+    p.add_argument("--registry-file")
+    p.set_defaults(func=cmd_fonts_verify)
     p = fonts_sub.add_parser("audit")
     add_title_selector(p)
     p.add_argument("--font-dir", action="append", default=[])

@@ -1,6 +1,8 @@
 ---
-description: Audit all fonts actually referenced by compiled ASS files
+description: Verify local registry fonts and audit fonts referenced by compiled ASS files
 agent: subtitle-orchestrator
 ---
 
-For project `$1` title `$2`, run `subflow fonts audit $1 $2`. Report resolved families, local files, MIME types, SHA-256 records, and missing families. Never obtain, copy, or redistribute commercial font files; the user supplies locally licensed files under configured font directories or `fonts/font-map.json`.
+First run `subflow fonts verify` to report whether the repository-local registered font assets are complete and byte/name-table correct. Then, for project `$1` title `$2`, run `subflow fonts audit $1 $2` and report requested/canonical families, canonical attachment names, local files, MIME metadata, SHA-256 records, and missing/mismatched families.
+
+Do not acquire or redistribute font binaries. `subflow fonts install SOURCE` is a write operation and should only be run when the user explicitly supplies/authorizes a local font source. Source releases must exclude `fonts/local/` binaries.

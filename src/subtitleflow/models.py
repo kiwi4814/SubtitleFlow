@@ -200,6 +200,10 @@ class ReviewCandidate:
     confidence: float
     severity: str = "medium"
     evidence: dict[str, str] = field(default_factory=dict)
+    unit_fingerprint: str | None = None
+    context_fingerprint: str | None = None
+    proposal_source: str | None = None
+    proposal_sha256: str | None = None
     requires_human: bool = True
     status: ReviewStatus = "pending"
     decision_note: str | None = None

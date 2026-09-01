@@ -1,0 +1,36 @@
+{
+  "audit_date": "2026-08-31",
+  "python": "3.13.5",
+  "platform": "Linux-6.18.35-x86_64-with-glibc2.41",
+  "tools": {
+    "git": {
+      "path": "/usr/bin/git",
+      "version": "git version 2.47.3"
+    },
+    "ffmpeg": {
+      "path": "/usr/bin/ffmpeg",
+      "version": "ffmpeg version 7.1.5-0+deb13u1 Copyright (c) 2000-2026 the FFmpeg developers"
+    },
+    "ffprobe": {
+      "path": "/usr/bin/ffprobe",
+      "version": "ffprobe version 7.1.5-0+deb13u1 Copyright (c) 2007-2026 the FFmpeg developers"
+    },
+    "mkvmerge": null,
+    "mkvextract": null,
+    "opencc": null,
+    "opencode": null,
+    "ruff": null
+  },
+  "fonttools": "4.63.0",
+  "checks": {
+    "baseline_tests": "42/42 passed before changes",
+    "current_tests": "64/64 passed",
+    "compileall": "passed: src tools tests",
+    "coverage_percent": 81,
+    "ffmpeg_libass_real_render": "passed",
+    "mkvtoolnix_real_remux": "not run: tools unavailable",
+    "opencc_live_path": "not run: tool unavailable",
+    "opencode_live_path": "not run: tool unavailable",
+    "ruff": "not run: binary/module unavailable; network fetch unavailable"
+  }
+}

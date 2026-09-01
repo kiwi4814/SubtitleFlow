@@ -19,7 +19,7 @@ Do once per series/franchise, then version it. Store recurring canonical names, 
 
 ## Stage 2 — Intake
 
-Import with `subflow source add`. SubtitleFlow copies the source into the title workspace, records SHA-256, and makes it read-only on a best-effort basis. Hash verification is authoritative.
+Import with `subflow source add`. SubtitleFlow copies the source into the title workspace, records SHA-256, and makes it read-only on a best-effort basis. Hash verification is authoritative. Before `--replace`, the existing source hash is verified; the prior source is then moved to a unique immutable archive path and that archive path/SHA is recorded in source history. A tampered source cannot be hidden by replacing it first.
 
 ## Stage 3 — Title research
 
@@ -78,7 +78,7 @@ LLM output is proposal JSON, not a direct workfile edit.
 
 ## Stage 8 — Human review
 
-Every semantic wording change requires an explicit approve/reject/custom decision. Proposal stale protection requires the candidate's `original_text` to still match the current `final_text`.
+Every semantic wording change requires an explicit approve/reject/custom decision. Proposal stale protection binds text, timing/source-unit evidence, the source manifest, canon and title research context. Unimported proposal files remain visible durable evidence and block Release. Approved/custom candidates must still be materialized in the current workfile. See `docs/human-review.md`.
 
 ## Stage 9 — Compile with versioned style
 
@@ -86,26 +86,28 @@ Kiwi Collector v1 is the bundled default. It standardizes ordinary generated dia
 
 Generated dialogue roles:
 
-- `SF-ZH`: 文泉驿微米黑 60, ScaleY 105%, grey-white, Bold, 2 px outline, MarginV 103, `\blur2`.
-- `SF-JA`: 文泉驿微米黑 50, warm gold, Regular, 2 px outline, MarginV 45, `\blur2`.
+- `SF-ZH`: `WenQuanYi Micro Hei` 60, ScaleY 105%, grey-white, Bold, 2 px outline, MarginV 103, `\blur2`.
+- `SF-JA`: `WenQuanYi Micro Hei` 50, warm gold, Regular, 2 px outline, MarginV 45, `\blur2`.
 
 Styling and semantic editing are separate. Changing the style profile invalidates compile/QA/visual/release but does not require retranslation.
 
 ## Stage 10 — Deterministic QA and font audit
 
-`subflow qa` checks source integrity, structural validity, pending review, terminology, alignment warnings, layout estimates and reparses compiled ASS.
+`subflow qa` checks source integrity, structural validity, pending/unmaterialized review, terminology, alignment warnings, layout estimates and reparses compiled ASS. Its input snapshot also binds the current workfiles/compiled ASS, canon JSON, proposal files, configured font registry/font map and other deterministic inputs so later upstream changes stale the QA result.
 
-Font audit scans every actually used Style and inline `\fn` in compiled ASS. It normalizes vertical names such as `@方正粗圆_GBK` to the same font family. Resolved font files are recorded with path, MIME type, byte size and SHA-256.
+Low-confidence alignment is currently reported as a warning. A durable alignment-review ledger with `Approve / Adjust / Defer` is the recommended next gate; simply converting the warning into a hard error would create no legitimate unlock path. Until that ledger exists, low-confidence alignments are a known production gap and require operator review before Release.
+
+Font audit scans every actually used Style and inline `\fn` in compiled ASS. It normalizes vertical names such as `@方正粗圆_GBK` to the same font family. The default registry resolves canonical family/alias identities to exact SHA-256 bytes and canonical attachment filenames; project-specific `font-map.json` entries remain available. Resolved files are recorded with path, MIME type, byte size, SHA-256 and Name Table metadata when FontTools is installed. A registered hash mismatch, internal-name mismatch, or same-attachment-name/different-SHA collision is a hard error.
 
 The production font gate is intentionally separate from semantic QA: unresolved fonts can be reported without making semantic/structural diagnostics disappear, but `subflow release` blocks by default until the font gate passes.
 
 ## Stage 11 — Independent semantic QA
 
-A separate QA agent audits high-risk semantics and all human-approved changes. Corrections return to the normal human-review loop. Semantic QA must leave a non-empty report before it can be marked passed.
+A separate QA agent audits high-risk semantics and all human-approved changes. Corrections return to the normal human-review loop. Semantic QA must leave a non-empty report before it can be marked passed. The semantic-QA mark freezes the report SHA plus the deterministic QA snapshot (and research evidence when required); changing any of those inputs invalidates the gate.
 
 ## Stage 12 — Render and visual approval
 
-`subflow render` uses real video plus FFmpeg/libass. Rendering a PNG does not equal approval. Inspect actual frames for fallback fonts, clipping, collisions, safe area, line count, readability, dialogue hierarchy and preserved source typesetting.
+`subflow render` uses real video plus FFmpeg/libass and stages the **exact font files from the successful font audit** into libass `fontsdir`. It records the compiled ASS SHA, selected video identity, audited font attachment SHA set and rendered PNG SHA set. A failed rerender invalidates the old render/visual state and cannot leave previous preview PNGs as valid evidence. Rendering PNGs still does not equal approval: inspect actual frames for fallback fonts, clipping, collisions, safe area, line count, readability, dialogue hierarchy and preserved source typesetting.
 
 ## Stage 13 — Release freeze
 
@@ -115,10 +117,12 @@ A separate QA agent audits high-risk semantics and all human-approved changes. C
 - QA summary and input snapshot;
 - active workflow profile and branches;
 - style profile;
-- font attachment file paths, names, MIME types, sizes and SHA-256 values.
+- font attachment file paths, names, MIME types, sizes and SHA-256 values;
+- research/semantic/visual gate evidence snapshots;
+- the visual-QA media identity when visual QA is required.
 
 Any upstream change makes the frozen release stale.
 
 ## Stage 14 — MKV Remux
 
-`subflow remux` verifies the frozen release and font hashes before invoking MKVToolNix. Existing video/audio remain untouched. Existing MKV attachments are preserved by default. If an existing attachment has the same filename as a frozen font, SubtitleFlow uses `mkvextract` to SHA-compare it; only byte-identical content is reused, while mismatched collisions block Remux. Missing frozen fonts are added as Matroska attachments. After muxing, SubtitleFlow runs `mkvmerge -J` and confirms the required attachment names/sizes exist in the output.
+`subflow remux` verifies the frozen release, frozen gate evidence, selected visual-QA media identity and font hashes before invoking MKVToolNix. Input and output may not be the same path. Existing video/audio remain untouched. Existing MKV attachments are preserved by default. If an existing attachment has the same filename as a frozen font, SubtitleFlow uses `mkvextract` to SHA-compare it; only byte-identical content is reused, while mismatched collisions block Remux. Missing frozen fonts are added as Matroska attachments using canonical attachment names; default MIME selection is left to MKVToolNix automatic detection rather than forcing legacy MIME values. After muxing, SubtitleFlow runs `mkvmerge -J` and confirms the required attachment names/sizes exist in the output.

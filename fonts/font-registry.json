@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "id": "subtitleflow-default-fonts-v1",
+  "description": "Verified local font identities for SubtitleFlow 0.3.0. Font binaries are user-provided and are never bundled in source releases.",
+  "fonts": [
+    {
+      "id": "dialogue",
+      "canonical_file": "wqy-microhei.ttc",
+      "family": "WenQuanYi Micro Hei",
+      "aliases": [
+        "文泉驿微米黑"
+      ],
+      "internal_names": [
+        "WenQuanYi Micro Hei",
+        "文泉驿微米黑",
+        "WenQuanYi Micro Hei Mono",
+        "文泉驿等宽微米黑",
+        "文泉驿等寬微米黑"
+      ],
+      "postscript": "WenQuanYiMicroHei",
+      "version": "Version 0.2.0-beta",
+      "sha256": "e4bca8df123ce01b104780f576ea1a58b9a5ff1662a91124b6d3180cb6c88212",
+      "size": 5177387,
+      "mime_type": "font/collection",
+      "weight": 400,
+      "fs_type": 8,
+      "roles": [
+        "zh_dialogue",
+        "jp_dialogue",
+        "narration"
+      ],
+      "license": {
+        "name": "Apache License 2.0",
+        "source": "font Name Table",
+        "project_bundling": "disabled"
+      }
+    },
+    {
+      "id": "annotation",
+      "canonical_file": "SourceHanSansCN-Heavy.otf",
+      "family": "Source Han Sans CN Heavy",
+      "aliases": [
+        "思源黑体 CN Heavy"
+      ],
+      "internal_names": [
+        "Source Han Sans CN Heavy",
+        "思源黑体 CN Heavy",
+        "Source Han Sans CN",
+        "思源黑体 CN"
+      ],
+      "postscript": "SourceHanSansCN-Heavy",
+      "version": "Version 2.005",
+      "sha256": "88c749b0a54a0800124ded6544e399302ed224aa49992ea364b88769f825c54c",
+      "size": 8808068,
+      "mime_type": "font/otf",
+      "weight": 900,
+      "fs_type": 0,
+      "roles": [
+        "annotation"
+      ],
+      "license": {
+        "name": "SIL Open Font License 1.1",
+        "source": "font Name Table",
+        "project_bundling": "disabled"
+      }
+    },
+    {
+      "id": "movie_title",
+      "canonical_file": "Reeji-CloudZongYiGBK.ttf",
+      "family": "CloudZongYiGBK",
+      "aliases": [
+        "CloudZongYiGBK1.0",
+        "锐字云字库综艺体1.0",
+        "锐字云字库综艺体GBK"
+      ],
+      "internal_names": [
+        "CloudZongYiGBK",
+        "CloudZongYiGBK1.0",
+        "锐字云字库综艺体1.0",
+        "锐字云字库综艺体GBK"
+      ],
+      "postscript": "CloudZongYiGBK",
+      "version": "GBK Version 1.0.0.0",
+      "sha256": "cdad5e1446c45a472fe085f99a661e2dbaa035cc9c3f5fb80efee8744f92f4d1",
+      "size": 5484352,
+      "mime_type": "font/ttf",
+      "weight": 400,
+      "fs_type": 8,
+      "roles": [
+        "title",
+        "chapter_title"
+      ],
+      "license": {
+        "name": "Proprietary / locally licensed",
+        "source": "font copyright metadata",
+        "project_bundling": "disabled"
+      }
+    },
+    {
+      "id": "screen_text",
+      "canonical_file": "FZY4K.TTF",
+      "family": "方正粗圆_GBK",
+      "aliases": [
+        "FZCuYuan-M03",
+        "FZY4K--GBK1-0"
+      ],
+      "internal_names": [
+        "方正粗圆_GBK",
+        "FZCuYuan-M03"
+      ],
+      "postscript": "FZY4K--GBK1-0",
+      "version": "Version 5.32",
+      "sha256": "c071e0e91406af290cfbb495c42ae56a36cca7a501c11cb6613893d5adb951c0",
+      "size": 10815380,
+      "mime_type": "font/ttf",
+      "weight": 400,
+      "fs_type": 8,
+      "roles": [
+        "lyric",
+        "prop",
+        "screen_text",
+        "sign"
+      ],
+      "license": {
+        "name": "Founder proprietary / locally licensed",
+        "source": "font Name Table",
+        "project_bundling": "disabled"
+      }
+    },
+    {
+      "id": "formal_screen_text",
+      "canonical_file": "SourceHanSerifCN-Regular.otf",
+      "family": "Source Han Serif CN",
+      "aliases": [
+        "思源宋体 CN"
+      ],
+      "internal_names": [
+        "Source Han Serif CN",
+        "思源宋体 CN"
+      ],
+      "postscript": "SourceHanSerifCN-Regular",
+      "version": "Version 2.003",
+      "sha256": "3754ea669c530e2473354f8f6d9f79680a44d7e26ec7d00eeabee4a7e0753c5d",
+      "size": 11626108,
+      "mime_type": "font/otf",
+      "weight": 400,
+      "fs_type": 0,
+      "roles": [
+        "wanted_poster",
+        "document",
+        "newspaper",
+        "formal_screen_text"
+      ],
+      "license": {
+        "name": "SIL Open Font License 1.1",
+        "source": "font Name Table",
+        "project_bundling": "disabled"
+      }
+    }
+  ]
+}

@@ -62,7 +62,7 @@ The bundled profile lives at `styles/kiwi-collector-v1.json`. A repo-local profi
 
 ```json
 {
-  "Fontname": "文泉驿微米黑",
+  "Fontname": "WenQuanYi Micro Hei",
   "Fontsize": "60",
   "PrimaryColour": "&H00D2D2D2",
   "Bold": "-1",
@@ -78,7 +78,7 @@ The bundled profile lives at `styles/kiwi-collector-v1.json`. A repo-local profi
 
 ```json
 {
-  "Fontname": "文泉驿微米黑",
+  "Fontname": "WenQuanYi Micro Hei",
   "Fontsize": "50",
   "PrimaryColour": "&H000E95CE",
   "Bold": "0",
@@ -103,6 +103,7 @@ Hybrid special-style preservation can be overridden through `style.overrides.sou
     "require_for_release": true,
     "require_all_referenced": true,
     "directories": ["fonts/local"],
+    "registry_file": "fonts/font-registry.json",
     "map_file": "fonts/font-map.json",
     "aliases": {}
   }
@@ -115,15 +116,16 @@ Hybrid special-style preservation can be overridden through `style.overrides.sou
 {
   "schema_version": 1,
   "families": {
-    "文泉驿微米黑": ["local/wqy-microhei.ttf"],
-    "思源黑体 CN Heavy": ["/absolute/or/env/expandable/path/font.otf"]
+    "Project-Specific Font": ["local/project-specific.ttf"]
   }
 }
 ```
 
-If FontTools is installed, SubtitleFlow can match font name-table metadata when scanning `fonts.directories`; explicit mapping remains the most deterministic option.
+`fonts/font-registry.json` is version-controlled repository evidence. For each registered font it defines canonical ASS family, aliases, canonical attachment filename, exact SHA-256, expected size/version, and logical roles. Run `subflow fonts install SOURCE` to populate ignored `fonts/local/` from a user-provided file/directory/ZIP, then `subflow fonts verify` to verify the complete registry.
 
-Actual font requirements come from the compiled ASS, not from a hard-coded global list. Special title fonts are therefore required only for titles that actually reference them.
+`fonts/font-map.json` remains a local-only escape hatch for project-specific fonts not governed by the default registry. If FontTools is installed, SubtitleFlow parses Name Table metadata for scanned/mapped/registered fonts and checks that an ASS family or approved alias can really match the bytes. Without FontTools, bytes can still be hashed but internal-name verification is unavailable; strict production environments should install the `fonts`/`full` extra. Different payloads are never allowed to freeze under the same final MKV attachment filename.
+
+Actual release requirements still come from the compiled ASS, not from a hard-coded global list. A registered title font is therefore attached only when the final ASS references it. Registry changes participate in QA snapshot invalidation.
 
 ## Media and Remux
 
@@ -138,7 +140,7 @@ Actual font requirements come from the compiled ASS, not from a hard-coded globa
 }
 ```
 
-Font attachments are controlled separately by `fonts.attach_to_mkv`. Existing attachments are preserved unless explicitly disabled.
+Font attachments are controlled separately by `fonts.attach_to_mkv`. Existing attachments are preserved unless explicitly disabled. When visual QA is required, Release freezes the selected video's current identity (path, size and nanosecond mtime) from render evidence and Remux rejects a different input. This identity is a pragmatic large-media check, not a cryptographic video hash; projects requiring adversarial-grade media provenance should add a full/content hash policy.
 
 ## Quality gates
 

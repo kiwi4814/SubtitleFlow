@@ -3,13 +3,13 @@
 ## Required code checks
 
 ```bash
-python -m compileall -q src
+python -m compileall -q src tools tests
 python -m pytest -q
 python -m ruff check .
 python -m ruff format --check .
 ```
 
-## v0.2-specific regression areas
+## v0.3 regression areas
 
 Tests must cover:
 
@@ -19,10 +19,17 @@ Tests must cover:
 - Hybrid preservation of plain special Style events even without complex tags;
 - final Kiwi Collector SF-ZH/SF-JA values and `\blur2` event override;
 - vertical ASS font name normalization (`@Font` → `Font`);
-- real font-file metadata/hash audit;
+- exact registry SHA import/verification plus real font-file metadata audit;
 - release freeze of font attachments;
-- modern MKV attachment option construction;
-- stale font hash rejection.
+- registry/font-map internal-family validation, canonical attachment naming, and same-name/different-SHA attachment collisions;
+- stale proposal/source/canon/research/semantic/visual evidence rejection;
+- approved semantic changes remaining materialized after workfile regeneration;
+- render use of exact audited `fontsdir` assets and failure invalidation;
+- visual-QA media binding through Release/Remux;
+- transactional style configuration updates;
+- modern MKV attachment construction using MKVToolNix MIME auto-detection;
+- stale font hash rejection;
+- OpenCode permissions not blanket-allowing human-impacting `subflow` commands.
 
 ## Real-source stress checks
 
@@ -35,7 +42,7 @@ Do not commit copyrighted subtitle fixtures. When available locally, use represe
 5. scan actual font family references;
 6. render real/synthetic video with FFmpeg/libass when available.
 
-For the Doraemon 2023 style source used during v0.2 development, the expected referenced family set is five unique families: 文泉驿微米黑, 思源黑体 CN Heavy, 锐字云字库综艺体1.0, 方正粗圆_GBK, 思源宋体 CN. The source file itself is not included in the package.
+For the five-font Kiwi Collector fixture, the canonical family set is: `WenQuanYi Micro Hei`, `Source Han Sans CN Heavy`, `CloudZongYiGBK`, `方正粗圆_GBK`, and `Source Han Serif CN`. Legacy/internal aliases may appear in historical ASS and must resolve to these identities without changing source evidence.
 
 ## Packaging checks
 

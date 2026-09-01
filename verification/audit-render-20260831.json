@@ -1,0 +1,35 @@
+{
+  "qa_ok": true,
+  "font_audit_ok": true,
+  "font_attachment": "NotoSansCJK-Regular.ttc",
+  "font_sha256": "b76b0433203017ca80401b2ee0dd69350349871c4b19d504c34dbdd80541690a",
+  "frames": [
+    "01-2000ms.png"
+  ],
+  "frame_sizes": [
+    4057
+  ],
+  "render_evidence": {
+    "ass": {
+      "path": "release/movie.zh-CN.ass",
+      "sha256": "9fc544ee80bc432a897dcc2cf658ff513efc31a50e708f5ae55e8051a06a802b"
+    },
+    "video": {
+      "path": "/tmp/subtitleflow-real-render/input.mkv",
+      "size": 3977,
+      "mtime_ns": 1788182664706967167
+    },
+    "fonts": [
+      {
+        "attachment_name": "NotoSansCJK-Regular.ttc",
+        "sha256": "b76b0433203017ca80401b2ee0dd69350349871c4b19d504c34dbdd80541690a",
+        "size": 19484784
+      }
+    ],
+    "frames": {
+      "01-2000ms.png": "79b4eccd012209191cdff85d62e34009d8c0a2ba35e65a6bb6262c192aaa3b34"
+    }
+  },
+  "release_schema": 3,
+  "release_file_sha256": "9fc544ee80bc432a897dcc2cf658ff513efc31a50e708f5ae55e8051a06a802b"
+}

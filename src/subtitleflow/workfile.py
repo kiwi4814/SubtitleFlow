@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
-from .alignment import AlignmentGroup, align_cues, editable_cues
+from .alignment import align_cues, editable_cues
 from .errors import GateError, ValidationError
 from .glossary import apply_glossary, load_glossary
 from .io import read_json, write_json
@@ -125,8 +124,14 @@ def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) ->
     workflow_profile = str(config.get("workflow", {}).get("profile", "auto")).lower()
     if workflow_profile == "source-assisted":
         assisted = True
+    elif assisted_setting == "auto":
+        # `single` is an explicit product choice: extra source files must not silently
+        # change the branch semantics. Only auto discovery upgrades S+C to assisted mode.
+        assisted = has_c if workflow_profile == "auto" else False
+    elif isinstance(assisted_setting, bool):
+        assisted = assisted_setting
     else:
-        assisted = has_c if assisted_setting == "auto" else bool(assisted_setting)
+        raise ValidationError("clean_branch.source_assisted must be true, false, or 'auto'")
     evidence_report: dict[str, Any] | None = None
     if assisted:
         if not has_c:

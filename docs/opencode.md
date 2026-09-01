@@ -28,6 +28,8 @@ Useful commands:
 /subtitle/status
 ```
 
-`/subtitle/run` advances from persisted state only until the next human gate. AI agents may write research/proposal/QA evidence within their permissions but must not edit immutable source files or silently rewrite final subtitles.
+`/subtitle/run` is an orchestration command that reads persisted state and advances only until the next human gate. The Python engine does not yet implement a standalone deterministic `advance-to-next-gate` planner, so the agent must consult `subflow status`/repository evidence instead of inferring progress from chat history.
+
+`opencode.jsonc` deliberately does **not** blanket-allow `subflow *`. Read-only/safe deterministic commands have narrow shell allow rules; human-impacting actions such as `review decide`, source replacement, gate approval, `release`, `remux`, and style mutation fall back to an explicit permission prompt. AI agents may write research/proposal/QA evidence within their scoped permissions but must not edit immutable source files or silently rewrite final subtitles.
 
 Font files are outside the AI artifact: local legal copies are supplied by the user. Agents may audit paths and report missing families but must not download or redistribute commercial fonts.

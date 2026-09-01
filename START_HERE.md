@@ -1,4 +1,4 @@
-# START HERE — SubtitleFlow 0.2.0
+# START HERE — SubtitleFlow 0.3.0
 
 SubtitleFlow is a generic subtitle production repository. Pick the evidence you actually have; do not manufacture A/B/C/D just to satisfy a workflow.
 
@@ -17,7 +17,7 @@ subflow doctor
 
 Recommended external tools:
 
-- OpenCode V2 for AI orchestration/research/proposals/semantic QA;
+- a current OpenCode release for AI orchestration/research/proposals/semantic QA (the executable name can vary by installed release/channel);
 - OpenCC for Traditional→Simplified conversion when enabled;
 - FFmpeg/ffprobe with libass for real visual preview;
 - MKVToolNix (`mkvmerge`) for final Remux.
@@ -46,43 +46,40 @@ subflow prepare movies film-01
 
 Default ordinary dialogue:
 
-- Chinese: 文泉驿微米黑, 60, ScaleY 105%, Bold, `#D2D2D2`, 2 px black outline, MarginV 103.
-- Japanese: 文泉驿微米黑, 50, Regular, warm gold `ASS &H000E95CE`, 2 px black outline, MarginV 45.
+- Chinese: `WenQuanYi Micro Hei`, 60, ScaleY 105%, Bold, `#D2D2D2`, 2 px black outline, MarginV 103.
+- Japanese: `WenQuanYi Micro Hei`, 50, Regular, warm gold `ASS &H000E95CE`, 2 px black outline, MarginV 45.
 - Both: event-level `\blur2`, no style shadow.
 
 Hybrid mode keeps risky source typesetting instead of recreating it. Existing Note/Title/Song/Screen/Sign/OP/ED/Staff/Ruby and complex positioned/drawing/karaoke events are preserved by default.
 
-## 4. Supply local fonts
+## 4. Supply and verify local fonts
 
-Font binaries are not included. Place your legal copies under:
+`fonts/font-registry.json` freezes the verified SubtitleFlow 0.3.0 identities. The project repository does **not** ship font binaries. Put your own legally available copies into the local store by importing a directory, a single file, or a ZIP:
 
-```text
-fonts/local/
+```bash
+subflow fonts install /path/to/fonts.zip
+subflow fonts verify
 ```
 
-or copy `fonts/font-map.example.json` to the ignored local file:
+The installer ignores source filenames as identity. It matches exact SHA-256 values, verifies internal Name Table data when FontTools is installed, and writes canonical filenames under the git-ignored `fonts/local/` directory. The five canonical mappings are:
 
 ```text
-fonts/font-map.json
+WenQuanYi Micro Hei       -> wqy-microhei.ttc
+Source Han Sans CN Heavy  -> SourceHanSansCN-Heavy.otf
+CloudZongYiGBK             -> Reeji-CloudZongYiGBK.ttf
+方正粗圆_GBK                -> FZY4K.TTF
+Source Han Serif CN        -> SourceHanSerifCN-Regular.otf
 ```
 
-and map ASS family names to local files.
+Old/internal family aliases remain supported through the registry. For project-specific fonts outside this default set, use the ignored `fonts/font-map.json`.
 
-For the Doraemon-derived profile/source typesetting you may see these families:
-
-- 文泉驿微米黑
-- 思源黑体 CN Heavy
-- 锐字云字库综艺体1.0
-- 方正粗圆_GBK
-- 思源宋体 CN
-
-Audit after compile:
+After compiling a title, audit the fonts actually referenced by the final ASS:
 
 ```bash
 subflow fonts audit movies film-01
 ```
 
-A production release blocks when the compiled ASS actually references an unresolved font.
+A production release blocks when a referenced font cannot be resolved to verified local bytes. See [`docs/fonts.md`](docs/fonts.md) for the exact hashes and MKV attachment policy.
 
 ## 5. OpenCode
 
@@ -108,7 +105,7 @@ Daily entry points:
 /subtitle/status PROJECT TITLE
 ```
 
-`/subtitle/run` advances only as far as the next mandatory human gate.
+`/subtitle/run` is the OpenCode orchestration entry point: it reads persisted repository state and is instructed to advance only as far as the next mandatory human gate. The Python engine does not yet expose a standalone deterministic `advance` planner; OpenCode must therefore follow the persisted gate/status files rather than treating `/subtitle/run` as permission for autonomous completion.
 
 ## 6. Final MKV font attachment
 

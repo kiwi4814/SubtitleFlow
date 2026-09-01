@@ -60,3 +60,75 @@ def test_same_name_existing_font_with_different_sha_blocks(monkeypatch, tmp_path
     monkeypatch.setattr(remux_module, "_existing_attachment_sha256", lambda _video, _item: "different")
     with pytest.raises(GateError, match="different content"):
         remux_module._fonts_to_attach(Path("input.mkv"), [frozen], existing)
+
+
+def _released_single(tmp_path: Path):
+    from conftest import write_ass
+    from subtitleflow.compile import compile_all
+    from subtitleflow.io import read_json, write_json
+    from subtitleflow.normalize import normalize_all
+    from subtitleflow.qa import run_all_qa
+    from subtitleflow.release import create_release_manifest
+    from subtitleflow.workfile import build_all_workfiles
+    from subtitleflow.workspace import (
+        add_source,
+        configure_workflow_profile,
+        create_project,
+        create_title,
+        title_paths,
+    )
+
+    (tmp_path / "projects").mkdir()
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\nversion='0'\n", encoding="utf-8")
+    create_project(tmp_path, "demo", "Demo")
+    create_title(tmp_path, "demo", "movie", "Movie")
+    paths = title_paths(tmp_path, "demo", "movie")
+    config = read_json(paths.title_config)
+    configure_workflow_profile(config, "single")
+    config["quality_gates"] = {
+        "require_research": False,
+        "require_semantic_qa": False,
+        "require_visual_qa": False,
+        "require_fonts": False,
+    }
+    config["fonts"]["require_for_release"] = False
+    write_json(paths.title_config, config)
+    add_source(paths, "S", write_ass(tmp_path / "S.ass", [("0:00:01.00", "0:00:02.00", "字幕")]))
+    normalize_all(paths)
+    build_all_workfiles(paths)
+    compile_all(paths)
+    assert run_all_qa(paths)["ok"] is True
+    create_release_manifest(paths)
+    return paths
+
+
+def test_remux_blocks_same_input_and_output_even_with_force(tmp_path: Path) -> None:
+    import pytest
+    from subtitleflow.errors import GateError
+    from subtitleflow.remux import remux
+
+    paths = _released_single(tmp_path)
+    video = tmp_path / "input.mkv"
+    video.write_bytes(b"not-a-real-mkv-needed-for-dry-run")
+    with pytest.raises(GateError, match="must not be the same"):
+        remux(paths, video=video, output=video, dry_run=True, force=True)
+
+
+def test_remux_blocks_video_different_from_visual_frozen_media(tmp_path: Path) -> None:
+    import pytest
+    from subtitleflow.errors import GateError
+    from subtitleflow.io import read_json, write_json
+    from subtitleflow.remux import remux
+    from subtitleflow.util import file_identity
+
+    paths = _released_single(tmp_path)
+    reviewed = tmp_path / "reviewed.mkv"
+    other = tmp_path / "other.mkv"
+    reviewed.write_bytes(b"reviewed-video")
+    other.write_bytes(b"different-video")
+    manifest_path = paths.release / "release-manifest.json"
+    manifest = read_json(manifest_path)
+    manifest["media"]["video"] = file_identity(reviewed)
+    write_json(manifest_path, manifest)
+    with pytest.raises(GateError, match="exact media.video"):
+        remux(paths, video=other, output=tmp_path / "out.mkv", dry_run=True)

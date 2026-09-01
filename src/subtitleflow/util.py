@@ -23,6 +23,21 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def file_identity(path: Path) -> dict[str, int | str]:
+    """Return a cheap identity for large external media without hashing the whole file.
+
+    Subtitle sources and release artifacts still use SHA-256. For multi-gigabyte video,
+    visual/remux gates bind the reviewed path, size and high-resolution modification time.
+    """
+    resolved = path.resolve()
+    stat = resolved.stat()
+    return {
+        "path": str(resolved),
+        "size": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+    }
+
+
 def slugify(value: str) -> str:
     value = value.strip().lower()
     value = re.sub(r"[^a-z0-9._-]+", "-", value)

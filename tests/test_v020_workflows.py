@@ -41,7 +41,7 @@ def _set_profile(paths, profile: str) -> None:
     write_json(paths.title_config, config)
 
 
-def _make_test_font(path: Path, family: str = "文泉驿微米黑") -> Path:
+def _make_test_font(path: Path, family: str = "WenQuanYi Micro Hei") -> Path:
     pytest.importorskip("fontTools")
     from fontTools.fontBuilder import FontBuilder
     from fontTools.pens.ttGlyphPen import TTGlyphPen
@@ -96,7 +96,7 @@ def test_single_profile_keeps_self_timing_and_uses_final_kiwi_style(tmp_path: Pa
     outputs = compile_all(paths)
     compiled = Path(outputs["clean"])
     text = compiled.read_text(encoding="utf-8")
-    assert "Style: SF-ZH,文泉驿微米黑,60,&H00D2D2D2" in text
+    assert "Style: SF-ZH,WenQuanYi Micro Hei,60,&H00D2D2D2" in text
     assert r"{\blur2}第一句" in text
     style = ass_style_values(paths, "SF-ZH")
     assert style["ScaleY"] == "105"
@@ -188,7 +188,7 @@ def test_font_audit_release_freezes_sha_and_remux_uses_modern_attachment_options
     font = _make_test_font(tmp_path / "fonts" / "local" / "wqy-microhei.ttf")
     write_json(
         tmp_path / "fonts" / "font-map.json",
-        {"schema_version": 1, "families": {"文泉驿微米黑": ["local/wqy-microhei.ttf"]}},
+        {"schema_version": 1, "families": {"WenQuanYi Micro Hei": ["local/wqy-microhei.ttf"]}},
     )
     config = read_json(paths.title_config)
     config["quality_gates"].update(
@@ -202,7 +202,7 @@ def test_font_audit_release_freezes_sha_and_remux_uses_modern_attachment_options
     report = audit_fonts(paths)
     assert report["ok"] is True
     assert len(report["attachments"]) == 1
-    assert report["attachments"][0]["families"] == ["文泉驿微米黑"]
+    assert report["attachments"][0]["families"] == ["WenQuanYi Micro Hei"]
     assert report["attachments"][0]["mime_type"] == "font/ttf"
 
     qa = run_all_qa(paths)
@@ -218,8 +218,7 @@ def test_font_audit_release_freezes_sha_and_remux_uses_modern_attachment_options
         clean_ass=paths.release / "movie.zh-CN.ass",
         font_attachments=frozen,
     )
-    assert "--attachment-mime-type" in cmd
-    assert "font/ttf" in cmd
+    assert "--attachment-mime-type" not in cmd
     assert "--attachment-name" in cmd
     assert "wqy-microhei.ttf" in cmd
     assert "--attach-file" in cmd
@@ -227,3 +226,99 @@ def test_font_audit_release_freezes_sha_and_remux_uses_modern_attachment_options
     font.write_bytes(font.read_bytes() + b"changed")
     with pytest.raises(GateError, match="changed after audit"):
         require_font_attachments(paths)
+
+
+def test_explicit_single_profile_does_not_silently_use_extra_c_source(tmp_path: Path) -> None:
+    paths = _repo(tmp_path)
+    _set_profile(paths, "single")
+    add_source(paths, "S", write_ass(tmp_path / "s.ass", [("0:00:01.00", "0:00:02.00", "你好")]))
+    add_source(paths, "C", write_ass(tmp_path / "c.ass", [("0:00:01.00", "0:00:02.00", "こんにちは")]))
+    normalize_all(paths)
+    build_all_workfiles(paths)
+    work = load_workfile(paths, "clean")
+    assert work.metadata["source_assisted"] is False
+    assert work.source_language_role is None
+    assert work.units[0].source_text is None
+
+
+def test_jp_bilingual_hybrid_preserves_plain_special_style(tmp_path: Path) -> None:
+    paths = _repo(tmp_path)
+    _set_profile(paths, "bilingual")
+    special_header = ASS_HEADER.replace(
+        "Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,40,40,50,1",
+        "Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,40,40,50,1\n"
+        "Style: Note,Arial,40,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,8,40,40,40,1",
+    )
+    a = tmp_path / "A-special.ass"
+    a.write_text(
+        special_header
+        + ass_dialogue("0:00:01.00", "0:00:03.00", "基准对白")
+        + "\n"
+        + ass_dialogue("0:00:02.00", "0:00:04.00", "作者注释", style="Note")
+        + "\n",
+        encoding="utf-8",
+    )
+    add_source(paths, "A", a)
+    add_source(paths, "B", write_ass(tmp_path / "B.ass", [("0:00:01.00", "0:00:03.00", "中文字幕")]))
+    add_source(paths, "C", write_ass(tmp_path / "C.ass", [("0:00:01.00", "0:00:03.00", "日本語字幕")]))
+    normalize_all(paths)
+    build_all_workfiles(paths)
+    output = Path(compile_all(paths)["jp"])
+    doc = parse_ass(output)
+    assert any(event.fields.get("Style") == "Note" and "作者注释" in event.raw_line for event in doc.events)
+
+
+def test_font_audit_blocks_same_attachment_name_with_different_sha(tmp_path: Path) -> None:
+    paths = _repo(tmp_path)
+    font_a = _make_test_font(tmp_path / "fonts" / "a" / "shared.ttf", family="Family One")
+    font_b = _make_test_font(tmp_path / "fonts" / "b" / "shared.ttf", family="Family Two")
+    assert font_a.read_bytes() != font_b.read_bytes()
+    write_json(
+        tmp_path / "fonts" / "font-map.json",
+        {
+            "schema_version": 1,
+            "families": {
+                "Family One": ["a/shared.ttf"],
+                "Family Two": ["b/shared.ttf"],
+            },
+        },
+    )
+    custom = ASS_HEADER.replace("Style: Default,Arial,48", "Style: Default,Family One,48").replace(
+        "\n[Events]",
+        "\nStyle: Note,Family Two,40,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,8,40,40,40,1\n\n[Events]",
+    )
+    (paths.release / "movie.zh-CN.ass").write_text(
+        custom
+        + ass_dialogue("0:00:01.00", "0:00:02.00", "A", style="Default")
+        + "\n"
+        + ass_dialogue("0:00:02.00", "0:00:03.00", "B", style="Note")
+        + "\n",
+        encoding="utf-8",
+    )
+    report = audit_fonts(paths)
+    assert report["ok"] is False
+    assert report["attachments"] == []
+    assert report["collisions"][0]["attachment_name"] == "shared.ttf"
+    with pytest.raises(GateError, match="same-name attachment files with different SHA-256"):
+        require_font_attachments(paths)
+
+
+def test_explicit_font_map_rejects_file_whose_internal_family_does_not_match(tmp_path: Path) -> None:
+    paths = _repo(tmp_path)
+    wrong = _make_test_font(tmp_path / "fonts" / "local" / "wrong.ttf", family="Wrong Family")
+    write_json(
+        tmp_path / "fonts" / "font-map.json",
+        {"schema_version": 1, "families": {"文泉驿微米黑": ["local/wrong.ttf"]}},
+    )
+    (paths.release / "movie.zh-CN.ass").write_text(
+        ASS_HEADER.replace("Style: Default,Arial,48", "Style: Default,文泉驿微米黑,48")
+        + ass_dialogue("0:00:01.00", "0:00:02.00", "字幕")
+        + "\n",
+        encoding="utf-8",
+    )
+    report = audit_fonts(paths)
+    assert report["ok"] is False
+    assert report["invalid_mappings"][0]["reason"] == "family-metadata-mismatch"
+    with pytest.raises(GateError, match="Font resolution does not satisfy the requested ASS family"):
+        require_font_attachments(paths)
+    assert wrong.is_file()

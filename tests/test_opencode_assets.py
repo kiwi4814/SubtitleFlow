@@ -59,3 +59,34 @@ def test_opencode_agents_and_commands_have_required_metadata() -> None:
         meta = _frontmatter(command)
         assert meta.get("description")
         assert meta.get("agent") == "subtitle-orchestrator"
+
+
+def test_opencode_shell_allowlist_does_not_bypass_human_or_release_gates() -> None:
+    config = json.loads((REPO / "opencode.jsonc").read_text(encoding="utf-8"))
+    rules = config["permissions"]
+    forbidden_blanket = {
+        "subflow *",
+        "uv run subflow *",
+        "python -m subtitleflow *",
+    }
+    assert not any(
+        rule.get("action") == "shell"
+        and rule.get("effect") == "allow"
+        and rule.get("resource") in forbidden_blanket
+        for rule in rules
+    )
+    for dangerous_prefix in (
+        "subflow review decide",
+        "subflow source add",
+        "subflow research mark-complete",
+        "subflow semantic-qa mark-complete",
+        "subflow visual-qa mark-complete",
+        "subflow release",
+        "subflow remux",
+    ):
+        assert not any(
+            rule.get("action") == "shell"
+            and rule.get("effect") == "allow"
+            and str(rule.get("resource", "")).startswith(dangerous_prefix)
+            for rule in rules
+        )

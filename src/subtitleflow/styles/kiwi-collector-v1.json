@@ -2,7 +2,7 @@
   "schema_version": 1,
   "id": "kiwi-collector-v1",
   "display_name": "Kiwi Collector v1",
-  "description": "Collector-style 1080p ASS profile derived from the user's preferred Doraemon subtitle palette and spacing.",
+  "description": "Collector-style 1080p ASS profile with the fixed Kiwi Collector grey/gold palette and spacing.",
   "play_resolution": {
     "x": 1920,
     "y": 1080
@@ -15,7 +15,7 @@
   "mode": "hybrid",
   "styles": {
     "SF-ZH": {
-      "Fontname": "文泉驿微米黑",
+      "Fontname": "WenQuanYi Micro Hei",
       "Fontsize": "60",
       "PrimaryColour": "&H00D2D2D2",
       "SecondaryColour": "&H000000FF",
@@ -39,7 +39,7 @@
       "Encoding": "1"
     },
     "SF-JA": {
-      "Fontname": "文泉驿微米黑",
+      "Fontname": "WenQuanYi Micro Hei",
       "Fontsize": "50",
       "PrimaryColour": "&H000E95CE",
       "SecondaryColour": "&H000000FF",
@@ -77,17 +77,17 @@
     "preserve_source_special_styles": true,
     "required_families": [
       {
-        "family": "文泉驿微米黑",
+        "family": "WenQuanYi Micro Hei",
         "role": "dialogue",
         "required": true
       },
       {
-        "family": "思源黑体 CN Heavy",
+        "family": "Source Han Sans CN Heavy",
         "role": "note",
         "required": false
       },
       {
-        "family": "锐字云字库综艺体1.0",
+        "family": "CloudZongYiGBK",
         "role": "title",
         "required": false
       },
@@ -97,11 +97,12 @@
         "required": false
       },
       {
-        "family": "思源宋体 CN",
+        "family": "Source Han Serif CN",
         "role": "special-sign",
         "required": false
       }
-    ]
+    ],
+    "registry": "subtitleflow-default-fonts-v1"
   },
   "event_overrides": {
     "SF-ZH": "\\blur2",
@@ -123,7 +124,15 @@
       "staff",
       "fx",
       "effect",
-      "karaoke"
+      "karaoke",
+      "wantedposter",
+      "formal",
+      "formalscreentext",
+      "document",
+      "newspaper",
+      "prop",
+      "screentext",
+      "screen_text"
     ],
     "special_style_prefixes": [
       "op",

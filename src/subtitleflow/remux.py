@@ -7,10 +7,15 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .errors import GateError, ValidationError
+from .gates import (
+    validate_research_evidence,
+    validate_semantic_qa_evidence,
+    validate_visual_qa_evidence,
+)
 from .io import read_json
 from .qa import qa_input_snapshot
 from .state import update_stage
-from .util import run_checked, sha256_file, which
+from .util import file_identity, run_checked, sha256_file, which
 from .workflow import active_branches, branch_release_filename
 from .workspace import TitlePaths, verify_sources
 
@@ -162,8 +167,6 @@ def build_remux_command(
             [
                 "--attachment-description",
                 description,
-                "--attachment-mime-type",
-                str(attachment["mime_type"]),
                 "--attachment-name",
                 str(attachment["attachment_name"]),
                 "--attach-file",
@@ -224,6 +227,25 @@ def remux(
         if not release_file.is_file() or sha256_file(release_file) != record.get("sha256"):
             raise GateError(f"Remux blocked: frozen release file changed: {release_file.name}")
     config = read_json(paths.title_config)
+    gates = config.get("quality_gates", {})
+    frozen_gate_evidence = release_manifest.get("gate_evidence", {})
+    if gates.get("require_research", True):
+        current = validate_research_evidence(paths)
+        if current != frozen_gate_evidence.get("research"):
+            raise GateError("Remux blocked: research evidence changed after the release was frozen")
+    if gates.get("require_semantic_qa", True):
+        current = validate_semantic_qa_evidence(paths)
+        if current != frozen_gate_evidence.get("semantic_qa"):
+            raise GateError("Remux blocked: semantic QA evidence changed after the release was frozen")
+    if gates.get("require_visual_qa", True):
+        frozen_visual = frozen_gate_evidence.get("visual", {})
+        for branch in active_branches(paths):
+            current = validate_visual_qa_evidence(paths, branch)
+            if current != frozen_visual.get(branch):
+                raise GateError(
+                    f"Remux blocked: {branch} visual QA evidence changed after the release was frozen"
+                )
+
     media_cfg = config.get("media", {})
     if video is None:
         raw_video = media_cfg.get("video")
@@ -232,9 +254,18 @@ def remux(
         video = _expand(str(raw_video))
     if not video.is_file():
         raise ValidationError(f"Video file not found: {video}")
+    video = video.resolve()
+    frozen_video = release_manifest.get("media", {}).get("video")
+    if frozen_video is not None and file_identity(video) != frozen_video:
+        raise GateError(
+            "Remux blocked: selected video is not the exact media.video that passed visual QA"
+        )
     if output is None:
         raw_output = media_cfg.get("output_mkv")
         output = _expand(str(raw_output)) if raw_output else video.with_name(video.stem + ".subtitleflow.mkv")
+    output = output.resolve()
+    if os.path.normcase(str(output)) == os.path.normcase(str(video)):
+        raise GateError("Remux blocked: output path must not be the same as the input video")
     if output.exists() and not force:
         raise GateError(f"Output already exists: {output}; use --force explicitly")
 

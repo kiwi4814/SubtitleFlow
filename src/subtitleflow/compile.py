@@ -157,7 +157,12 @@ def compile_jp_bilingual(paths: TitlePaths, *, preview: bool = False) -> Path:
         )
         events.append((start_ms, 2_000_000 + serial, build_event_line(template.events_format, values)))
 
-    rendered = render_from_template(template, events, style_values=_profile_styles(paths))
+    rendered = render_from_template(
+        template,
+        events,
+        style_values=_profile_styles(paths),
+        preserve_style_names=_preserved_style_names(paths, template),
+    )
     suffix = ".preview.ass" if preview else ".ass"
     output = _write_rendered(paths, f"{paths.title_id}.zh-CN-ja{suffix}", rendered)
     update_stage(paths, "compile_jp", "preview" if preview else "passed", output=str(output.relative_to(paths.title)))

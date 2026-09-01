@@ -32,17 +32,24 @@ Authority rules:
 7. AI must not rewrite raw ASS/SSA/SRT files wholesale.
 8. Complex ASS events and configured special source styles are protected by default.
 9. Styling is a compile-time profile; translation/timing decisions do not live in Style lines.
-10. Kiwi Collector v1 generated dialogue uses 文泉驿微米黑, Doraemon-derived grey/gold colours, and `\blur2`.
-11. Never acquire, copy, bundle, or redistribute font binaries. Users provide locally licensed fonts.
+10. Kiwi Collector v1 generated dialogue uses canonical ASS family `WenQuanYi Micro Hei`, the fixed grey/gold palette, and `\blur2`.
+11. Never acquire or redistribute font binaries. User-provided/local-licensed fonts may be imported into ignored `fonts/local/`, but source releases must exclude all font binaries.
 12. Production release requires every actually referenced font to be resolved unless the user explicitly relaxes the font gate.
-13. A font audit records local path, MIME, size and SHA-256. Frozen font hashes must match at Remux time.
+13. The default font registry freezes canonical family/file/SHA identities. A font audit records local path, Name Table metadata, MIME, size and SHA-256; frozen font hashes must match at Remux time.
 14. Successful rendering is not visual approval; real frames must be inspected.
 15. Never claim Remux passed unless `mkvmerge` actually ran and output attachments were post-verified.
+16. Unimported proposal JSON is durable evidence and must not be ignored or deleted to bypass Human Review.
+17. Human approvals are valid only for the evidence fingerprint they reviewed and must remain materialized in the current workfile.
+18. Research, semantic-QA, render and visual-QA approvals must bind their input evidence; upstream edits stale downstream gates.
+19. Rendering must use the exact successfully audited font files, not an unverified system fallback.
+20. Source replacement must verify the current source hash first and archive the prior bytes under a unique immutable history path.
 
 ## Typical commands
 
 ```bash
 subflow doctor
+subflow fonts install /path/to/fonts.zip
+subflow fonts verify
 subflow project init <project>
 subflow title init <project> <title> --profile single|source-assisted|dub|bilingual|full|auto
 subflow source add <project> <title> S /path/to/subtitle.ass

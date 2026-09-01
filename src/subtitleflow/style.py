@@ -33,8 +33,8 @@ def style_profile_path(paths: TitlePaths, profile: str) -> Path:
     return (Path(__file__).resolve().parent / "styles" / f"{profile}.json").resolve()
 
 
-def load_style_profile(paths: TitlePaths) -> dict[str, Any]:
-    config = read_json(paths.title_config)
+def load_style_profile(paths: TitlePaths, *, config: dict[str, Any] | None = None) -> dict[str, Any]:
+    config = read_json(paths.title_config) if config is None else config
     style_cfg = config.get("style", {})
     profile_name = str(style_cfg.get("profile", DEFAULT_STYLE_PROFILE))
     profile_path = style_profile_path(paths, profile_name)

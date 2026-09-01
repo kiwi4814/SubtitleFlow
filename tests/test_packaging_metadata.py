@@ -28,7 +28,7 @@ def test_bundled_style_profile_is_packaged_and_versioned() -> None:
     import json
     data = json.loads(profile.read_text(encoding='utf-8'))
     assert data['id'] == 'kiwi-collector-v1'
-    assert data['styles']['SF-ZH']['Fontname'] == '文泉驿微米黑'
+    assert data['styles']['SF-ZH']['Fontname'] == 'WenQuanYi Micro Hei'
     assert data['styles']['SF-JA']['PrimaryColour'] == '&H000E95CE'
     assert data['event_overrides']['SF-ZH'] == r'\blur2'
 
@@ -36,4 +36,5 @@ def test_bundled_style_profile_is_packaged_and_versioned() -> None:
 def test_repository_contains_no_font_binaries() -> None:
     repo = Path(__file__).resolve().parents[1]
     forbidden = {'.ttf', '.otf', '.ttc', '.otc'}
-    assert not [path for path in repo.rglob('*') if path.is_file() and path.suffix.lower() in forbidden]
+    binaries = [path for path in repo.rglob('*') if path.is_file() and path.suffix.lower() in forbidden]
+    assert all(path.is_relative_to(repo / 'fonts' / 'local') for path in binaries)

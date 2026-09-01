@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import stat
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -178,6 +179,7 @@ def default_title_config(project_id: str, title_id: str, display_name: str) -> d
             "require_for_release": True,
             "require_all_referenced": True,
             "directories": ["fonts/local"],
+            "registry_file": "fonts/font-registry.json",
             "map_file": "fonts/font-map.json",
             "aliases": {},
         },
@@ -283,13 +285,31 @@ def add_source(
         raise SubtitleFlowError(f"Role {role} already imported; use --replace explicitly")
 
     if existing:
+        # A replacement must never hide or legitimize mutation of the previous immutable
+        # source. Verify the exact role before moving it into the evidence archive.
+        verify_sources(paths, {role})
         old_path = paths.title / existing["path"]
-        if old_path.exists():
-            _make_writable(old_path)
-            archive = paths.source / "_archive" / utc_now().replace(":", "-")
-            archive.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(old_path), archive / old_path.name)
-        manifest.setdefault("history", []).append({"role": role, "replaced": existing, "at": utc_now()})
+        _make_writable(old_path)
+        archive = paths.source / "_archive" / (
+            utc_now().replace(":", "-") + "-" + uuid.uuid4().hex[:8]
+        )
+        archive.mkdir(parents=True, exist_ok=False)
+        archived_path = archive / old_path.name
+        shutil.move(str(old_path), archived_path)
+        archived_sha = sha256_file(archived_path)
+        if archived_sha != existing["sha256"]:
+            raise SourceIntegrityError(
+                f"Archived source hash mismatch for role {role}; replacement aborted"
+            )
+        _make_read_only(archived_path)
+        replaced_record = {
+            **existing,
+            "archived_path": str(archived_path.relative_to(paths.title)).replace(os.sep, "/"),
+            "archived_sha256": archived_sha,
+        }
+        manifest.setdefault("history", []).append(
+            {"role": role, "replaced": replaced_record, "at": utc_now()}
+        )
 
     dest = paths.source / f"{role}{source_path.suffix.lower()}"
     shutil.copy2(source_path, dest)

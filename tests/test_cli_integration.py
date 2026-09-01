@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from conftest import write_ass
@@ -45,3 +44,16 @@ def test_cli_end_to_end(tmp_path: Path, sample_cues) -> None:
     assert (paths / "release" / "movie.zh-CN.tw.ass").exists()
     assert (paths / "release" / "movie.zh-CN-ja.ass").exists()
     assert (paths / "release" / "release-manifest.json").exists()
+
+
+def test_style_set_invalid_profile_is_transactional(tmp_path: Path) -> None:
+    (tmp_path / "projects").mkdir()
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\nversion='0'\n", encoding="utf-8")
+    repo = str(tmp_path)
+    assert main(["--repo", repo, "project", "init", "demo", "--name", "Demo"]) == 0
+    assert main(["--repo", repo, "title", "init", "demo", "movie", "--name", "Movie"]) == 0
+    config_path = tmp_path / "projects" / "demo" / "titles" / "movie" / "title.json"
+    before = read_json(config_path)
+
+    assert main(["--repo", repo, "style", "set", "demo", "movie", "missing-profile"]) == 2
+    assert read_json(config_path) == before

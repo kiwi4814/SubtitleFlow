@@ -1,217 +1,135 @@
-# SubtitleFlow v0.2.0 Verification
+# SubtitleFlow v0.3.0 Verification
 
-Verification date: 2026-08-31
+Date: 2026-08-31
 
-## Release verdict
+This file records the v0.3.0 release verification after the v0.2 audit-hardening cycle and the verified-font registry integration. Historical v0.2 audit evidence remains under `verification/AUDIT-20260831.md` and the `*-v020.json` records.
 
-**PASS for source distribution and local use, with environment-limited exceptions explicitly listed below.**
+## Result summary
 
-The final repository passes the automated test suite, Python bytecode compilation, package build, clean-venv installation, source-integrity stress tests, Hybrid ASS preservation checks, real FFmpeg/libass render mechanics, and real Doraemon ASS font/style analysis.
+The v0.3.0 working tree passes the complete automated suite, bytecode compilation, wheel build, clean non-editable wheel installation and installed CLI smoke checks. The five user-supplied Kiwi Collector fonts were independently hashed and parsed with FontTools, imported by exact registry SHA, audited through a real compiled ASS that referenced all five roles, and rendered through FFmpeg/libass with the exact audited local font directory.
 
-The current verification container does **not** provide `mkvmerge`, `mkvextract`, OpenCC, or OpenCode. Therefore actual MKV remux, real attachment extraction, Traditional-to-Simplified conversion, and a live OpenCode session were not executed here. Those paths have deterministic/unit coverage and `subflow doctor` reports their availability at runtime.
+The source release intentionally contains **zero font binaries**. `fonts/font-registry.json` contains only font identity/policy metadata; locally supplied bytes live under ignored `fonts/local/`.
 
-## Final automated checks
+## Automated checks actually executed
 
-- Python: **3.13.5**
-- `python -m compileall -q src tests tools`: **PASS**
-- `python -m pytest -q`: **42 / 42 PASS**
-- Coverage: **78% statements** (`2161 / 2761` statements covered; 600 missed)
-- Wheel build: **PASS**
-- Wheel: `dist/subtitleflow-0.2.0-py3-none-any.whl`
-- Wheel SHA-256: `df3d79b1e033a9882007a36f07b3a01d51dd64ad27bc558ad6fa54ecb3bd12af`
-- Fresh virtualenv installation: **PASS**
-- Installed package version: **0.2.0**
-- Installed CLI entry point `subflow`: **PASS**
-- Installed bundled style resource `kiwi-collector-v1`: **PASS**
-- `pip check`: **PASS**
-- Repository font binaries (`*.ttf`, `*.otf`, `*.ttc`, `*.otc`): **0**
+Environment:
 
-Ruff was not completed because Ruff is not installed in the container and the environment cannot reach the package/interpreter download endpoints required by the attempted `uv run` invocation. This is reported as an environment limitation, not as a lint pass.
+- Python: 3.13.5
+- platform: Linux x86_64
+- FFmpeg / ffprobe: available
+- FFmpeg libass filter: available
+- FontTools: available in the development environment (4.63.0)
+- MKVToolNix `mkvmerge` / `mkvextract`: not installed
+- Ruff: not installed in the execution environment
+- OpenCC: not installed
+- OpenCode: not installed
 
-## v0.2 workflow coverage
+Executed checks:
 
-Regression tests cover the following workflow shapes:
+```text
+python -m pytest --collect-only     -> 68 tests collected
+python -m pytest -q                 -> 68/68 PASS
+pytest + coverage                   -> 81% statement coverage
+python -m compileall -q src tools tests -> PASS
+pip wheel --no-deps --no-build-isolation -> PASS
+clean venv wheel install            -> PASS
+pip check                            -> PASS
+installed package version           -> 0.3.0
+installed subflow doctor            -> PASS
+packaged kiwi-collector-v1 resource -> present
+wheel font binaries                 -> 0
+```
 
-1. `single` — self-contained S subtitle; timing and target text come from S.
-2. `source-assisted` — S remains the timing/target master; C is semantic evidence only.
-3. `dub` — A timing + D dub wording.
-4. `bilingual` — A timing + B translated Chinese + C source-language evidence.
-5. `full` — A+B+C+D, producing TW and JP branches.
-6. `auto` — derives valid branches from the available evidence roles.
+The clean wheel installation intentionally omitted optional dependencies. `subflow fonts verify` still succeeded there by exact registry SHA, demonstrating that registry byte identity does not require FontTools. Name Table verification remains an additional stricter check when the `fonts`/`full` extra is installed.
 
-The single-source route deliberately performs no artificial A/B/C/D duplication.
+## Verified default font registry
 
-## Final Kiwi Collector v1 style
+Registry id: `subtitleflow-default-fonts-v1`
 
-Profile: `styles/kiwi-collector-v1.json`
+Registry SHA-256:
 
-### Generated Simplified Chinese dialogue (`SF-ZH`)
+```text
+aa4e30bcafb77dda1565c86e72c93e98fd35c2c021518b8f40be9b685d3e313d
+```
 
-- Font: `文泉驿微米黑`
-- Size: 60
-- ScaleY: 105%
-- Bold: yes
-- Primary color: `&H00D2D2D2` (grey-white)
-- Outline: 2 px black
-- Shadow: 0
-- Alignment: bottom-center
-- MarginV: 103
-- Event override: `\blur2`
+The actual uploaded font set was verified as:
 
-### Generated Japanese dialogue (`SF-JA`)
+| Role | Canonical family | Canonical file | SHA-256 | FontTools metadata |
+|---|---|---|---|---|
+| dialogue | `WenQuanYi Micro Hei` | `wqy-microhei.ttc` | `e4bca8df123ce01b104780f576ea1a58b9a5ff1662a91124b6d3180cb6c88212` | PASS |
+| annotation | `Source Han Sans CN Heavy` | `SourceHanSansCN-Heavy.otf` | `88c749b0a54a0800124ded6544e399302ed224aa49992ea364b88769f825c54c` | PASS |
+| movie title | `CloudZongYiGBK` | `Reeji-CloudZongYiGBK.ttf` | `cdad5e1446c45a472fe085f99a661e2dbaa035cc9c3f5fb80efee8744f92f4d1` | PASS |
+| screen text | `方正粗圆_GBK` | `FZY4K.TTF` | `c071e0e91406af290cfbb495c42ae56a36cca7a501c11cb6613893d5adb951c0` | PASS |
+| formal screen text | `Source Han Serif CN` | `SourceHanSerifCN-Regular.otf` | `3754ea669c530e2473354f8f6d9f79680a44d7e26ec7d00eeabee4a7e0753c5d` | PASS |
 
-- Font: `文泉驿微米黑`
-- Size: 50
-- ScaleY: 100%
-- Bold: no
-- Primary color: `&H000E95CE` (warm Doraemon-derived gold)
-- Outline: 2 px black
-- Shadow: 0
-- Alignment: bottom-center
-- MarginV: 45
-- Event override: `\blur2`
+The title font arrived under a non-canonical/mangled source filename. `subflow fonts install` identified it by SHA-256 and stored it as `Reeji-CloudZongYiGBK.ttf`, proving that file naming is not used as font identity.
 
-### Hybrid preservation
+## Real five-font compile/audit/render verification
 
-The profile preserves complex authored events and common special styles such as notes, titles, songs, screens/signs, ruby, staff, effects, karaoke, and OP/ED/IN-prefixed styles. Special source typesetting is kept instead of being flattened into `SF-ZH` / `SF-JA`.
+A disposable 1920×1080 ASS fixture was created with:
 
-Profile SHA-256: `e0195beb1dc039de9def1a2c763e5074fec6aeb0118a2fb662ddd01337d61837`
+- ordinary dialogue → `WenQuanYi Micro Hei`;
+- Note → legacy alias `思源黑体 CN Heavy`;
+- Title → legacy alias `锐字云字库综艺体1.0`;
+- ScreenText → `方正粗圆_GBK`;
+- WantedPoster → legacy alias `思源宋体 CN`.
 
-## Font policy and MKV attachment safety
+The fixture was processed through a real `single` SubtitleFlow title. Hybrid compilation retained the authored special roles while generated dialogue used the canonical Kiwi Collector family. Font audit resolved **5/5** attachments with their exact registered SHA values.
 
-SubtitleFlow v0.2.0 intentionally ships **no font binary files**. Users place their legally held fonts under `fonts/local/` or provide `fonts/font-map.json` based on `fonts/font-map.example.json`.
+A real FFmpeg/libass render then selected:
 
-The selected Doraemon style family set is:
+```text
+WenQuanYi Micro Hei      -> WenQuanYiMicroHei
+思源黑体 CN Heavy         -> SourceHanSansCN-Heavy
+锐字云字库综艺体1.0       -> CloudZongYiGBK
+方正粗圆_GBK              -> FZY4K--GBK1-0
+思源宋体 CN               -> SourceHanSerifCN-Regular
+```
 
-- `文泉驿微米黑` — Chinese/Japanese ordinary dialogue
-- `思源黑体 CN Heavy` — notes
-- `锐字云字库综艺体1.0` — movie title
-- `方正粗圆_GBK` — songs, gadget names, screen text
-- `思源宋体 CN` — special wanted-poster screen text
+The resulting PNG was opened and visually inspected. All five roles rendered visibly. The frame SHA-256 was:
 
-The font audit scans fonts actually referenced by the final ASS, including inline `\fn` tags. A leading `@` used for vertical Windows/ASS fonts is normalized, so `@方正粗圆_GBK` and `方正粗圆_GBK` resolve to the same family.
+```text
+bea5326baf0ba10ad5534b5195ad39193d45e339958eefd169c5c5c1b66cc447
+```
 
-For each resolved font file, the release freezes:
+Machine-readable sanitized evidence is stored in `verification/font-registry-v030-real.json`.
 
-- family name
-- local file path
-- attachment filename
-- MIME type
-- file size
-- SHA-256
-- reason(s) it is required by the final ASS
+## MKV attachment behavior verified in code/tests
 
-Before remux, SubtitleFlow rechecks the frozen font hash and size. Missing or changed font files block production remux.
+v0.3.0 no longer forces `--attachment-mime-type` by default. It keeps canonical `--attachment-name` and `--attach-file`, allowing current MKVToolNix to auto-detect MIME. Audit/release evidence still records MIME metadata.
 
-If the input MKV already contains an attachment with the same filename, v0.2.0 does not trust filename/size alone: it uses `mkvextract` when available to extract the existing attachment and compares SHA-256. Identical content is reused; a same-name/different-hash collision blocks remux. If such a collision must be resolved but `mkvextract` is unavailable, remux blocks rather than guessing.
+Regression tests verify command construction, frozen font hash re-checks, same-name/different-SHA collision blocking, and input/output path safety. However **a real MKVToolNix Remux was not executed in this environment** because `mkvmerge`/`mkvextract` are not installed. Therefore no claim of real Remux success is made.
 
-Missing fonts are attached with `mkvmerge` using modern attachment options and font MIME types. The output MKV is identified again after remux to verify expected attachment names/sizes are present.
+## Known remaining gaps
 
-## Real Doraemon 2023 ASS analysis
+The highest-priority post-0.3.0 gaps remain:
 
-Source:
+1. low-confidence Alignment has no durable `Approve / Adjust / Defer` review ledger;
+2. Timing QA does not yet provide complete real-video range/drift/extreme-duration coverage;
+3. font QA does not yet prove per-character `cmap` coverage;
+4. libass `fontselect` output is not yet persisted as a formal no-fallback gate by the engine;
+5. output MKV attachments are structurally post-identified but are not yet re-extracted and SHA-compared end-to-end;
+6. Python 3.11/3.12 and Windows/macOS remain declared/reviewed targets rather than executed CI matrix evidence;
+7. wheel/source builds are not yet configured for reproducible byte-identical artifacts.
 
-`哆啦A梦：大雄与天空的理想乡 (2023) - 1080p.BluRay Remux.H.264.DTS-HD TrueHD Dolby Atmos MA 7.1.chs.ass`
+See `docs/roadmap.md` for the prioritized implementation order.
 
-Observed:
+## Artifact-from-ZIP verification
 
-- Total events: **3435**
-- CN ordinary dialogue: **1678**
-- JP ordinary dialogue: **1678**
-- Title: **1**
-- Notes: **12**
-- Songs: **66**
-- Hybrid-preserved special-style events: **79 / 79**
-- Unique referenced font families: **5**
-- `@方正粗圆_GBK` correctly normalized to `方正粗圆_GBK`
-- Source SHA before/after analysis: `9f788f4275ed43fd49fcc185517ca22f195ff1b4d3bed0e8c80470d0f084c678`
-- Source unchanged: **PASS**
+A release candidate archive was created with the built 0.3.0 wheel but without local font binaries, unpacked into a fresh directory, and verified from the unpacked bytes:
 
-Machine-readable evidence: `verification/doraemon-2023-style-check.json`.
+```text
+pytest collection                         -> 68 tests
+pytest                                   -> 68/68 PASS
+compileall src/tools/tests                -> PASS
+wheel rebuild from extracted source       -> PASS
+ZIP-contained wheel clean-venv install    -> PASS
+pip check                                 -> PASS
+installed version                         -> 0.3.0
+installed subflow --help / doctor          -> PASS
+font binaries in ZIP                      -> 0
+cache/build/egg-info pollution in ZIP     -> 0
+font registry entries                     -> 5
+```
 
-## Legacy Doraemon stress tests
-
-### 1980 large ASS
-
-- Parsed events: **824**
-- Normalize: **PASS**
-- Alignment/workfile generation: **PASS**
-- TW compile: **PASS**
-- JP compile: **PASS**
-- Deterministic QA: **PASS**
-- Mechanical release path: **PASS**
-- Source SHA before/after: `cc2ea32bb92ed59928fb06d150934b543af5436970d61a5c7e58a6c60101e08b`
-- Source unchanged: **PASS**
-
-The stress harness disables production-only research/semantic/visual/font gates because its purpose is parser/workfile/compiler round-trip verification, not to declare that historical subtitle final.
-
-### 2008 complex ASS
-
-- Protected events detected: **7363**
-- Protected events retained after round-trip: **7363**
-- Result: **7363 / 7363 PASS**
-
-Machine-readable evidence: `verification/verification-results-v020.json`.
-
-## FFmpeg/libass render verification
-
-- FFmpeg: **7.1.5**
-- `ffprobe`: available
-- libass subtitle filter: available
-- Synthetic 1920x1080 H.264 test video: generated successfully
-- `examples/kiwi-collector-style-specimen.ass`: rendered successfully
-- Non-empty output PNG: **PASS**
-
-This verifies the ASS is renderable and the render path works. It does **not** certify the exact final typography because the selected user fonts are not installed in this verification container; libass therefore uses fallback fonts here. Exact-font visual approval must be performed on the user's machine after the selected font files are available.
-
-Machine-readable evidence: `verification/render-v020.json`.
-
-## Environment-limited checks
-
-The following tools were absent from the verification container:
-
-- `mkvmerge`: **not installed** — actual final MKV remux was not executed.
-- `mkvextract`: **not installed** — real existing-attachment SHA extraction was not executed; collision logic is covered by tests.
-- OpenCC: **not installed** — real `t2s` conversion was not executed.
-- OpenCode: **not installed** — `.opencode/` assets were statically validated, but no live OpenCode session was started.
-
-Available:
-
-- Git
-- FFmpeg / ffprobe / libass
-- FontTools in the development verification environment
-
-See `verification/environment-v020.json`.
-
-## Final artifact acceptance criteria
-
-Before the ZIP is delivered, the release procedure additionally requires:
-
-1. remove caches/build scratch data;
-2. keep the built wheel and verification evidence;
-3. create the ZIP;
-4. verify the ZIP contains no font binaries;
-5. extract the ZIP into a separate temporary directory;
-6. run all 42 tests from the extracted artifact;
-7. install the wheel from the extracted artifact into another clean virtualenv;
-8. confirm version, CLI entry point, and bundled style resource;
-9. record the final ZIP SHA-256.
-
-The final response reports the results of those artifact-level checks.
-
-## Artifact-level verification result
-
-The distribution ZIP was built and tested as an independent artifact:
-
-- ZIP contained font binaries: **0**
-- ZIP extracted to a separate temporary directory: **PASS**
-- Test suite executed from extracted ZIP: **42 / 42 PASS**
-- `compileall` executed from extracted ZIP: **PASS**
-- Included wheel installed into a second clean virtualenv: **PASS**
-- `pip check` in that virtualenv: **PASS**
-- Installed package version: **0.2.0**
-- Installed `kiwi-collector-v1` package resource: **PASS**
-- Installed dialogue profile check: Chinese `文泉驿微米黑` 60; Japanese `文泉驿微米黑` 50: **PASS**
-- Installed `subflow doctor` starts successfully: **PASS**
-
-The final ZIP SHA-256 is reported alongside the download link because embedding a ZIP's own hash inside itself would change the archive hash.
+The first release wheel and the wheel rebuilt from extracted source were functionally equivalent but had different SHA-256 values (`b3b5a4b4...` versus `254b30f6...`), confirming the already documented reproducible-build gap. No claim of byte-reproducible packaging is made for 0.3.0.

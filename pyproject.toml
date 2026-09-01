@@ -1,6 +1,6 @@
 [project]
 name = "subtitleflow"
-version = "0.2.0"
+version = "0.3.0"
 description = "Evidence-driven subtitle polishing, bilingual production, font-safe ASS styling, and MKV remux workflow"
 readme = "README.md"
 requires-python = ">=3.11"

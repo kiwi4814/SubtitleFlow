@@ -5,9 +5,14 @@ from typing import Any
 from . import __version__
 from .errors import GateError
 from .fonts import require_font_attachments
+from .gates import (
+    validate_research_evidence,
+    validate_semantic_qa_evidence,
+    validate_visual_qa_evidence,
+)
 from .io import read_json, write_json
 from .qa import qa_input_snapshot
-from .review import list_candidates
+from .review import list_candidates, unimported_proposal_files
 from .state import update_stage
 from .style import load_style_profile
 from .util import sha256_file, utc_now
@@ -31,6 +36,10 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
     decisions = list_candidates(paths)
     if any(item.status == "pending" for item in decisions):
         raise GateError("Release blocked: human review candidates are pending")
+    unimported = unimported_proposal_files(paths)
+    if unimported:
+        names = ", ".join(str(path.relative_to(paths.title)) for path in unimported)
+        raise GateError("Release blocked: semantic proposal files have not been imported: " + names)
     integrity = verify_sources(paths)
     project = read_json(paths.project_config)
     title = read_json(paths.title_config)
@@ -39,6 +48,9 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
     gates = title.get("quality_gates", {})
     branches = active_branches(paths)
     blockers: list[str] = []
+    research_evidence: dict[str, Any] | None = None
+    semantic_evidence: dict[str, Any] | None = None
+    visual_evidence: dict[str, dict[str, Any]] = {}
     if stages.get("alignment_and_seed", {}).get("status") != "passed":
         blockers.append("alignment/workfile stage is not passed")
     for branch in branches:
@@ -47,26 +59,21 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
     if stages.get("qa", {}).get("status") != "passed":
         blockers.append("deterministic QA stage is not passed")
     if gates.get("require_research", True):
-        if stages.get("research", {}).get("status") != "passed":
-            blockers.append("research gate is not passed")
-        for name in ("context.md", "sources.md"):
-            evidence = paths.research / name
-            if not evidence.is_file() or not evidence.read_text(encoding="utf-8", errors="replace").strip():
-                blockers.append(f"research evidence is missing: {name}")
+        try:
+            research_evidence = validate_research_evidence(paths)
+        except GateError as exc:
+            blockers.append(str(exc))
     if gates.get("require_semantic_qa", True):
-        if stages.get("semantic_qa", {}).get("status") != "passed":
-            blockers.append("semantic QA gate is not passed")
-        semantic_report = paths.qa / "semantic-review.md"
-        if not semantic_report.is_file() or not semantic_report.read_text(encoding="utf-8", errors="replace").strip():
-            blockers.append("semantic QA evidence is missing: qa/semantic-review.md")
+        try:
+            semantic_evidence = validate_semantic_qa_evidence(paths)
+        except GateError as exc:
+            blockers.append(str(exc))
     if gates.get("require_visual_qa", True):
-        if not title.get("media", {}).get("video"):
-            blockers.append("visual QA requires media.video to be configured")
         for branch in branches:
-            if stages.get(f"visual_{branch}", {}).get("status") != "passed":
-                blockers.append(f"{branch} visual QA gate is not passed")
-            if not any((paths.qa / "previews" / branch).glob("*.png")):
-                blockers.append(f"{branch} visual QA evidence has no preview PNGs")
+            try:
+                visual_evidence[branch] = validate_visual_qa_evidence(paths, branch)
+            except GateError as exc:
+                blockers.append(str(exc))
 
     font_attachments: list[dict[str, Any]] = []
     fonts_required = bool(gates.get("require_fonts", True) or title.get("fonts", {}).get("require_for_release", True))
@@ -92,7 +99,7 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
     ]
     style_profile = load_style_profile(paths)
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "created_at": utc_now(),
         "project_id": paths.project_id,
         "title_id": paths.title_id,
@@ -113,6 +120,11 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
         },
         "files": files,
         "font_attachments": font_attachments,
+        "media": {
+            "video": next(iter(visual_evidence.values()))["video"]
+            if visual_evidence
+            else None
+        },
         "qa_summary_sha256": sha256_file(qa_path),
         "qa_input_snapshot": current_snapshot,
         "quality_gates": {
@@ -120,6 +132,11 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
             "semantic_qa": stages.get("semantic_qa"),
             "fonts": stages.get("fonts"),
             "visual": {branch: stages.get(f"visual_{branch}") for branch in branches},
+        },
+        "gate_evidence": {
+            "research": research_evidence,
+            "semantic_qa": semantic_evidence,
+            "visual": visual_evidence,
         },
     }
     write_json(paths.release / "release-manifest.json", manifest)

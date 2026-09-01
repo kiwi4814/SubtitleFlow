@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "subtitleflow_version": "0.3.0",
+  "checked_at": "2026-08-31",
+  "registry": {
+    "id": "subtitleflow-default-fonts-v1",
+    "sha256": "aa4e30bcafb77dda1565c86e72c93e98fd35c2c021518b8f40be9b685d3e313d"
+  },
+  "fonttools_verification": {
+    "ok": true,
+    "registered_fonts": 5,
+    "metadata_verified": 5
+  },
+  "fonts": [
+    {
+      "id": "dialogue",
+      "family": "WenQuanYi Micro Hei",
+      "file": "wqy-microhei.ttc",
+      "sha256": "e4bca8df123ce01b104780f576ea1a58b9a5ff1662a91124b6d3180cb6c88212",
+      "selected_by_libass": "WenQuanYiMicroHei"
+    },
+    {
+      "id": "annotation",
+      "family": "Source Han Sans CN Heavy",
+      "file": "SourceHanSansCN-Heavy.otf",
+      "sha256": "88c749b0a54a0800124ded6544e399302ed224aa49992ea364b88769f825c54c",
+      "selected_by_libass": "SourceHanSansCN-Heavy"
+    },
+    {
+      "id": "movie_title",
+      "family": "CloudZongYiGBK",
+      "file": "Reeji-CloudZongYiGBK.ttf",
+      "sha256": "cdad5e1446c45a472fe085f99a661e2dbaa035cc9c3f5fb80efee8744f92f4d1",
+      "selected_by_libass": "CloudZongYiGBK"
+    },
+    {
+      "id": "screen_text",
+      "family": "方正粗圆_GBK",
+      "file": "FZY4K.TTF",
+      "sha256": "c071e0e91406af290cfbb495c42ae56a36cca7a501c11cb6613893d5adb951c0",
+      "selected_by_libass": "FZY4K--GBK1-0"
+    },
+    {
+      "id": "formal_screen_text",
+      "family": "Source Han Serif CN",
+      "file": "SourceHanSerifCN-Regular.otf",
+      "sha256": "3754ea669c530e2473354f8f6d9f79680a44d7e26ec7d00eeabee4a7e0753c5d",
+      "selected_by_libass": "SourceHanSerifCN-Regular"
+    }
+  ],
+  "real_fixture": {
+    "font_audit_ok": true,
+    "attachments_resolved": 5,
+    "qa_ok": true,
+    "ffmpeg_libass_render_ok": true,
+    "visual_frame_inspected": true,
+    "frame_sha256": "bea5326baf0ba10ad5534b5195ad39193d45e339958eefd169c5c5c1b66cc447"
+  },
+  "distribution": {
+    "font_binaries_in_source_release": 0
+  }
+}
