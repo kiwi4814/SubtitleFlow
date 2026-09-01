@@ -7,7 +7,6 @@ from .formats import parse_subtitle
 from .io import read_json, write_json
 from .models import NormalizedSubtitle
 from .state import update_stage
-from .style import is_special_source_style
 from .util import sha256_file
 from .workspace import TitlePaths, require_roles, verify_sources
 
@@ -19,11 +18,9 @@ def normalize_role(paths: TitlePaths, role: str) -> Path:
     record = sources[role]
     source_path = paths.title / record["path"]
     cues, metadata = parse_subtitle(source_path)
-    if source_path.suffix.lower() in {".ass", ".ssa"}:
-        for cue in cues:
-            if not cue.protected and is_special_source_style(paths, cue.style):
-                cue.protected = True
-                cue.protected_reason = f"hybrid-preserved source style: {cue.style}"
+    # ASS parser protection is structural (drawing/karaoke/position/effect). A source style name
+    # is only semantic-role evidence and must not itself make an event untouchable or force a
+    # screen position. This prevents generic names such as Style2 from becoming implicit signs.
     normalized = NormalizedSubtitle(
         schema_version=1,
         role=role,  # type: ignore[arg-type]
