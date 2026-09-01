@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import __version__
+from .audit import write_release_audit
 from .errors import GateError
 from .fonts import require_font_attachments
 from .gates import (
@@ -107,6 +108,18 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
         {"name": path.name, "sha256": sha256_file(path), "size": path.stat().st_size}
         for path in release_files
     ]
+
+    audit = write_release_audit(paths)
+    audit_files = [
+        {
+            "name": name,
+            "sha256": sha256_file(paths.release / name),
+            "size": (paths.release / name).stat().st_size,
+        }
+        for name in audit["files"]
+        if (paths.release / name).is_file()
+    ]
+
     style_profile = load_style_profile(paths)
     research_snapshot = (
         read_json(paths.research_snapshot)
@@ -131,16 +144,14 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
                 "provenance_sha256": research_snapshot.get("provenance_sha256"),
                 "blocking_unresolved": research_snapshot.get("blocking_unresolved", 0),
                 "blocking_conflicts": research_snapshot.get("blocking_conflicts", 0),
-                "gate": (
-                    stages.get("research", {}).get("status") if mode == "enforce" else "advisory"
-                ),
+                "gate": stages.get("research", {}).get("status") if mode == "enforce" else "advisory",
             }
         )
     elif mode == "legacy":
         research_manifest["gate"] = stages.get("research", {}).get("status")
 
     manifest = {
-        "schema_version": 4,
+        "schema_version": 5,
         "created_at": utc_now(),
         "project_id": paths.project_id,
         "title_id": paths.title_id,
@@ -162,10 +173,13 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
             "pending": sum(item.status == "pending" for item in decisions),
         },
         "files": files,
-        "font_attachments": font_attachments,
-        "media": {
-            "video": next(iter(visual_evidence.values()))["video"] if visual_evidence else None
+        "audit": {
+            "change_count": audit["change_count"],
+            "summary": audit["summary"],
+            "files": audit_files,
         },
+        "font_attachments": font_attachments,
+        "media": {"video": next(iter(visual_evidence.values()))["video"] if visual_evidence else None},
         "qa_summary_sha256": sha256_file(qa_path),
         "qa_input_snapshot": current_snapshot,
         "quality_gates": {
@@ -181,13 +195,16 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
         },
     }
     write_json(paths.release / "release-manifest.json", manifest)
-    sums = "".join(f"{item['sha256']}  {item['name']}\n" for item in files)
+    sums = "".join(
+        f"{item['sha256']}  {item['name']}\n" for item in [*files, *audit_files]
+    )
     (paths.release / "SHA256SUMS").write_text(sums, encoding="utf-8")
     update_stage(
         paths,
         "release",
         "passed",
         files=[item["name"] for item in files],
+        audit_files=[item["name"] for item in audit_files],
         fonts=[item["attachment_name"] for item in font_attachments],
     )
     return manifest
