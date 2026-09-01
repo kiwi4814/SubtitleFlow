@@ -1,6 +1,10 @@
-# Optional Research / SRP workflow — SubtitleFlow 0.4.0
+# Optional Research / SRP workflow — SubtitleFlow 0.4.1
 
-SubtitleFlow 0.4 makes research an **optional knowledge layer**. The core subtitle workflow does not require web search, an AI research agent, or any Subtitle Research Pack (SRP). New titles default to `research.mode=off`.
+SubtitleFlow 0.4.1 makes research an **optional knowledge layer**. The core subtitle workflow does not require web search, an AI research agent, or any Subtitle Research Pack (SRP). New titles default to `research.mode=off`.
+
+## Identity boundaries
+
+`project_id` identifies the local production workspace, `title_id` identifies a work inside that project, and `series_id` identifies the canonical/SRP content series. New titles default to `series_id = project_id`; older v0.4 title files without the field use that same fallback. Use `subflow title init PROJECT TITLE --series-id SERIES_ID` or `subflow title set-series PROJECT TITLE SERIES_ID` to set a distinct series.
 
 ## Research modes
 
@@ -21,7 +25,7 @@ Validate without importing:
 subflow research validate-pack /path/to/research-pack.zip
 ```
 
-Import into the project-level immutable research library:
+Import into the project-level immutable research library. A project can store packs for multiple `series_id` values; import validates and stores the asset but does not decide which title may use it:
 
 ```bash
 subflow research import doraemon /path/to/research-pack.zip --dry-run
@@ -29,7 +33,7 @@ subflow research import doraemon /path/to/research-pack.zip
 subflow research list doraemon
 ```
 
-Importing does **not** activate a pack for a title. Bind the exact imported identity separately:
+Importing does **not** activate a pack for a title. Bind the exact imported identity separately; bind requires the pack manifest/registry `scope.series_id` to equal the title's effective `series_id`:
 
 ```bash
 subflow research bind doraemon steel-troops-1986 doraemon-canon@1.0.0
@@ -54,7 +58,7 @@ subflow research status doraemon steel-troops-1986
 subflow research diff doraemon steel-troops-1986
 ```
 
-Generated title-local derived files:
+Generated title-local derived files (including explicit project/title/series identity in Effective Knowledge and its snapshot):
 
 ```text
 research/
@@ -106,7 +110,7 @@ Resolution freezes two independent digests:
 - `effective_semantic_sha256`: terms, decisions, facts/entities/unresolved knowledge that can affect editing/QA.
 - `provenance_sha256`: bound pack/source/evidence provenance.
 
-If effective semantics change, deterministic QA and semantic QA become stale. If only provenance changes, Research approval/release becomes stale without forcing unrelated visual QA to rerun. Final ASS changes continue to invalidate rendering through the normal compile/render dependency chain.
+If effective semantics change, deterministic QA and semantic QA become stale. Changing a title's `series_id` stales its resolved research/approval and dependent editing, QA, semantic, render, visual, release, and remux evidence without deleting source/work/review/release files. If only provenance changes, Research approval/release becomes stale without forcing unrelated visual QA to rerun. Final ASS changes continue to invalidate rendering through the normal compile/render dependency chain.
 
 ## Project storage
 
@@ -120,7 +124,7 @@ projects/<project>/research/
     └── import.json
 ```
 
-A new version/digest is stored beside the old one. Existing title bindings never silently follow a newly imported pack.
+A new version/digest is stored beside the old one. Existing title bindings never silently follow a newly imported pack, and a project may retain packs belonging to different series. Existing title bindings must still match their title's effective series when resolved.
 
 ## SRP protocol
 

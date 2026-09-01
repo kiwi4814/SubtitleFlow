@@ -1,8 +1,10 @@
 # Workflow
 
-## Stage 0 — Pick real evidence and a profile
+## Stage 0 — Pick real evidence, identities, and a profile
 
 Never require sources the title does not have.
+
+`project_id` identifies the local production workspace, `title_id` identifies a work inside that project, and `series_id` identifies the canonical/SRP content series. New titles default to `series_id = project_id`; older v0.4 title files without `series_id` use that project fallback. Set a distinct series with `subflow title init PROJECT TITLE --series-id SERIES_ID` or `subflow title set-series PROJECT TITLE SERIES_ID`.
 
 - `single`: S.
 - `source-assisted`: S + C.
@@ -23,7 +25,7 @@ Import with `subflow source add`. SubtitleFlow copies the source into the title 
 
 ## Stage 3 — Optional research knowledge
 
-New v0.4 titles default to `research.mode=off`; no research producer is required. If SRP is enabled, import immutable packs at project scope, bind exact digests to the title, map any output branches, and resolve deterministic Effective Knowledge before semantic editing. `advisory` mode exposes the resolved context without a release-blocking Research Gate. `enforce` mode requires a current human-approved SRP snapshot before `prepare`.
+New v0.4 titles default to `research.mode=off`; no research producer is required. If SRP is enabled, import immutable packs at project scope, including packs for different series when needed, bind exact digests to the title's effective `series_id`, map any output branches, and resolve deterministic Effective Knowledge before semantic editing. Project-level import does not perform title compatibility matching. `advisory` mode exposes the resolved context without a release-blocking Research Gate. `enforce` mode requires a current human-approved SRP snapshot before `prepare`.
 
 A web/high-end model, local researcher, human editor, or other tool may produce SRP/1.0. SubtitleFlow itself consumes the offline pack and never depends on the producer or network. Legacy v0.3 titles without a `research` object retain the old `research/context.md` + `research/sources.md` gate. See `docs/research.md`.
 
@@ -121,6 +123,7 @@ A separate QA agent audits high-risk semantics and all human-approved changes. C
 - style profile;
 - font attachment file paths, names, MIME types, sizes and SHA-256 values;
 - compact research mode/binding/effective semantic/provenance evidence when SRP is active;
+- project/title/effective series identity, including the effective `series_id` used for research provenance;
 - semantic/visual gate evidence snapshots;
 - the visual-QA media identity when visual QA is required.
 

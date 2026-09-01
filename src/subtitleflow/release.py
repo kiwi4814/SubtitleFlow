@@ -19,7 +19,7 @@ from .state import update_stage
 from .style import load_style_profile
 from .util import sha256_file, utc_now
 from .workflow import active_branches
-from .workspace import TitlePaths, verify_sources
+from .workspace import TitlePaths, effective_series_id, verify_sources
 
 
 def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
@@ -84,7 +84,9 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
                 blockers.append(str(exc))
 
     font_attachments: list[dict[str, Any]] = []
-    fonts_required = bool(gates.get("require_fonts", True) or title.get("fonts", {}).get("require_for_release", True))
+    fonts_required = bool(
+        gates.get("require_fonts", True) or title.get("fonts", {}).get("require_for_release", True)
+    )
     if stages.get("fonts", {}).get("status") == "passed":
         try:
             font_attachments = require_font_attachments(paths)
@@ -124,16 +126,13 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
                     for item in load_bindings(paths).get("bindings", [])
                     if item.get("enabled", True)
                 ],
-                "effective_semantic_sha256": research_snapshot.get(
-                    "effective_semantic_sha256"
-                ),
+                "series_id": research_snapshot.get("series_id", effective_series_id(paths)),
+                "effective_semantic_sha256": research_snapshot.get("effective_semantic_sha256"),
                 "provenance_sha256": research_snapshot.get("provenance_sha256"),
                 "blocking_unresolved": research_snapshot.get("blocking_unresolved", 0),
                 "blocking_conflicts": research_snapshot.get("blocking_conflicts", 0),
                 "gate": (
-                    stages.get("research", {}).get("status")
-                    if mode == "enforce"
-                    else "advisory"
+                    stages.get("research", {}).get("status") if mode == "enforce" else "advisory"
                 ),
             }
         )
@@ -145,6 +144,7 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
         "created_at": utc_now(),
         "project_id": paths.project_id,
         "title_id": paths.title_id,
+        "series_id": effective_series_id(paths),
         "display_name": title.get("display_name"),
         "workflow_profile": title.get("workflow", {}).get("profile", "auto"),
         "branches": branches,
@@ -164,9 +164,7 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
         "files": files,
         "font_attachments": font_attachments,
         "media": {
-            "video": next(iter(visual_evidence.values()))["video"]
-            if visual_evidence
-            else None
+            "video": next(iter(visual_evidence.values()))["video"] if visual_evidence else None
         },
         "qa_summary_sha256": sha256_file(qa_path),
         "qa_input_snapshot": current_snapshot,

@@ -1,4 +1,4 @@
-# SubtitleFlow 0.4.0
+# SubtitleFlow 0.4.1
 
 **Evidence-driven subtitle polishing, ASS collector styling, font-safe release, and MKV remux workflow for OpenCode.**
 
@@ -25,6 +25,23 @@ Workflow profiles:
 
 No profile requires fake duplicate roles.
 
+## Identity model
+
+SubtitleFlow keeps three identities separate:
+
+- `project_id`: local production workspace/collection identity;
+- `title_id`: work/title identity inside that project;
+- `series_id`: canonical/SRP content-series identity.
+
+New titles default to `series_id = project_id`. Set a distinct series explicitly:
+
+```bash
+subflow title init doraemon m01 --name "M01" --profile source-assisted --series-id doraemon-theatrical
+subflow title set-series doraemon m01 doraemon-theatrical
+```
+
+Older v0.4 title files without `series_id` automatically fall back to their `project_id`. A project may store SRP packs for multiple series; compatibility is checked when a pack is bound to a title and revalidated when resolving, not during project-level import.
+
 ## Kiwi Collector v1 — final bundled style profile
 
 Kiwi Collector v1 numeric style values are authored for a 1920×1080 reference canvas. SubtitleFlow currently preserves the source ASS `PlayResX/PlayResY` instead of force-rewriting it, because changing script coordinates can corrupt protected `\pos`, `\move`, `\clip`, drawing and other authored typesetting. For non-1920×1080 source scripts, visual QA is therefore mandatory and automatic coordinate-safe profile scaling remains a known limitation.
@@ -44,7 +61,7 @@ SubtitleFlow does **not** regenerate risky authored typesetting by default. Exis
 
 ## Font registry and MKV attachments
 
-SubtitleFlow 0.4.0 keeps `fonts/font-registry.json` the authoritative registry for the five verified Kiwi Collector font roles. The registry freezes canonical ASS family names, aliases, canonical attachment filenames, exact SHA-256 identities, versions and intended roles. **For out-of-the-box personal use, the five pre-verified font binaries are included in `fonts/local/`.**
+SubtitleFlow 0.4.1 keeps `fonts/font-registry.json` the authoritative registry for the five verified Kiwi Collector font roles. The registry freezes canonical ASS family names, aliases, canonical attachment filenames, exact SHA-256 identities, versions and intended roles. **For out-of-the-box personal use, the five pre-verified font binaries are included in `fonts/local/`.**
 
 | Role | Canonical ASS family | Canonical local/attachment file |
 |---|---|---|
@@ -113,7 +130,7 @@ subflow prepare doraemon movie-01
 
 ## Optional research knowledge — SRP/1.0
 
-Research is **not required** in SubtitleFlow 0.4. New titles default to:
+Research is **not required** in SubtitleFlow 0.4.1. New titles default to:
 
 ```json
 {"research":{"mode":"off","branch_map":{}}}
@@ -141,7 +158,7 @@ subflow research diff doraemon movie-01
 subflow research approve doraemon movie-01
 ```
 
-SRP resolution is deterministic: title+branch > series+branch > title > series, with local human canon winning at the same scope. `locked` SRP canon does not enable blind string replacement. See [`docs/research.md`](docs/research.md) and the bundled [`SRP/1.0 protocol`](docs/protocols/srp-v1.md).
+SRP resolution is deterministic: title+branch > series+branch > title > series, with local human canon winning at the same scope. The resolver uses the title's effective `series_id`, while `project_id` remains the workspace identity. `locked` SRP canon does not enable blind string replacement. See [`docs/research.md`](docs/research.md) and the bundled [`SRP/1.0 protocol`](docs/protocols/srp-v1.md).
 
 ## OpenCode
 

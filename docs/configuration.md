@@ -2,6 +2,21 @@
 
 Each title has `projects/<project>/titles/<title>/title.json`.
 
+## Workspace, title, and series identities
+
+- `project_id` is the SubtitleFlow local production workspace identity.
+- `title_id` is the work/title identity inside that project.
+- `series_id` is the canonical/SRP content-series identity.
+
+New titles default to `series_id = project_id`. Set an explicit series at creation or update an existing title:
+
+```bash
+subflow title init PROJECT TITLE --series-id SERIES_ID
+subflow title set-series PROJECT TITLE SERIES_ID
+```
+
+Older v0.4 title files without `series_id` automatically use `project_id` as their effective series identity. A project can hold multiple series' SRP snapshots; import stores them, while bind and resolve enforce the title-series compatibility boundary.
+
 ## Workflow profile
 
 ```json

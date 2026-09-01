@@ -1,4 +1,4 @@
-# START HERE — SubtitleFlow 0.4.0
+# START HERE — SubtitleFlow 0.4.1
 
 SubtitleFlow is a generic subtitle production repository. Pick the evidence you actually have; do not manufacture A/B/C/D just to satisfy a workflow.
 
@@ -41,6 +41,21 @@ subflow title init movies film-01 --name "Film 01" --profile single
 subflow source add movies film-01 S /path/to/film.ass
 subflow prepare movies film-01
 ```
+
+## 2.1 Keep project, title, and series identities separate
+
+- `project_id` is the local production workspace identity.
+- `title_id` identifies a work inside the project.
+- `series_id` identifies the canonical/SRP content series.
+
+New titles default to `series_id = project_id`. Use `--series-id` for a title that belongs to another series, or update an existing title with:
+
+```bash
+subflow title init doraemon m01 --name "M01" --profile source-assisted --series-id doraemon-theatrical
+subflow title set-series doraemon m01 doraemon-theatrical
+```
+
+Old v0.4 title files without `series_id` fall back automatically to `project_id`. One project can store SRP packs for multiple series; import stores the immutable pack, while bind/resolve enforce title-series compatibility.
 
 ## 3. Kiwi Collector v1 style
 

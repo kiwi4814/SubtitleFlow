@@ -4,6 +4,15 @@
 
 SubtitleFlow is a generic evidence-driven subtitle production system. Never force missing evidence into fake roles.
 
+## Identity model
+
+- `project_id` is the local SubtitleFlow production workspace/collection identity.
+- `title_id` identifies a work inside that project.
+- `series_id` identifies the canonical/SRP content series used by a title.
+- New titles default to `series_id = project_id`; use `--series-id` at init or `title set-series` for an explicit series.
+- Old v0.4 title files without `series_id` fall back to `project_id`.
+- A project may store immutable SRP packs for multiple series. Import stores validated knowledge; title/pack compatibility is enforced at bind and revalidated at resolve.
+
 ## Evidence roles and authority
 
 - **S**: self-contained target subtitle. S owns both timing and editable target text.
@@ -55,6 +64,8 @@ subflow fonts install /path/to/fonts.zip
 subflow fonts verify
 subflow project init <project>
 subflow title init <project> <title> --profile single|source-assisted|dub|bilingual|full|auto
+subflow title init <project> <title> --series-id <series>
+subflow title set-series <project> <title> <series>
 subflow source add <project> <title> S /path/to/subtitle.ass
 subflow research status <project> <title>
 # Optional: validate/import/bind/set-mode/resolve/approve SRP when research is enabled.

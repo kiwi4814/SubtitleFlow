@@ -8,12 +8,17 @@ from conftest import write_ass
 
 from subtitleflow.canon import add_term
 from subtitleflow.cli import main
+from subtitleflow.compile import compile_all
 from subtitleflow.errors import GateError, ValidationError
 from subtitleflow.io import read_json, write_json
+from subtitleflow.normalize import normalize_all
+from subtitleflow.qa import run_all_qa
+from subtitleflow.release import create_release_manifest
 from subtitleflow.srp.archive import import_pack
 from subtitleflow.srp.registry import bind_pack, map_branch, set_mode
 from subtitleflow.srp.resolver import resolve_research, validate_resolved_snapshot
 from subtitleflow.state import update_stage
+from subtitleflow.workfile import build_all_workfiles
 from subtitleflow.workspace import (
     add_source,
     create_project,
@@ -32,9 +37,7 @@ def _make_repo(
     series_id: str | None = None,
 ):
     (tmp_path / "projects").mkdir()
-    (tmp_path / "pyproject.toml").write_text(
-        "[project]\nname='x'\nversion='0'\n", encoding="utf-8"
-    )
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\nversion='0'\n", encoding="utf-8")
     create_project(tmp_path, project_id, project_id)
     create_title(tmp_path, project_id, title_id, title_id, series_id=series_id)
     return title_paths(tmp_path, project_id, title_id)
@@ -102,6 +105,41 @@ def _add_clean_source(paths, tmp_path: Path) -> None:
     )
 
 
+def _release_ready_title(
+    tmp_path: Path,
+    *,
+    project_id: str = "demo",
+    title_id: str = "movie",
+    series_id: str | None = None,
+):
+    paths = _make_repo(
+        tmp_path,
+        project_id=project_id,
+        title_id=title_id,
+        series_id=series_id,
+    )
+    config = read_json(paths.title_config)
+    config["workflow"]["profile"] = "single"
+    config["quality_gates"] = {
+        "require_research": False,
+        "require_semantic_qa": False,
+        "require_visual_qa": False,
+        "require_fonts": False,
+    }
+    config["fonts"]["require_for_release"] = False
+    write_json(paths.title_config, config)
+    add_source(
+        paths,
+        "S",
+        write_ass(tmp_path / "input.ass", [("0:00:01.00", "0:00:02.00", "原文")]),
+    )
+    normalize_all(paths)
+    build_all_workfiles(paths)
+    compile_all(paths)
+    assert run_all_qa(paths)["ok"] is True
+    return paths
+
+
 def test_legacy_title_without_series_id_import_bind_and_resolve(tmp_path: Path) -> None:
     paths = _make_repo(tmp_path)
     config = read_json(paths.title_config)
@@ -152,9 +190,11 @@ def test_explicit_series_id_import_bind_and_resolve_when_project_differs(tmp_pat
     snapshot = resolve_research(paths)
     effective = read_json(paths.research_effective)
 
+    assert snapshot["resolver_version"] == 2
     assert snapshot["series_id"] == "doraemon-theatrical"
     assert effective["project_id"] == "doraemon"
     assert effective["series_id"] == "doraemon-theatrical"
+    assert effective["resolver_version"] == 2
     assert effective["branches"]["clean"]["terms"][0]["canonical"] == "哆啦A梦"
 
 
@@ -178,7 +218,7 @@ def test_bind_rejects_pack_from_other_series(tmp_path: Path) -> None:
     pack = _pack(tmp_path / "pack", pack_id="other-canon", series_id="other-series")
     imported = import_pack(paths, pack)
 
-    with pytest.raises(ValidationError, match="title.*doraemon-theatrical.*other-series"):
+    with pytest.raises(ValidationError, match=r"title.*doraemon-theatrical.*other-series"):
         bind_pack(paths, _exact_ref(imported))
 
     assert read_json(paths.research_bindings)["bindings"] == []
@@ -186,9 +226,7 @@ def test_bind_rejects_pack_from_other_series(tmp_path: Path) -> None:
 
 def test_one_project_can_resolve_two_series_without_cross_binding(tmp_path: Path) -> None:
     (tmp_path / "projects").mkdir()
-    (tmp_path / "pyproject.toml").write_text(
-        "[project]\nname='x'\nversion='0'\n", encoding="utf-8"
-    )
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\nversion='0'\n", encoding="utf-8")
     create_project(tmp_path, "doraemon", "Doraemon")
     create_title(tmp_path, "doraemon", "title-a", "A", series_id="series-a")
     create_title(tmp_path, "doraemon", "title-b", "B", series_id="series-b")
@@ -391,9 +429,7 @@ def test_set_series_stales_research_and_downstream_without_deleting_files(tmp_pa
 
 def test_title_series_cli_init_and_set_are_supported(tmp_path: Path) -> None:
     (tmp_path / "projects").mkdir()
-    (tmp_path / "pyproject.toml").write_text(
-        "[project]\nname='x'\nversion='0'\n", encoding="utf-8"
-    )
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\nversion='0'\n", encoding="utf-8")
     repo = str(tmp_path)
     assert main(["--repo", repo, "project", "init", "doraemon"]) == 0
     assert (
@@ -416,7 +452,36 @@ def test_title_series_cli_init_and_set_are_supported(tmp_path: Path) -> None:
     paths = title_paths(tmp_path, "doraemon", "m01")
     assert read_json(paths.title_config)["series_id"] == "doraemon-theatrical"
     assert (
-        main(["--repo", repo, "title", "set-series", "doraemon", "m01", "doraemon-theatrical"])
-        == 0
+        main(["--repo", repo, "title", "set-series", "doraemon", "m01", "doraemon-theatrical"]) == 0
     )
     assert read_json(paths.title_config)["series_id"] == "doraemon-theatrical"
+
+
+def test_release_manifest_freezes_explicit_series_identity(tmp_path: Path) -> None:
+    paths = _release_ready_title(
+        tmp_path,
+        project_id="doraemon",
+        title_id="m01",
+        series_id="doraemon-theatrical",
+    )
+
+    manifest = create_release_manifest(paths)
+
+    assert manifest["schema_version"] == 4
+    assert manifest["project_id"] == "doraemon"
+    assert manifest["title_id"] == "m01"
+    assert manifest["series_id"] == "doraemon-theatrical"
+
+
+def test_release_manifest_legacy_series_falls_back_to_project_id(tmp_path: Path) -> None:
+    paths = _release_ready_title(tmp_path, project_id="demo", title_id="movie")
+    config = read_json(paths.title_config)
+    config.pop("series_id")
+    write_json(paths.title_config, config)
+    assert run_all_qa(paths)["ok"] is True
+
+    manifest = create_release_manifest(paths)
+
+    assert manifest["project_id"] == "demo"
+    assert manifest["title_id"] == "movie"
+    assert manifest["series_id"] == "demo"

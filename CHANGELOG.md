@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- Decoupled SubtitleFlow `project_id` from SRP `series_id`; titles now carry an explicit series identity with a legacy project-ID fallback.
+- Project Research Libraries can store multiple series; compatibility is enforced at bind/resolve, and the resolver uses the title's effective series identity.
+- Series identity changes stale dependent evidence, update resolver provenance to v2, and freeze series identity in release provenance.
+
 ## 0.4.0
 
 - Added optional Subtitle Research Pack (`SRP/1.0`) support with bundled Draft 2020-12 schemas and strict offline validation; web/high-end-model research is an optional producer, not a SubtitleFlow dependency.
