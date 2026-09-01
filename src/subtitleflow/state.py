@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from .io import read_json, write_json
 from .util import utc_now
@@ -82,7 +83,9 @@ def update_stage(paths: TitlePaths, stage: str, status: str, **details: Any) -> 
     write_json(paths.state, data)
 
 
-def invalidate_stages(paths: TitlePaths, stages_to_invalidate: Iterable[str], *, reason: str) -> None:
+def invalidate_stages(
+    paths: TitlePaths, stages_to_invalidate: Iterable[str], *, reason: str
+) -> None:
     """Mark only previously-created downstream stages stale; preserve resolve semantics."""
     data = read_json(paths.state)
     stages = data.setdefault("stages", {})
@@ -115,7 +118,9 @@ def invalidate_after_prepare(paths: TitlePaths, *, reason: str = "workfiles rege
     )
 
 
-def invalidate_after_compile(paths: TitlePaths, *, reason: str = "compiled ASS regenerated") -> None:
+def invalidate_after_compile(
+    paths: TitlePaths, *, reason: str = "compiled ASS regenerated"
+) -> None:
     invalidate_stages(
         paths,
         (
@@ -153,7 +158,9 @@ def invalidate_after_qa(paths: TitlePaths, *, reason: str = "deterministic QA re
     )
 
 
-def invalidate_after_review_change(paths: TitlePaths, *, reason: str = "human review state changed") -> None:
+def invalidate_after_review_change(
+    paths: TitlePaths, *, reason: str = "human review state changed"
+) -> None:
     invalidate_stages(
         paths,
         (
