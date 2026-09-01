@@ -33,14 +33,17 @@ def _mark_stale(stages: dict[str, Any], names: Iterable[str], *, reason: str) ->
     for stage in names:
         if stage not in stages:
             continue
-        previous = stages.get(stage)
-        preserved = dict(previous) if isinstance(previous, dict) else {}
-        stages[stage] = {
-            **preserved,
+        stale = {
             "status": "stale",
             "updated_at": timestamp,
             "reason": reason,
         }
+        # Only research_resolve needs its prior semantic digest preserved so a later
+        # re-resolve can distinguish semantic changes from provenance-only changes.
+        previous = stages.get(stage)
+        if stage == "research_resolve" and isinstance(previous, dict) and "evidence" in previous:
+            stale["evidence"] = previous["evidence"]
+        stages[stage] = stale
         changed = True
     return changed
 
@@ -51,8 +54,8 @@ def update_stage(paths: TitlePaths, stage: str, status: str, **details: Any) -> 
 
     # research_resolve carries the effective semantic digest. If a re-resolve changes
     # meaning, every persisted edit/review/output that could have depended on the old
-    # Effective Knowledge must become stale. Preserve prior stage evidence during
-    # invalidation so this comparison survives bind/unbind marking research_resolve stale.
+    # Effective Knowledge must become stale. research_resolve invalidation preserves only
+    # its prior evidence so this comparison survives bind/unbind marking it stale.
     if stage == "research_resolve" and status == "passed":
         previous = stages.get(stage)
         previous_evidence = previous.get("evidence", {}) if isinstance(previous, dict) else {}
@@ -80,7 +83,7 @@ def update_stage(paths: TitlePaths, stage: str, status: str, **details: Any) -> 
 
 
 def invalidate_stages(paths: TitlePaths, stages_to_invalidate: Iterable[str], *, reason: str) -> None:
-    """Mark only previously-created downstream stages stale; preserve their evidence."""
+    """Mark only previously-created downstream stages stale; preserve resolve semantics."""
     data = read_json(paths.state)
     stages = data.setdefault("stages", {})
     if _mark_stale(stages, stages_to_invalidate, reason=reason):
