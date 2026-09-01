@@ -224,15 +224,16 @@ def bound_registry_entries(paths: TitlePaths) -> list[dict[str, Any]]:
         entry = registry_by_digest.get(digest)
         if entry is None:
             raise ValidationError(f"Bound SRP digest is missing from registry: {digest}")
-        if (
-            binding.get("pack_id") != entry.get("pack_id")
-            or binding.get("pack_version") != entry.get("pack_version")
-        ):
+        if binding.get("pack_id") != entry.get("pack_id") or binding.get(
+            "pack_version"
+        ) != entry.get("pack_version"):
             raise ValidationError(f"Bound SRP identity does not match registry: {digest}")
         scope = entry.get("scope")
         pack_series_id = scope.get("series_id") if isinstance(scope, dict) else None
         if not isinstance(pack_series_id, str) or not pack_series_id.strip():
-            raise ValidationError(f"Imported SRP registry entry is missing scope.series_id: {digest}")
+            raise ValidationError(
+                f"Imported SRP registry entry is missing scope.series_id: {digest}"
+            )
         binding_series_id = binding.get("series_id")
         if binding_series_id is not None and binding_series_id != pack_series_id:
             raise ValidationError(
