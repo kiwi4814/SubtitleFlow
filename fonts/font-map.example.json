@@ -1,0 +1,9 @@
+{
+  "families": {
+    "文泉驿微米黑": ["/path/to/WenQuanYiMicroHei.ttf"],
+    "思源黑体 CN Heavy": ["/path/to/SourceHanSansCN-Heavy.otf"],
+    "锐字云字库综艺体1.0": ["/path/to/your-licensed-title-font.ttf"],
+    "方正粗圆_GBK": ["/path/to/your-licensed-fzzcy.ttf"],
+    "思源宋体 CN": ["/path/to/SourceHanSerifCN-Regular.otf"]
+  }
+}

@@ -9,6 +9,14 @@ from .text import TraditionalToSimplified
 from .util import which
 
 
+def _fonttools_available() -> bool:
+    try:
+        import fontTools  # type: ignore[import-not-found]  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 def _ffmpeg_has_libass() -> bool:
     executable = which("ffmpeg")
     if not executable:
@@ -39,7 +47,9 @@ def doctor_report() -> dict[str, Any]:
         "ffprobe": ffprobe,
         "ffmpeg_libass": libass,
         "mkvmerge": which("mkvmerge"),
+        "mkvextract": which("mkvextract"),
         "opencc": converter.backend,
+        "fonttools": _fonttools_available(),
     }
     return {
         "python": sys.version.split()[0],
@@ -53,5 +63,9 @@ def doctor_report() -> dict[str, Any]:
             "libass_filter": libass,
         },
         "required_for_remux": {"mkvmerge": bool(tools["mkvmerge"])},
+        "recommended_for_attachment_collision_verification": {
+            "mkvextract": bool(tools["mkvextract"])
+        },
+        "recommended_for_font_autodiscovery": {"fonttools": bool(tools["fonttools"])},
         "required_for_tw_conversion": {"opencc": bool(tools["opencc"])},
     }

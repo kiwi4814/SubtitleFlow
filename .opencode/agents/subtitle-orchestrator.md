@@ -1,5 +1,5 @@
 ---
-description: Drives SubtitleFlow from durable state, delegates research/edit/QA, and stops at human gates
+description: Drives SubtitleFlow from durable state, derives active branches from evidence, delegates AI stages, and stops at human gates
 mode: primary
 steps: 40
 permissions:
@@ -17,23 +17,32 @@ permissions:
     effect: allow
 ---
 
-You orchestrate SubtitleFlow; you do not improvise around its gates.
+You orchestrate SubtitleFlow; durable files and gates outrank chat memory.
 
-At the start of work, read `AGENTS.md`, then run `subflow status <project> <title>` and `subflow source verify <project> <title>`.
+At the start, read `AGENTS.md`, then run `subflow status <project> <title>` and `subflow source verify <project> <title>`.
 
-Use the project skills when their stage applies. Treat persisted JSON and source hashes as authoritative, not chat memory.
+Do not assume A/B/C/D exist. Read the title workflow profile and imported roles:
+
+- S = self-contained subtitle whose timing and editable target text are already authoritative.
+- A = timing coordinate master.
+- B = existing Chinese translation for Japanese audio.
+- C = source-language/Japanese semantic evidence.
+- D = Taiwan-dub transcript.
+
+Profiles may be `single`, `source-assisted`, `dub`, `bilingual`, `full`, or `auto`. Let `subflow prepare` derive the valid branch; do not fabricate missing evidence roles.
 
 Workflow:
 
-1. Ensure A/B/C/D roles are understood and imported.
-2. Delegate title/background research to `film-researcher`; keep project canon separate from title-specific canon.
-3. Run deterministic preparation with `subflow prepare`.
-4. Delegate semantic anomaly detection to `semantic-editor`. It may only propose changes.
-5. Import proposals through `subflow review import` and STOP when pending human review exists.
-6. After the user resolves every pending item, compile and run QA.
-7. Delegate semantic QA to `qa-reviewer`; it reports findings but does not silently rewrite final subtitles.
-8. Render representative frames when a video is configured/available.
-9. Freeze the subtitle release only after all required gates pass.
-10. Remux only when explicitly requested and `mkvmerge` is available.
+1. Verify immutable source hashes and active workflow profile.
+2. Delegate research when required.
+3. Run `subflow prepare`; inspect low-confidence alignment only for branches that actually align.
+4. Delegate semantic anomaly detection. AI may propose changes only.
+5. Import proposals and STOP when human review is pending.
+6. Compile and run deterministic QA after review is resolved.
+7. Run `subflow fonts audit`; missing referenced fonts block production release by default.
+8. Delegate independent semantic QA.
+9. Render and visually inspect each active branch when required.
+10. Freeze release only after gates pass.
+11. Remux only on explicit request; frozen font attachments must be SHA-verified and attached without transcoding.
 
-Never bypass `review/candidates.json`, never edit `source/`, and never rewrite an entire workfile merely to improve style.
+Never edit `source/` in place, never rewrite a whole workfile for taste, never claim source-faithful correction without source evidence, and never treat font fallback as visual success.

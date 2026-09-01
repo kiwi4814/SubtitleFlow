@@ -1,115 +1,156 @@
 # Configuration
 
-Every title has `projects/<project>/titles/<title>/title.json`. Generated JSON is intentionally explicit and can be committed to Git.
+Each title has `projects/<project>/titles/<title>/title.json`.
 
-## Evidence roles
-
-- `A`: Timing Master; defines the common video time coordinate.
-- `B`: existing Chinese translation for Japanese audio.
-- `C`: Japanese source subtitle/evidence.
-- `D`: Taiwan-dub transcript/subtitle.
-
-Disable a branch if a title intentionally does not produce that product. Do not reassign role meanings per title.
-
-## Alignment
+## Workflow profile
 
 ```json
 {
-  "alignment": {
-    "max_group": 3,
-    "unmatched_penalty": 3.0,
-    "review_confidence_below": 0.72
-  }
+  "workflow": {"profile": "single"}
 }
 ```
 
-`max_group` controls deterministic N:M grouping breadth. Low-confidence groups are review targets, not automatic proof of an error.
+Valid values: `auto`, `single`, `source-assisted`, `dub`, `bilingual`, `full`.
 
-## TW branch
+Role meanings never change per title:
+
+- S: self-contained target subtitle; own timing + editable text.
+- A: Timing Master.
+- B: existing Chinese translation seed for Japanese audio.
+- C: source-language/Japanese semantic evidence.
+- D: Taiwan-dub transcript.
+
+## Clean branch
 
 ```json
 {
-  "tw_branch": {
+  "clean_branch": {
     "enabled": true,
-    "language_source": "D",
-    "timing_source": "A",
-    "traditional_to_simplified": true,
+    "language_source": "S",
+    "timing_source": "S",
+    "source_evidence": "C",
+    "source_assisted": "auto",
+    "traditional_to_simplified": false,
     "opencc_profile": "t2s"
   }
 }
 ```
 
-When conversion is enabled, OpenCC is required. SubtitleFlow will fail rather than silently claim a conversion happened.
+`single` never requires C. `source-assisted` always requires C. C adds evidence only; S timing remains untouched.
 
-## JP bilingual branch
+## Multi-source branches
+
+TW uses A + D. JP bilingual uses A + B + C. `full` enables both; `auto` derives whichever branch requirements are satisfied.
+
+## Style profile
 
 ```json
 {
-  "jp_branch": {
-    "enabled": true,
-    "translation_source": "B",
-    "japanese_source": "C",
-    "timing_source": "A"
+  "style": {
+    "profile": "kiwi-collector-v1",
+    "mode": "hybrid",
+    "overrides": {}
   }
 }
 ```
 
-C controls source meaning; B is only the Chinese editing seed.
+The bundled profile lives at `styles/kiwi-collector-v1.json`. A repo-local profile wins over the packaged fallback.
 
-## ASS typography
+### Final ordinary dialogue values
 
-Defaults target a 1920×1080 collector-style local playback layout:
+`SF-ZH`:
 
 ```json
 {
-  "ass": {
-    "target_font": "Noto Sans CJK SC",
-    "target_size": 48,
-    "target_margin_v": 52,
-    "source_font": "Noto Sans CJK JP",
-    "source_size": 38,
-    "source_margin_v": 106,
-    "single_line_preferred": true,
-    "max_visual_rows_warning": 4
+  "Fontname": "文泉驿微米黑",
+  "Fontsize": "60",
+  "PrimaryColour": "&H00D2D2D2",
+  "Bold": "-1",
+  "ScaleY": "105",
+  "Outline": "2",
+  "Shadow": "0",
+  "Alignment": "2",
+  "MarginV": "103"
+}
+```
+
+`SF-JA`:
+
+```json
+{
+  "Fontname": "文泉驿微米黑",
+  "Fontsize": "50",
+  "PrimaryColour": "&H000E95CE",
+  "Bold": "0",
+  "ScaleY": "100",
+  "Outline": "2",
+  "Shadow": "0",
+  "Alignment": "2",
+  "MarginV": "45"
+}
+```
+
+Both generated dialogue styles receive event-level `\blur2`.
+
+Hybrid special-style preservation can be overridden through `style.overrides.source_preservation`. The default is deliberately conservative.
+
+## Font configuration
+
+```json
+{
+  "fonts": {
+    "attach_to_mkv": true,
+    "require_for_release": true,
+    "require_all_referenced": true,
+    "directories": ["fonts/local"],
+    "map_file": "fonts/font-map.json",
+    "aliases": {}
   }
 }
 ```
 
-Font files are not bundled. Use family names installed on the playback/render machine and validate actual frames.
+`fonts/font-map.json` is local-only and git-ignored. Example:
+
+```json
+{
+  "schema_version": 1,
+  "families": {
+    "文泉驿微米黑": ["local/wqy-microhei.ttf"],
+    "思源黑体 CN Heavy": ["/absolute/or/env/expandable/path/font.otf"]
+  }
+}
+```
+
+If FontTools is installed, SubtitleFlow can match font name-table metadata when scanning `fonts.directories`; explicit mapping remains the most deterministic option.
+
+Actual font requirements come from the compiled ASS, not from a hard-coded global list. Special title fonts are therefore required only for titles that actually reference them.
+
+## Media and Remux
+
+```json
+{
+  "media": {
+    "video": "/path/to/input.mkv",
+    "output_mkv": "/path/to/output.mkv",
+    "preserve_existing_tracks": true,
+    "preserve_existing_attachments": true
+  }
+}
+```
+
+Font attachments are controlled separately by `fonts.attach_to_mkv`. Existing attachments are preserved unless explicitly disabled.
 
 ## Quality gates
-
-Production defaults are deliberately strict:
 
 ```json
 {
   "quality_gates": {
     "require_research": true,
     "require_semantic_qa": true,
-    "require_visual_qa": true
+    "require_visual_qa": true,
+    "require_fonts": true
   }
 }
 ```
 
-A production release requires:
-
-- non-empty `research/context.md` and `research/sources.md`;
-- non-empty `qa/semantic-review.md` and a passed semantic-QA stage;
-- rendered preview PNGs plus explicit visual approval for every enabled branch;
-- a current deterministic QA snapshot.
-
-For a mechanical/headless test only, gates may be explicitly disabled in `title.json`. Do not disable them merely to get a real release through.
-
-## Media
-
-```json
-{
-  "media": {
-    "video": "${MEDIA_ROOT}/movie.mkv",
-    "output_mkv": "${MEDIA_OUT}/movie.final.mkv",
-    "preserve_existing_tracks": true
-  }
-}
-```
-
-Environment variables and `~` are expanded at runtime. Large media should stay outside Git.
+Relax a gate only as an explicit project decision. Default production behavior is strict.

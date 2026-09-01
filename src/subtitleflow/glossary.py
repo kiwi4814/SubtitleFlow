@@ -37,7 +37,7 @@ class TermRule:
             aliases=aliases,
             auto_replace=bool(data.get("auto_replace", False)),
             context_sensitive=bool(data.get("context_sensitive", False)),
-            branches=[str(item) for item in data.get("branches", ["tw", "jp"])],
+            branches=[str(item) for item in data.get("branches", ["clean", "tw", "jp"])],
             forbidden_aliases=forbidden_aliases,
             notes=data.get("notes"),
         )

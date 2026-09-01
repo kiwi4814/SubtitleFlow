@@ -60,7 +60,9 @@ def test_release_gates_can_be_explicitly_disabled_for_nonvisual_mechanical_workf
         "require_research": False,
         "require_semantic_qa": False,
         "require_visual_qa": False,
+        "require_fonts": False,
     }
+    config["fonts"]["require_for_release"] = False
     write_json(paths.title_config, config)
     assert run_all_qa(paths)["ok"] is True
     manifest = create_release_manifest(paths)
@@ -74,6 +76,8 @@ def test_release_accepts_completed_nonvisual_gates_when_visual_is_disabled(
     paths = _prepared_title(tmp_path, sample_cues)
     config = read_json(paths.title_config)
     config["quality_gates"]["require_visual_qa"] = False
+    config["quality_gates"]["require_fonts"] = False
+    config["fonts"]["require_for_release"] = False
     write_json(paths.title_config, config)
     assert run_all_qa(paths)["ok"] is True
     (paths.research / "context.md").write_text("fixture context\n", encoding="utf-8")
@@ -93,7 +97,9 @@ def test_release_rejects_stale_qa_after_workfile_change(tmp_path: Path, sample_c
         "require_research": False,
         "require_semantic_qa": False,
         "require_visual_qa": False,
+        "require_fonts": False,
     }
+    config["fonts"]["require_for_release"] = False
     write_json(paths.title_config, config)
     assert run_all_qa(paths)["ok"] is True
     work_path = paths.work / "jp.json"

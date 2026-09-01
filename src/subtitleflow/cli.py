@@ -11,6 +11,7 @@ from .canon import add_term
 from .compile import compile_all
 from .doctor import doctor_report
 from .errors import SubtitleFlowError
+from .fonts import audit_fonts
 from .gates import mark_research_complete, mark_semantic_qa_complete, mark_visual_qa_complete
 from .io import read_json, write_json
 from .media import probe_media, render_previews
@@ -20,11 +21,13 @@ from .release import create_release_manifest
 from .remux import remux
 from .review import decide_candidate, import_proposals, list_candidates, render_review_markdown
 from .state import invalidate_stages, state_summary
+from .style import load_style_profile
 from .workfile import build_all_workfiles
 from .workspace import (
     add_source,
     create_project,
     create_title,
+    configure_workflow_profile,
     find_repo_root,
     title_paths,
     verify_sources,
@@ -66,8 +69,13 @@ def cmd_project_init(args: argparse.Namespace) -> Any:
 
 
 def cmd_title_init(args: argparse.Namespace) -> Any:
-    path = create_title(_repo(args), args.project, args.title, args.name or args.title)
-    return {"created": str(path)}
+    repo = _repo(args)
+    path = create_title(repo, args.project, args.title, args.name or args.title)
+    paths = title_paths(repo, args.project, args.title)
+    data = read_json(paths.title_config)
+    configure_workflow_profile(data, args.profile)
+    write_json(paths.title_config, data)
+    return {"created": str(path), "workflow_profile": args.profile}
 
 
 def cmd_title_set_media(args: argparse.Namespace) -> Any:
@@ -81,10 +89,39 @@ def cmd_title_set_media(args: argparse.Namespace) -> Any:
     write_json(paths.title_config, data)
     invalidate_stages(
         paths,
-        ("render_tw", "render_jp", "visual_tw", "visual_jp", "release", "remux"),
+        ("render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
         reason="media configuration changed",
     )
     return media
+
+
+def cmd_style_show(args: argparse.Namespace) -> Any:
+    profile = load_style_profile(_paths(args))
+    profile.pop("_profile_path", None)
+    return profile
+
+
+def cmd_style_set(args: argparse.Namespace) -> Any:
+    paths = _paths(args)
+    data = read_json(paths.title_config)
+    data.setdefault("style", {})["profile"] = args.profile
+    write_json(paths.title_config, data)
+    # Validate immediately so a typo cannot silently poison the project.
+    profile = load_style_profile(paths)
+    invalidate_stages(
+        paths,
+        ("compile_clean", "compile_tw", "compile_jp", "fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
+        reason="style profile changed",
+    )
+    return {"profile": profile.get("id"), "display_name": profile.get("display_name")}
+
+
+def cmd_fonts_audit(args: argparse.Namespace) -> Any:
+    return audit_fonts(
+        _paths(args),
+        extra_dirs=[Path(value).expanduser().resolve() for value in args.font_dir],
+        map_file=Path(args.map_file).expanduser().resolve() if args.map_file else None,
+    )
 
 
 def cmd_source_add(args: argparse.Namespace) -> Any:
@@ -126,7 +163,7 @@ def cmd_canon_add(args: argparse.Namespace) -> Any:
         aliases=args.alias,
         auto_replace=args.auto,
         context_sensitive=args.context_sensitive,
-        branches=args.branch or ["tw", "jp"],
+        branches=args.branch or ["clean", "tw", "jp"],
         notes=args.notes,
     )
 
@@ -229,6 +266,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = title_sub.add_parser("init")
     add_title_selector(p)
     p.add_argument("--name")
+    p.add_argument("--profile", choices=["auto", "full", "single", "source-assisted", "dub", "bilingual"], default="auto")
     p.set_defaults(func=cmd_title_init)
     p = title_sub.add_parser("set-media")
     add_title_selector(p)
@@ -236,17 +274,35 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--output")
     p.set_defaults(func=cmd_title_set_media)
 
+    style = sub.add_parser("style", help="ASS style profile operations")
+    style_sub = style.add_subparsers(dest="style_command", required=True)
+    p = style_sub.add_parser("show")
+    add_title_selector(p)
+    p.set_defaults(func=cmd_style_show)
+    p = style_sub.add_parser("set")
+    add_title_selector(p)
+    p.add_argument("profile")
+    p.set_defaults(func=cmd_style_set)
+
+    fonts = sub.add_parser("fonts", help="Resolve and audit ASS font dependencies")
+    fonts_sub = fonts.add_subparsers(dest="fonts_command", required=True)
+    p = fonts_sub.add_parser("audit")
+    add_title_selector(p)
+    p.add_argument("--font-dir", action="append", default=[])
+    p.add_argument("--map-file")
+    p.set_defaults(func=cmd_fonts_audit)
+
     source = sub.add_parser("source", help="Immutable source operations")
     source_sub = source.add_subparsers(dest="source_command", required=True)
     p = source_sub.add_parser("add")
     add_title_selector(p)
-    p.add_argument("role", choices=["A", "B", "C", "D", "a", "b", "c", "d"])
+    p.add_argument("role", choices=["A", "B", "C", "D", "S", "a", "b", "c", "d", "s"])
     p.add_argument("file")
     p.add_argument("--replace", action="store_true")
     p.set_defaults(func=cmd_source_add)
     p = source_sub.add_parser("verify")
     add_title_selector(p)
-    p.add_argument("--role", action="append", choices=["A", "B", "C", "D"])
+    p.add_argument("--role", action="append", choices=["A", "B", "C", "D", "S"])
     p.set_defaults(func=cmd_source_verify)
 
     p = sub.add_parser("normalize", help="Normalize all imported subtitle roles")
@@ -279,7 +335,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--alias", action="append", default=[])
     p.add_argument("--auto", action="store_true")
     p.add_argument("--context-sensitive", action="store_true")
-    p.add_argument("--branch", action="append", choices=["tw", "jp"])
+    p.add_argument("--branch", action="append", choices=["clean", "tw", "jp"])
     p.add_argument("--notes")
     p.set_defaults(func=cmd_canon_add)
 
@@ -322,13 +378,13 @@ def build_parser() -> argparse.ArgumentParser:
     visual_qa_sub = visual_qa.add_subparsers(dest="visual_qa_command", required=True)
     p = visual_qa_sub.add_parser("mark-complete")
     add_title_selector(p)
-    p.add_argument("branch", choices=["tw", "jp"])
+    p.add_argument("branch", choices=["clean", "tw", "jp"])
     p.add_argument("--note")
     p.set_defaults(func=cmd_visual_qa_mark)
 
     p = sub.add_parser("render", help="Render representative ASS frames with ffmpeg/libass")
     add_title_selector(p)
-    p.add_argument("branch", choices=["tw", "jp"])
+    p.add_argument("branch", choices=["clean", "tw", "jp"])
     p.add_argument("--video")
     p.add_argument("--max-frames", type=int, default=12)
     p.set_defaults(func=cmd_render)

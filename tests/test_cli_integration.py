@@ -33,7 +33,9 @@ def test_cli_end_to_end(tmp_path: Path, sample_cues) -> None:
         "require_research": False,
         "require_semantic_qa": False,
         "require_visual_qa": False,
+        "require_fonts": False,
     }
+    cfg["fonts"]["require_for_release"] = False
     write_json(paths / "title.json", cfg)
     assert main(["--repo", repo, "canon", "add-term", "demo", "movie", "--id", "doraemon", "--canonical", "哆啦A梦", "--alias", "小叮当", "--auto"]) == 0
     assert main(["--repo", repo, "prepare", "demo", "movie"]) == 0

@@ -1,0 +1,22 @@
+[Script Info]
+Title: SubtitleFlow Kiwi Collector v1 Style Specimen
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+YCbCr Matrix: TV.709
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: SF-ZH,文泉驿微米黑,60,&H00D2D2D2,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,105,0,0,1,2,0,2,10,10,103,1
+Style: SF-JA,文泉驿微米黑,50,&H000E95CE,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,45,1
+Style: Note,思源黑体 CN Heavy,45,&H00FFFFFF,&H000000FF,&H00908D8E,&H00000000,0,0,0,0,100,100,0,0,1,1,0,8,5,5,55,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.00,0:00:05.00,SF-ZH,,0,0,0,,{\blur2}这是 Kiwi Collector v1 的中文正文示例
+Dialogue: 0,0:00:01.00,0:00:05.00,SF-JA,,0,0,0,,{\blur2}これは日本語字幕の表示サンプルです
+Dialogue: 0,0:00:06.00,0:00:10.00,SF-ZH,,0,0,0,,{\blur2}较长字幕用于观察字号、描边、间距以及单行可读性
+Dialogue: 0,0:00:06.00,0:00:10.00,SF-JA,,0,0,0,,{\blur2}長めの字幕で文字サイズと行間の見え方を確認します
+Dialogue: 0,0:00:11.00,0:00:15.00,Note,,0,0,0,,这是一个应由 Hybrid 策略保留的顶部注释样式

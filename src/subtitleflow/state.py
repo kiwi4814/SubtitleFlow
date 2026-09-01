@@ -37,7 +37,7 @@ def invalidate_stages(paths: TitlePaths, stages_to_invalidate: Iterable[str], *,
 def invalidate_after_prepare(paths: TitlePaths, *, reason: str = "workfiles regenerated") -> None:
     invalidate_stages(
         paths,
-        ("compile_tw", "compile_jp", "qa", "semantic_qa", "render_tw", "render_jp", "visual_tw", "visual_jp", "release", "remux"),
+        ("compile_clean", "compile_tw", "compile_jp", "fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
         reason=reason,
     )
 
@@ -45,7 +45,7 @@ def invalidate_after_prepare(paths: TitlePaths, *, reason: str = "workfiles rege
 def invalidate_after_compile(paths: TitlePaths, *, reason: str = "compiled ASS regenerated") -> None:
     invalidate_stages(
         paths,
-        ("qa", "semantic_qa", "render_tw", "render_jp", "visual_tw", "visual_jp", "release", "remux"),
+        ("fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
         reason=reason,
     )
 
@@ -53,7 +53,7 @@ def invalidate_after_compile(paths: TitlePaths, *, reason: str = "compiled ASS r
 def invalidate_after_qa(paths: TitlePaths, *, reason: str = "deterministic QA rerun") -> None:
     invalidate_stages(
         paths,
-        ("semantic_qa", "render_tw", "render_jp", "visual_tw", "visual_jp", "release", "remux"),
+        ("semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
         reason=reason,
     )
 
@@ -61,7 +61,7 @@ def invalidate_after_qa(paths: TitlePaths, *, reason: str = "deterministic QA re
 def invalidate_after_review_change(paths: TitlePaths, *, reason: str = "human review state changed") -> None:
     invalidate_stages(
         paths,
-        ("compile_tw", "compile_jp", "qa", "semantic_qa", "render_tw", "render_jp", "visual_tw", "visual_jp", "release", "remux"),
+        ("compile_clean", "compile_tw", "compile_jp", "fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
         reason=reason,
     )
 
@@ -69,7 +69,7 @@ def invalidate_after_review_change(paths: TitlePaths, *, reason: str = "human re
 def invalidate_after_source_or_canon_change(paths: TitlePaths, *, reason: str) -> None:
     invalidate_stages(
         paths,
-        ("normalize", "alignment_and_seed", "compile_tw", "compile_jp", "qa", "semantic_qa", "render_tw", "render_jp", "visual_tw", "visual_jp", "release", "remux"),
+        ("normalize", "alignment_and_seed", "compile_clean", "compile_tw", "compile_jp", "fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
         reason=reason,
     )
 

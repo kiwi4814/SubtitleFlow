@@ -1,19 +1,10 @@
-# START HERE
+# START HERE — SubtitleFlow 0.2.0
 
-SubtitleFlow 是一套**通用的、多证据源字幕生产工作流**。它不是《哆啦A梦》专用脚本；《哆啦A梦》只作为压力测试样例。
+SubtitleFlow is a generic subtitle production repository. Pick the evidence you actually have; do not manufacture A/B/C/D just to satisfy a workflow.
 
-## 1. 环境
+## 1. Install
 
-最低：Python 3.11+。
-
-推荐工具：
-
-- OpenCode V2：AI 编排、研究、语义候选、独立 QA。
-- OpenCC：台繁→简体字转换。
-- FFmpeg/ffprobe：媒体探测与实际画面字幕渲染。
-- MKVToolNix (`mkvmerge`)：最终无损 Remux。
-
-安装开发模式：
+Python 3.11+ is required.
 
 ```bash
 python -m venv .venv
@@ -24,77 +15,105 @@ python -m pip install -e '.[full]'
 subflow doctor
 ```
 
-也可以用 uv：
+Recommended external tools:
+
+- OpenCode V2 for AI orchestration/research/proposals/semantic QA;
+- OpenCC for Traditional→Simplified conversion when enabled;
+- FFmpeg/ffprobe with libass for real visual preview;
+- MKVToolNix (`mkvmerge`) for final Remux.
+
+## 2. Choose the workflow profile
+
+| What you have | Profile | Import |
+|---|---|---|
+| one subtitle; timing already correct | `single` | S |
+| correct target subtitle + source-language subtitle | `source-assisted` | S + C |
+| timing master + Taiwan-dub transcript | `dub` | A + D |
+| timing + JP Chinese + Japanese source | `bilingual` | A + B + C |
+| all sources | `full` | A + B + C + D |
+| mixed/unknown, let engine derive branches | `auto` | whatever is real |
+
+Example:
 
 ```bash
-uv sync --extra full
-uv run subflow doctor
+subflow project init movies --name "Movies"
+subflow title init movies film-01 --name "Film 01" --profile single
+subflow source add movies film-01 S /path/to/film.ass
+subflow prepare movies film-01
 ```
 
-## 2. 在仓库根目录启动 OpenCode
+## 3. Kiwi Collector v1 style
+
+Default ordinary dialogue:
+
+- Chinese: 文泉驿微米黑, 60, ScaleY 105%, Bold, `#D2D2D2`, 2 px black outline, MarginV 103.
+- Japanese: 文泉驿微米黑, 50, Regular, warm gold `ASS &H000E95CE`, 2 px black outline, MarginV 45.
+- Both: event-level `\blur2`, no style shadow.
+
+Hybrid mode keeps risky source typesetting instead of recreating it. Existing Note/Title/Song/Screen/Sign/OP/ED/Staff/Ruby and complex positioned/drawing/karaoke events are preserved by default.
+
+## 4. Supply local fonts
+
+Font binaries are not included. Place your legal copies under:
+
+```text
+fonts/local/
+```
+
+or copy `fonts/font-map.example.json` to the ignored local file:
+
+```text
+fonts/font-map.json
+```
+
+and map ASS family names to local files.
+
+For the Doraemon-derived profile/source typesetting you may see these families:
+
+- 文泉驿微米黑
+- 思源黑体 CN Heavy
+- 锐字云字库综艺体1.0
+- 方正粗圆_GBK
+- 思源宋体 CN
+
+Audit after compile:
+
+```bash
+subflow fonts audit movies film-01
+```
+
+A production release blocks when the compiled ASS actually references an unresolved font.
+
+## 5. OpenCode
+
+Start in the repository root:
 
 ```bash
 opencode
 ```
 
-OpenCode 会读取：
-
-- `AGENTS.md`
-- `opencode.jsonc`
-- `.opencode/agents/`
-- `.opencode/skills/`
-- `.opencode/commands/subtitle/`
-
-## 3. 建一个项目
-
-例如：
-
-```bash
-subflow project init my-series --name "My Series"
-subflow title init my-series movie-01 --name "Movie 01"
-```
-
-导入四种证据：
-
-```bash
-subflow source add my-series movie-01 A /path/to/timing-master.ass
-subflow source add my-series movie-01 B /path/to/jp-zh.ass
-subflow source add my-series movie-01 C /path/to/ja.ass
-subflow source add my-series movie-01 D /path/to/tw-dub.ass
-```
-
-角色固定：
-
-- A：Timing Master
-- B：日配中文现成译本
-- C：日文原字幕
-- D：台配字幕/台配对白文本
-
-## 4. OpenCode 日常入口
+Daily entry points:
 
 ```text
-/subtitle/research my-series movie-01
-/subtitle/prepare my-series movie-01
-/subtitle/run my-series movie-01
-/subtitle/review my-series movie-01
-/subtitle/semantic-qa my-series movie-01
-/subtitle/visual-review my-series movie-01
-/subtitle/release my-series movie-01
-/subtitle/remux my-series movie-01
+/subtitle/research PROJECT TITLE
+/subtitle/prepare PROJECT TITLE
+/subtitle/run PROJECT TITLE
+/subtitle/review PROJECT TITLE
+/subtitle/style PROJECT TITLE
+/subtitle/fonts PROJECT TITLE
+/subtitle/semantic-qa PROJECT TITLE
+/subtitle/visual-review PROJECT TITLE
+/subtitle/release PROJECT TITLE
+/subtitle/remux PROJECT TITLE
+/subtitle/status PROJECT TITLE
 ```
 
-`/subtitle/run` 的设计目标是：**自动推进到下一个必须由人决定的 Gate，然后停。**
+`/subtitle/run` advances only as far as the next mandatory human gate.
 
-## 5. 最重要的质量规则
+## 6. Final MKV font attachment
 
-- 原始 source 永不直接修改。
-- 不按字幕行号硬对齐。
-- 台配字幕忠于台配；日配字幕忠于日文原文。
-- 确定性的旧译名/术语可自动改。
-- 任何语义修改必须人工批准。
-- ASS 特效/定位/绘图事件默认保护。
-- 成功渲染 PNG 只表示 Render 通过；必须真正检查画面后才能标记 Visual QA。
-- QA 之后 workfile / glossary / config / review 发生变化，旧 QA 自动视为 stale。
-- 没有实际运行 `mkvmerge` 就不能说 Remux 通过。
+After `subflow release`, the release manifest freezes final ASS and resolved font hashes. `subflow remux` preserves existing MKV attachments by default. A same-name existing font is first extracted with `mkvextract` and SHA-compared; only an identical file is reused. Missing frozen fonts are attached, then the output is checked with `mkvmerge -J`.
 
-详细流程见 `docs/workflow.md`。
+Never treat a local font fallback as a successful release. The goal is a self-contained MKV whose ASS looks the same after moving to another machine/player that supports Matroska ASS font attachments.
+
+Read `docs/workflow.md` next.

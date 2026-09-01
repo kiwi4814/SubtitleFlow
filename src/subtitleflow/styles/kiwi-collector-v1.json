@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "id": "kiwi-collector-v1",
+  "display_name": "Kiwi Collector v1",
+  "description": "Collector-style 1080p ASS profile derived from the user's preferred Doraemon subtitle palette and spacing.",
+  "play_resolution": {
+    "x": 1920,
+    "y": 1080
+  },
+  "script_info": {
+    "WrapStyle": "0",
+    "ScaledBorderAndShadow": "yes",
+    "YCbCr Matrix": "TV.709"
+  },
+  "mode": "hybrid",
+  "styles": {
+    "SF-ZH": {
+      "Fontname": "文泉驿微米黑",
+      "Fontsize": "60",
+      "PrimaryColour": "&H00D2D2D2",
+      "SecondaryColour": "&H000000FF",
+      "OutlineColour": "&H00000000",
+      "BackColour": "&H00000000",
+      "Bold": "-1",
+      "Italic": "0",
+      "Underline": "0",
+      "StrikeOut": "0",
+      "ScaleX": "100",
+      "ScaleY": "105",
+      "Spacing": "0",
+      "Angle": "0",
+      "BorderStyle": "1",
+      "Outline": "2",
+      "Shadow": "0",
+      "Alignment": "2",
+      "MarginL": "10",
+      "MarginR": "10",
+      "MarginV": "103",
+      "Encoding": "1"
+    },
+    "SF-JA": {
+      "Fontname": "文泉驿微米黑",
+      "Fontsize": "50",
+      "PrimaryColour": "&H000E95CE",
+      "SecondaryColour": "&H000000FF",
+      "OutlineColour": "&H00000000",
+      "BackColour": "&H00000000",
+      "Bold": "0",
+      "Italic": "0",
+      "Underline": "0",
+      "StrikeOut": "0",
+      "ScaleX": "100",
+      "ScaleY": "100",
+      "Spacing": "0",
+      "Angle": "0",
+      "BorderStyle": "1",
+      "Outline": "2",
+      "Shadow": "0",
+      "Alignment": "2",
+      "MarginL": "10",
+      "MarginR": "10",
+      "MarginV": "45",
+      "Encoding": "1"
+    }
+  },
+  "layout": {
+    "single_line_preferred": true,
+    "max_visual_rows_warning": 4,
+    "usable_width": 1840,
+    "wide_warning_ratio": 0.82,
+    "very_wide_warning_ratio": 0.9,
+    "overflow_ratio": 1.0
+  },
+  "font_policy": {
+    "attach_to_mkv": true,
+    "require_all_referenced_fonts": true,
+    "preserve_source_special_styles": true,
+    "required_families": [
+      {
+        "family": "文泉驿微米黑",
+        "role": "dialogue",
+        "required": true
+      },
+      {
+        "family": "思源黑体 CN Heavy",
+        "role": "note",
+        "required": false
+      },
+      {
+        "family": "锐字云字库综艺体1.0",
+        "role": "title",
+        "required": false
+      },
+      {
+        "family": "方正粗圆_GBK",
+        "role": "song-sign",
+        "required": false
+      },
+      {
+        "family": "思源宋体 CN",
+        "role": "special-sign",
+        "required": false
+      }
+    ]
+  },
+  "event_overrides": {
+    "SF-ZH": "\\blur2",
+    "SF-JA": "\\blur2"
+  },
+  "source_preservation": {
+    "preserve_complex_events": true,
+    "preserve_special_styles": true,
+    "special_style_names": [
+      "note",
+      "注释",
+      "title",
+      "标题",
+      "song",
+      "歌词",
+      "screen",
+      "sign",
+      "ruby",
+      "staff",
+      "fx",
+      "effect",
+      "karaoke"
+    ],
+    "special_style_prefixes": [
+      "op",
+      "ed",
+      "in"
+    ]
+  }
+}

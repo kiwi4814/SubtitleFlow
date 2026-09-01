@@ -32,7 +32,7 @@ def add_term(
 ) -> dict[str, Any]:
     if not term_id.strip() or not canonical.strip():
         raise ValidationError("term id and canonical are required")
-    invalid_branches = set(branches) - {"tw", "jp"}
+    invalid_branches = set(branches) - {"clean", "tw", "jp"}
     if invalid_branches:
         raise ValidationError(f"Invalid branch names: {', '.join(sorted(invalid_branches))}")
     if auto_replace and context_sensitive:
@@ -48,7 +48,7 @@ def add_term(
         "aliases": aliases,
         "auto_replace": auto_replace,
         "context_sensitive": context_sensitive,
-        "branches": branches or ["tw", "jp"],
+        "branches": branches or ["clean", "tw", "jp"],
         "forbidden_aliases": aliases,
         "notes": notes,
         "created_at": utc_now(),

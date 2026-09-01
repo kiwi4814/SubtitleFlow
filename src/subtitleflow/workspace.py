@@ -12,7 +12,7 @@ from .io import read_json, write_json
 from .util import sha256_file, slugify, utc_now
 
 SCHEMA_VERSION = 1
-VALID_ROLES = {"A", "B", "C", "D"}
+VALID_ROLES = {"A", "B", "C", "D", "S"}
 
 
 def find_repo_root(start: Path | None = None) -> Path:
@@ -135,11 +135,21 @@ def default_title_config(project_id: str, title_id: str, display_name: str) -> d
         "title_id": title_id,
         "display_name": display_name,
         "created_at": utc_now(),
-        "sources": {"A": None, "B": None, "C": None, "D": None},
+        "workflow": {"profile": "auto"},
+        "sources": {"A": None, "B": None, "C": None, "D": None, "S": None},
         "alignment": {
             "max_group": 3,
             "unmatched_penalty": 3.0,
             "review_confidence_below": 0.72,
+        },
+        "clean_branch": {
+            "enabled": True,
+            "language_source": "S",
+            "timing_source": "S",
+            "source_evidence": "C",
+            "source_assisted": "auto",
+            "traditional_to_simplified": False,
+            "opencc_profile": "t2s",
         },
         "tw_branch": {
             "enabled": True,
@@ -154,22 +164,31 @@ def default_title_config(project_id: str, title_id: str, display_name: str) -> d
             "japanese_source": "C",
             "timing_source": "A",
         },
+        "style": {
+            "profile": "kiwi-collector-v1",
+            "mode": "hybrid",
+            "overrides": {},
+        },
         "ass": {
-            "target_font": "Noto Sans CJK SC",
-            "target_size": 48,
-            "target_margin_v": 52,
-            "source_font": "Noto Sans CJK JP",
-            "source_size": 38,
-            "source_margin_v": 106,
             "single_line_preferred": True,
             "max_visual_rows_warning": 4,
+        },
+        "fonts": {
+            "attach_to_mkv": True,
+            "require_for_release": True,
+            "require_all_referenced": True,
+            "directories": ["fonts/local"],
+            "map_file": "fonts/font-map.json",
+            "aliases": {},
         },
         "media": {
             "video": None,
             "output_mkv": None,
             "preserve_existing_tracks": True,
+            "preserve_existing_attachments": True,
         },
         "release_names": {
+            "clean": "简体中文｜精校",
             "tw": "简体中文｜台配",
             "jp": "简日双语｜日配",
         },
@@ -177,8 +196,18 @@ def default_title_config(project_id: str, title_id: str, display_name: str) -> d
             "require_research": True,
             "require_semantic_qa": True,
             "require_visual_qa": True,
+            "require_fonts": True,
         },
     }
+
+
+def configure_workflow_profile(config: dict[str, Any], profile: str) -> dict[str, Any]:
+    profile = profile.strip().lower()
+    allowed = {"auto", "full", "single", "source-assisted", "dub", "bilingual"}
+    if profile not in allowed:
+        raise ValidationError(f"Unknown workflow profile {profile}; expected one of {', '.join(sorted(allowed))}")
+    config.setdefault("workflow", {})["profile"] = profile
+    return config
 
 
 def create_title(repo: Path, project_id: str, title_id: str, display_name: str) -> Path:
@@ -240,7 +269,7 @@ def add_source(
 ) -> dict[str, Any]:
     role = role.upper()
     if role not in VALID_ROLES:
-        raise ValidationError(f"Invalid source role {role}; expected A/B/C/D")
+        raise ValidationError(f"Invalid source role {role}; expected A/B/C/D/S")
     source_path = source_path.expanduser().resolve()
     if not source_path.is_file():
         raise ValidationError(f"Source is not a file: {source_path}")

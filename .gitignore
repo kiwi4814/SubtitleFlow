@@ -12,6 +12,11 @@ wheels/
 .coverage
 htmlcov/
 
+# Local licensed font assets and user-specific mappings
+fonts/local/*
+!fonts/local/.gitkeep
+fonts/font-map.json
+
 # OS artifacts
 .DS_Store
 .DS_Store?

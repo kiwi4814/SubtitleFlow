@@ -62,7 +62,9 @@ def run_large_ass(source: Path) -> dict:
             "require_research": False,
             "require_semantic_qa": False,
             "require_visual_qa": False,
+            "require_fonts": False,
         }
+        cfg["fonts"]["require_for_release"] = False
         write_json(paths.title_config, cfg)
         for term_id, canonical, aliases in [
             ("doraemon", "哆啦A梦", ["小叮当", "机器猫"]),

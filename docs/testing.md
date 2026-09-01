@@ -1,37 +1,53 @@
-# Verification matrix
+# Testing and verification
 
-## Fast checks
+## Required code checks
 
 ```bash
-python -m compileall -q src tests tools
-PYTHONPATH=src pytest -q
+python -m compileall -q src
+python -m pytest -q
+python -m ruff check .
+python -m ruff format --check .
 ```
 
-The suite covers timecode parsing, ASS/SRT parsing, protected-event preservation, source mutation detection, 1:1/N:M alignment, global offset handling, glossary rules, stale-safe human review, compilation, deterministic QA, release-gate evidence, stale-QA rejection, OpenCode V2 asset shape, Python-3.11 syntax compatibility, layout logic and remux command construction.
+## v0.2-specific regression areas
 
-## Synthetic CLI end-to-end
+Tests must cover:
 
-`tests/test_cli_integration.py` creates A/B/C/D fixtures, initializes a workspace, prepares both branches, compiles, runs QA and freezes a mechanical-test release with editorial/visual gates explicitly disabled.
+- S-only `single` workflow preserving S timings;
+- `source-assisted` attaching C semantics without retiming S;
+- missing-role profile gates;
+- Hybrid preservation of plain special Style events even without complex tags;
+- final Kiwi Collector SF-ZH/SF-JA values and `\blur2` event override;
+- vertical ASS font name normalization (`@Font` → `Font`);
+- real font-file metadata/hash audit;
+- release freeze of font attachments;
+- modern MKV attachment option construction;
+- stale font hash rejection.
 
-A separate synthetic visual run uses a generated MKV and actual FFmpeg/libass. Research and semantic-QA evidence are written, three representative frames per branch are rendered, frames are visually inspected, visual gates are explicitly marked, then a production-style release manifest is frozen.
+## Real-source stress checks
 
-## Real-world legacy ASS stress test
+Do not commit copyrighted subtitle fixtures. When available locally, use representative large/complex ASS files for manual release verification:
 
-`tools/verify_release.py` can take external ASS files without bundling them. Verification for this release used:
+1. record source SHA-256;
+2. normalize/compile using a disposable project;
+3. verify source SHA remains unchanged;
+4. count protected source events before/after;
+5. scan actual font family references;
+6. render real/synthetic video with FFmpeg/libass when available.
 
-- a real 1980 legacy movie ASS with 824 events for full normalize/alignment/compile/QA/release mechanics;
-- a complex 2008 ASS with 7,363 protected events to verify exact protected-line roundtrip retention.
+For the Doraemon 2023 style source used during v0.2 development, the expected referenced family set is five unique families: 文泉驿微米黑, 思源黑体 CN Heavy, 锐字云字库综艺体1.0, 方正粗圆_GBK, 思源宋体 CN. The source file itself is not included in the package.
 
-Source SHA-256 is checked before and after the stress run.
+## Packaging checks
 
-## Packaging test
+Before delivery:
 
-Build a wheel and install it into a fresh virtual environment, then execute the installed `subflow` entry point. This catches source-tree-only import mistakes.
+1. build a wheel;
+2. install it into a fresh virtual environment;
+3. run the installed `subflow doctor`;
+4. confirm packaged `kiwi-collector-v1` data is available;
+5. create the final ZIP;
+6. unpack that ZIP into another directory;
+7. rerun the test suite and a fresh wheel/install smoke test from the extracted artifact;
+8. verify the ZIP contains no `.ttf`, `.otf`, `.ttc`, or `.otc` files.
 
-## Remux test
-
-The command builder is unit tested against current `mkvmerge` option ordering and current flag names. A true MKVToolNix remux is only claimed when the environment actually has `mkvmerge`; otherwise the limitation is recorded.
-
-## Environment limitations
-
-See `verification/VERIFICATION.md` for checks actually executed for the packaged release, including unavailable tools/runtimes. Proposed commands are never presented as passed checks.
+`mkvmerge` success may be claimed only when the binary is installed and a real Remux was executed. If unavailable, record command construction and postcondition logic as tested but real mux execution as unverified.

@@ -11,6 +11,7 @@ from .errors import GateError, ValidationError
 from .io import read_json, write_json
 from .state import invalidate_stages, update_stage
 from .util import run_checked, which
+from .workflow import branch_release_filename
 from .workspace import TitlePaths
 from .workfile import load_workfile
 
@@ -58,12 +59,9 @@ def render_previews(
     video = video or expand_media_path(config.get("media", {}).get("video"))
     if video is None or not video.is_file():
         raise ValidationError("A readable video path is required for visual preview")
-    if branch == "tw":
-        ass_path = paths.release / f"{paths.title_id}.zh-CN.tw.ass"
-    elif branch == "jp":
-        ass_path = paths.release / f"{paths.title_id}.zh-CN-ja.ass"
-    else:
-        raise ValidationError("branch must be tw or jp")
+    if branch not in {"clean", "tw", "jp"}:
+        raise ValidationError("branch must be clean, tw, or jp")
+    ass_path = paths.release / branch_release_filename(paths.title_id, branch)
     if not ass_path.exists():
         raise ValidationError(f"Compiled ASS not found: {ass_path}")
 

@@ -1,15 +1,23 @@
 ---
 name: Subtitle Intake
-description: Import and classify A/B/C/D subtitle evidence, preserve hashes, and verify immutable source integrity before processing.
+description: Classify optional subtitle evidence roles, choose a workflow profile, preserve hashes, and verify immutable source integrity.
 ---
 
-Use for the first stage of any title.
+Do not require A/B/C/D when the title does not have them.
 
-- A = Timing Master.
-- B = existing Chinese translation aligned to Japanese audio.
-- C = Japanese source subtitle.
+Roles:
+- S = self-contained target subtitle with correct timing; used by single/source-assisted polish.
+- A = Timing Master for multi-source workflows.
+- B = existing Chinese translation for Japanese audio.
+- C = source-language/Japanese semantic evidence.
 - D = Taiwan-dub transcript.
 
-Never infer roles from filenames when the user has not established them. Once known, import with `subflow source add`.
+Profiles:
+- `single`: S only.
+- `source-assisted`: S + C.
+- `dub`: A + D.
+- `bilingual`: A + B + C.
+- `full`: A + B + C + D.
+- `auto`: derive every valid branch from available roles.
 
-Run `subflow source verify` after import and before later stages. Files under `source/` are immutable; replacement requires an explicit source re-import, never an in-place edit.
+Never invent a role or duplicate one file under fake roles merely to satisfy a profile. Import with `subflow source add`, then verify hashes. Source replacement requires explicit re-import, never in-place editing.

@@ -1,0 +1,6 @@
+{
+  "ffmpeg_render_passed": true,
+  "frame_size_bytes": 105711,
+  "subtitle": "examples/kiwi-collector-style-specimen.ass",
+  "note": "Render mechanics only. Exact selected fonts are not installed in this container, so typography is not visually certified."
+}

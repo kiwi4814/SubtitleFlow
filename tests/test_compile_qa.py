@@ -45,7 +45,9 @@ def test_compile_preserves_protected_and_release_passes(tmp_path: Path, sample_c
         "require_research": False,
         "require_semantic_qa": False,
         "require_visual_qa": False,
+        "require_fonts": False,
     }
+    config["fonts"]["require_for_release"] = False
     write_json(paths.title_config, config)
     normalize_all(paths)
     build_all_workfiles(paths)

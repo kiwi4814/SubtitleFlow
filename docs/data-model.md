@@ -1,49 +1,66 @@
 # Data model
 
-## `project.json`
+## Source roles
 
-Series/franchise defaults and `canon_version`.
+`source/manifest.json` records immutable imports and SHA-256 values. Valid roles are A/B/C/D/S. A role is evidence, not a filename convention.
 
-## `title.json`
+## Normalized subtitle
 
-One movie/episode configuration: A/B/C/D roles, branch rules, alignment thresholds, ASS typography, quality gates, media path and release track names. See `configuration.md`.
+Each imported role becomes `normalized/<role>.json` with cues containing:
 
-## `source/manifest.json`
+- original timing;
+- raw and plain text;
+- source Style/event type;
+- protected flag and reason;
+- raw ASS event when applicable.
 
-Immutable source provenance: role, internal path, original filename, SHA-256, size and import time. Replacement requires explicit `--replace` and archives the prior source.
+The active style profile may additionally protect recognized special source styles during normalization.
 
-## `normalized/<role>.json`
+## Branch workfile
 
-Parsed cues plus protection status. Normalization never changes source files.
+Workfiles are semantic editing surfaces, never raw ASS replacements.
 
-## `work/tw.json`
+Common fields include:
 
-A↔D groups. `raw_text` is D evidence; `normalized_text` contains deterministic conversion; `final_text` changes only through approved operations.
+- unit id;
+- start/end timing;
+- timing/source cue ids;
+- raw_text;
+- normalized_text;
+- final_text;
+- optional source_text and source evidence ids;
+- alignment confidence;
+- deterministic changes;
+- flags.
 
-## `work/jp.json`
+Branches:
 
-A↔B groups plus C Japanese evidence. `source_text` is C; `final_text` is the Chinese line used in the bilingual release.
+- `clean`: S-derived; optional C source evidence.
+- `tw`: A timing + D wording.
+- `jp`: A timing + B Chinese + C Japanese.
 
-## `review/candidates.json`
+## Review candidates
 
-Every semantic proposal and its decision state. The human gate is intentionally separate from workfile generation.
+AI proposals store branch, unit id, exact original text, proposed text, reason/type/severity/confidence/evidence and durable status. They cannot apply themselves.
 
-## `qa/summary.json`
+## Style profile
 
-Deterministic QA result plus `input_snapshot`: hashes of workfiles, glossary/config/review inputs and compiled final ASS. Release rejects a stale snapshot.
+Style is independent project data. `kiwi-collector-v1` defines generated dialogue Styles, layout thresholds, source-preservation policy, font roles and event-level overrides such as `\blur2`.
 
-## `qa/semantic-review.md`
+## Font report
 
-Independent semantic audit evidence. It must be non-empty before the semantic-QA gate can pass.
+`qa/fonts.json` contains:
 
-## `qa/previews/<branch>/`
+- required families inferred from compiled ASS;
+- resolution reasons (`style:<name>`, `inline-fn`, release file);
+- resolved local attachment files;
+- MIME type;
+- attachment filename;
+- SHA-256 and size;
+- missing families.
 
-Actual FFmpeg/libass PNG renders. Their existence proves render success only; `visual_<branch>` is a separate approval stage.
+No font binary is copied into persistent project data by font audit.
 
-## `release/release-manifest.json`
+## Release manifest
 
-Frozen release provenance: source integrity, final ASS hashes, review counts, QA hash/input snapshot, canon version and gate status.
-
-## `state.json`
-
-Durable stage status. OpenCode reads this instead of relying on conversation history.
+`release/release-manifest.json` freezes active branches, workflow profile, style id, ASS hashes, QA snapshot, review counts and resolved font attachment hashes. Remux must verify this frozen state before creating an MKV.

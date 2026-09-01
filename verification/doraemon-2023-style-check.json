@@ -1,0 +1,40 @@
+{
+  "source": "哆啦A梦：大雄与天空的理想乡 (2023) - 1080p.BluRay Remux.H.264.DTS-HD TrueHD Dolby Atmos MA 7.1.chs.ass",
+  "sha256_before": "9f788f4275ed43fd49fcc185517ca22f195ff1b4d3bed0e8c80470d0f084c678",
+  "event_count": 3435,
+  "style_counts": {
+    "CN": 1678,
+    "JP": 1678,
+    "标题": 1,
+    "歌词": 66,
+    "注释": 12
+  },
+  "hybrid_special_style_counts": {
+    "标题": 1,
+    "歌词": 66,
+    "注释": 12
+  },
+  "hybrid_special_style_total": 79,
+  "referenced_font_families": {
+    "思源宋体 CN": [
+      "inline-fn"
+    ],
+    "思源黑体 CN Heavy": [
+      "style:注释"
+    ],
+    "文泉驿微米黑": [
+      "style:CN",
+      "style:JP"
+    ],
+    "方正粗圆_GBK": [
+      "inline-fn",
+      "style:歌词"
+    ],
+    "锐字云字库综艺体1.0": [
+      "style:标题"
+    ]
+  },
+  "unique_font_family_count": 5,
+  "sha256_after": "9f788f4275ed43fd49fcc185517ca22f195ff1b4d3bed0e8c80470d0f084c678",
+  "source_unchanged": true
+}

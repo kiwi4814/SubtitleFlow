@@ -1,15 +1,19 @@
 # Portability
 
-The runtime engine uses only the Python standard library. Python 3.11+ is the declared target.
+## Python
 
-Optional components:
+SubtitleFlow supports Python 3.11+ and keeps the deterministic core dependency-light. The `full` extra installs OpenCC, PyYAML and FontTools support.
 
-- OpenCC Python extra or CLI: required when TW Traditional→Simplified conversion is enabled.
-- PyYAML: optional convenience dependency; generated configs are JSON.
-- FFmpeg/ffprobe with libass filters: visual rendering and media probing.
-- MKVToolNix: final MKV remux.
-- OpenCode V2: recommended AI orchestration layer; the deterministic CLI does not depend on it.
+## Paths
 
-The project stores no machine-specific media path by default. `title.json` can use environment variables such as `${MEDIA_ROOT}/movie.mkv`, expanded at runtime.
+Title configs may use environment variables and `~` for media/font paths. Prefer project-relative paths for portable local assets that are safe to keep outside source control.
 
-The packaged repository does not include third-party subtitle corpora, commercial video, font binaries, secrets, tokens, or user-specific absolute paths.
+## Fonts
+
+Do not commit or distribute font binaries with SubtitleFlow. `fonts/local/` and `fonts/font-map.json` are intentionally ignored. On another workstation, supply legally available equivalent font files and rerun `subflow fonts audit` before release.
+
+Final collector MKVs can be more portable than loose ASS files because `subflow remux` attaches the exact frozen font files into Matroska when enabled. Player support for ASS attachments is still a playback-environment concern, so visual QA on the target player remains authoritative.
+
+## External tools
+
+FFmpeg/libass and MKVToolNix are external executables. `subflow doctor` reports availability. `mkvmerge` is required for Remux; `mkvextract` is additionally required when a same-name existing attachment must be cryptographically compared before reuse. Dry-run command construction is not proof that a real render or Remux succeeded.

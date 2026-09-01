@@ -1,7 +1,7 @@
 [project]
 name = "subtitleflow"
-version = "0.1.0"
-description = "Evidence-driven multi-source subtitle production workflow with OpenCode orchestration"
+version = "0.2.0"
+description = "Evidence-driven subtitle polishing, bilingual production, font-safe ASS styling, and MKV remux workflow"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -23,13 +23,15 @@ subflow = "subtitleflow.cli:main"
 [project.optional-dependencies]
 yaml = ["PyYAML>=6.0.2,<7"]
 opencc = ["opencc-python-reimplemented>=0.1.7,<0.2"]
-full = ["PyYAML>=6.0.2,<7", "opencc-python-reimplemented>=0.1.7,<0.2"]
+fonts = ["fonttools>=4.59,<5"]
+full = ["PyYAML>=6.0.2,<7", "opencc-python-reimplemented>=0.1.7,<0.2", "fonttools>=4.59,<5"]
 
 [dependency-groups]
 dev = [
   "pytest>=8.4,<10",
   "pytest-cov>=6.2,<8",
   "ruff>=0.12,<1",
+  "fonttools>=4.59,<5",
 ]
 
 [build-system]
@@ -41,6 +43,9 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+subtitleflow = ["styles/*.json"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

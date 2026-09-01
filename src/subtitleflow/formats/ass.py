@@ -195,7 +195,7 @@ def build_event_line(event_format: list[str], values: dict[str, str]) -> str:
     return f"Dialogue: {payload}"
 
 
-def _style_values(name: str, *, font: str, size: int, margin_v: int, bold: bool) -> dict[str, str]:
+def _default_style_values(name: str, *, font: str, size: int, margin_v: int, bold: bool) -> dict[str, str]:
     return {
         "Name": name,
         "Fontname": font,
@@ -256,18 +256,23 @@ def build_style_line(style_format: list[str], values: dict[str, str]) -> str:
 def inject_styles(
     lines: list[str],
     *,
-    target_font: str,
-    target_size: int,
-    target_margin_v: int,
-    source_font: str,
-    source_size: int,
-    source_margin_v: int,
+    style_values: dict[str, dict[str, str]] | None = None,
+    target_font: str = "Noto Sans CJK SC",
+    target_size: int = 48,
+    target_margin_v: int = 52,
+    source_font: str = "Noto Sans CJK JP",
+    source_size: int = 38,
+    source_margin_v: int = 106,
 ) -> list[str]:
+    """Upsert SubtitleFlow-generated styles while leaving source styles untouched.
+
+    `style_values` is the v0.2 profile path. The legacy scalar arguments remain for API
+    compatibility and are used when no profile values are supplied.
+    """
     output = list(lines)
     bounds = _sections(output)
     styles_bound = bounds.get("[v4+ styles]") or bounds.get("[v4 styles]")
     if not styles_bound:
-        # Insert a modern style section before Events.
         events_start = bounds["[events]"][0]
         block = [
             "[V4+ Styles]",
@@ -279,8 +284,7 @@ def inject_styles(
 
     style_start, style_end = styles_bound
     style_format: list[str] = []
-    insert_at = style_end
-    existing_names: set[str] = set()
+    style_line_indices: dict[str, int] = {}
     for idx in range(style_start + 1, style_end):
         line = output[idx]
         if line.lstrip().lower().startswith("format:"):
@@ -288,37 +292,39 @@ def inject_styles(
         elif line.lstrip().lower().startswith("style:"):
             payload = line.partition(":")[2].lstrip()
             if payload:
-                existing_names.add(payload.split(",", 1)[0].strip())
+                style_line_indices[payload.split(",", 1)[0].strip()] = idx
+
+    values_by_name = style_values or {
+        "SF-ZH": _default_style_values(
+            "SF-ZH",
+            font=target_font,
+            size=target_size,
+            margin_v=target_margin_v,
+            bold=True,
+        ),
+        "SF-JA": _default_style_values(
+            "SF-JA",
+            font=source_font,
+            size=source_size,
+            margin_v=source_margin_v,
+            bold=False,
+        ),
+    }
 
     additions: list[str] = []
-    if "SF-ZH" not in existing_names:
-        additions.append(
-            build_style_line(
-                style_format,
-                _style_values(
-                    "SF-ZH",
-                    font=target_font,
-                    size=target_size,
-                    margin_v=target_margin_v,
-                    bold=True,
-                ),
-            )
-        )
-    if "SF-JA" not in existing_names:
-        additions.append(
-            build_style_line(
-                style_format,
-                _style_values(
-                    "SF-JA",
-                    font=source_font,
-                    size=source_size,
-                    margin_v=source_margin_v,
-                    bold=False,
-                ),
-            )
-        )
+    for name in ("SF-ZH", "SF-JA"):
+        raw_values = values_by_name.get(name)
+        if not raw_values:
+            continue
+        values = {str(key): str(value) for key, value in raw_values.items()}
+        values["Name"] = name
+        line = build_style_line(style_format, values)
+        if name in style_line_indices:
+            output[style_line_indices[name]] = line
+        else:
+            additions.append(line)
     if additions:
-        output[insert_at:insert_at] = additions
+        output[style_end:style_end] = additions
     return output
 
 
@@ -326,15 +332,18 @@ def render_from_template(
     template: AssDocument,
     generated_events: list[tuple[int, int, str]],
     *,
+    style_values: dict[str, dict[str, str]] | None = None,
     target_font: str = "Noto Sans CJK SC",
     target_size: int = 48,
     target_margin_v: int = 52,
     source_font: str = "Noto Sans CJK JP",
     source_size: int = 38,
     source_margin_v: int = 106,
+    preserve_style_names: set[str] | None = None,
 ) -> str:
     lines = inject_styles(
         template.lines,
+        style_values=style_values,
         target_font=target_font,
         target_size=target_size,
         target_margin_v=target_margin_v,
@@ -345,18 +354,18 @@ def render_from_template(
     bounds = _sections(lines)
     start, end = bounds["[events]"]
     format_idx: int | None = None
-    event_format: list[str] = []
     for idx in range(start + 1, end):
         if lines[idx].lstrip().lower().startswith("format:"):
             format_idx = idx
-            event_format = _parse_format(lines[idx])
             break
     if format_idx is None:
         raise ValidationError("Template Events Format line disappeared")
 
     preserved: list[tuple[int, int, str]] = []
+    preserve_style_names = preserve_style_names or set()
     for event in template.events:
-        if event.protected:
+        event_style = event.fields.get("Style", "").strip()
+        if event.protected or event_style in preserve_style_names:
             preserved.append((event.start_ms, event.index, event.raw_line))
 
     merged = preserved + generated_events

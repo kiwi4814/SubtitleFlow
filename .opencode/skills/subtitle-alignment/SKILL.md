@@ -1,10 +1,13 @@
 ---
 name: Subtitle Alignment
-description: Align subtitle sources against Timing Master A with N:M-aware grouping while preserving branch-specific segmentation.
+description: Align only workflows that need cross-source evidence, with N:M grouping and an authoritative timing role.
 ---
 
-Run deterministic preparation via `subflow prepare` rather than matching by line number.
+Run `subflow prepare`; never match by line number.
 
-TW branch aligns A↔D. JP branch aligns A↔B, then attaches C to the JP work units. A defines the video coordinate system, but grouping can be 1:N, N:1, or N:M.
+- `single`: no alignment. S owns timing and text.
+- `source-assisted`: align C to S for semantic evidence only; never replace S timing.
+- `tw`: A↔D; A defines video coordinates.
+- `jp`: A↔B, then attach C to JP work units.
 
-Review low-confidence alignment flags before trusting semantic comparisons. Do not wholesale replace A timing with C timing.
+Grouping may be 1:N, N:1, or N:M. Low confidence is a review signal, not proof of a translation error.

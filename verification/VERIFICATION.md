@@ -1,193 +1,217 @@
-# SubtitleFlow v0.1.0 Verification Report
+# SubtitleFlow v0.2.0 Verification
 
-Verification date: 2026-08-31.
-
-This report separates checks that actually ran from checks that could not run in the build environment.
+Verification date: 2026-08-31
 
 ## Release verdict
 
-The generic deterministic core, OpenCode project assets, strict release gates, real FFmpeg/libass render path, legacy ASS stress path, and wheel installation path were exercised successfully.
+**PASS for source distribution and local use, with environment-limited exceptions explicitly listed below.**
 
-Two optional production capabilities were **not** executable in this container:
+The final repository passes the automated test suite, Python bytecode compilation, package build, clean-venv installation, source-integrity stress tests, Hybrid ASS preservation checks, real FFmpeg/libass render mechanics, and real Doraemon ASS font/style analysis.
 
-- true MKVToolNix remux (`mkvmerge` is not installed);
-- real Traditional→Simplified conversion with OpenCC (`opencc` / Python OpenCC is not installed).
+The current verification container does **not** provide `mkvmerge`, `mkvextract`, OpenCC, or OpenCode. Therefore actual MKV remux, real attachment extraction, Traditional-to-Simplified conversion, and a live OpenCode session were not executed here. Those paths have deterministic/unit coverage and `subflow doctor` reports their availability at runtime.
 
-The OpenCode executable is also not installed in this container, so OpenCode V2 assets were statically validated against the current official V2 configuration model rather than launched in a live OpenCode session.
+## Final automated checks
 
-## Automated test suite
+- Python: **3.13.5**
+- `python -m compileall -q src tests tools`: **PASS**
+- `python -m pytest -q`: **42 / 42 PASS**
+- Coverage: **78% statements** (`2161 / 2761` statements covered; 600 missed)
+- Wheel build: **PASS**
+- Wheel: `dist/subtitleflow-0.2.0-py3-none-any.whl`
+- Wheel SHA-256: `df3d79b1e033a9882007a36f07b3a01d51dd64ad27bc558ad6fa54ecb3bd12af`
+- Fresh virtualenv installation: **PASS**
+- Installed package version: **0.2.0**
+- Installed CLI entry point `subflow`: **PASS**
+- Installed bundled style resource `kiwi-collector-v1`: **PASS**
+- `pip check`: **PASS**
+- Repository font binaries (`*.ttf`, `*.otf`, `*.ttc`, `*.otc`): **0**
 
-Executed:
+Ruff was not completed because Ruff is not installed in the container and the environment cannot reach the package/interpreter download endpoints required by the attempted `uv run` invocation. This is reported as an environment limitation, not as a lint pass.
 
-```text
-PYTHONPATH=src pytest -q
-```
+## v0.2 workflow coverage
 
-Result: **32/32 passed**.
+Regression tests cover the following workflow shapes:
 
-Coverage run:
+1. `single` — self-contained S subtitle; timing and target text come from S.
+2. `source-assisted` — S remains the timing/target master; C is semantic evidence only.
+3. `dub` — A timing + D dub wording.
+4. `bilingual` — A timing + B translated Chinese + C source-language evidence.
+5. `full` — A+B+C+D, producing TW and JP branches.
+6. `auto` — derives valid branches from the available evidence roles.
 
-```text
-PYTHONPATH=src pytest -q --cov=subtitleflow --cov-report=json:verification/coverage.json
-```
+The single-source route deliberately performs no artificial A/B/C/D duplication.
 
-Result: **80% statement coverage** (1676 / 2101 statements).
+## Final Kiwi Collector v1 style
 
-High-risk deterministic modules are covered substantially above the package-wide number; external-binary execution branches account for much of the uncovered code.
+Profile: `styles/kiwi-collector-v1.json`
 
-## Syntax / compatibility gate
+### Generated Simplified Chinese dialogue (`SF-ZH`)
 
-Executed:
+- Font: `文泉驿微米黑`
+- Size: 60
+- ScaleY: 105%
+- Bold: yes
+- Primary color: `&H00D2D2D2` (grey-white)
+- Outline: 2 px black
+- Shadow: 0
+- Alignment: bottom-center
+- MarginV: 103
+- Event override: `\blur2`
 
-```text
-python -m compileall -q src tests tools
-```
+### Generated Japanese dialogue (`SF-JA`)
 
-Result: **passed** on Python 3.13.5.
+- Font: `文泉驿微米黑`
+- Size: 50
+- ScaleY: 100%
+- Bold: no
+- Primary color: `&H000E95CE` (warm Doraemon-derived gold)
+- Outline: 2 px black
+- Shadow: 0
+- Alignment: bottom-center
+- MarginV: 45
+- Event override: `\blur2`
 
-The test suite also parses all production Python files with Python 3.11 grammar via `ast.parse(..., feature_version=(3, 11))`; this passed. Actual Python 3.11 and 3.12 runtimes were not installed in this container, so runtime compatibility on those interpreters remains to be exercised in CI/local environments.
+### Hybrid preservation
 
-## Wheel packaging and clean installation
+The profile preserves complex authored events and common special styles such as notes, titles, songs, screens/signs, ruby, staff, effects, karaoke, and OP/ED/IN-prefixed styles. Special source typesetting is kept instead of being flattened into `SF-ZH` / `SF-JA`.
 
-A packaging failure was found during verification: current setuptools rejected simultaneous PEP 639 `license = "MIT"` metadata and a legacy MIT license classifier. The legacy classifier was removed and a regression test was added.
+Profile SHA-256: `e0195beb1dc039de9def1a2c763e5074fec6aeb0118a2fb662ddd01337d61837`
 
-After the fix, executed:
+## Font policy and MKV attachment safety
 
-```text
-python -m pip wheel . --no-build-isolation --no-deps -w dist
-python -m venv /tmp/subflow-wheel-venv
-/tmp/subflow-wheel-venv/bin/python -m pip install --no-index --no-deps dist/subtitleflow-0.1.0-py3-none-any.whl
-/tmp/subflow-wheel-venv/bin/subflow --repo /mnt/data/SubtitleFlow --json doctor
-/tmp/subflow-wheel-venv/bin/subflow --repo /mnt/data/SubtitleFlow --json status _visualtest demo
-```
+SubtitleFlow v0.2.0 intentionally ships **no font binary files**. Users place their legally held fonts under `fonts/local/` or provide `fonts/font-map.json` based on `fonts/font-map.example.json`.
 
-Result: **passed**.
+The selected Doraemon style family set is:
 
-The wheel is included under `dist/` in the project package.
+- `文泉驿微米黑` — Chinese/Japanese ordinary dialogue
+- `思源黑体 CN Heavy` — notes
+- `锐字云字库综艺体1.0` — movie title
+- `方正粗圆_GBK` — songs, gadget names, screen text
+- `思源宋体 CN` — special wanted-poster screen text
 
-## Strict synthetic end-to-end release
+The font audit scans fonts actually referenced by the final ASS, including inline `\fn` tags. A leading `@` used for vertical Windows/ASS fonts is normalized, so `@方正粗圆_GBK` and `方正粗圆_GBK` resolve to the same family.
 
-A copyright-free synthetic A/B/C/D fixture was run through the production-style pipeline:
+For each resolved font file, the release freezes:
 
-1. immutable source import + SHA-256 verification;
-2. normalize;
-3. A↔D and A↔B↔C alignment;
-4. deterministic glossary normalization;
-5. TW and JP workfile generation;
-6. compile;
-7. deterministic QA;
-8. independent semantic-QA evidence;
-9. actual FFmpeg/libass rendering;
-10. manual/vision inspection of generated PNGs;
-11. explicit visual approval;
-12. strict release freeze with all default quality gates enabled.
+- family name
+- local file path
+- attachment filename
+- MIME type
+- file size
+- SHA-256
+- reason(s) it is required by the final ASS
 
-Result: **passed**.
+Before remux, SubtitleFlow rechecks the frozen font hash and size. Missing or changed font files block production remux.
 
-Evidence retained in this directory:
+If the input MKV already contains an attachment with the same filename, v0.2.0 does not trust filename/size alone: it uses `mkvextract` when available to extract the existing attachment and compares SHA-256. Identical content is reused; a same-name/different-hash collision blocks remux. If such a collision must be resolved but `mkvextract` is unavailable, remux blocks rather than guessing.
 
-- `visual-jp.png`
-- `visual-tw.png`
-- `synthetic-qa-summary.json`
-- `synthetic-release-manifest.json`
+Missing fonts are attached with `mkvmerge` using modern attachment options and font MIME types. The output MKV is identified again after remux to verify expected attachment names/sizes are present.
 
-The visual fixture intentionally includes a protected positioned sign. Inspection confirmed the sign survived and the generated TW / JP bilingual dialogue rendered without collision in the checked frames.
+## Real Doraemon 2023 ASS analysis
 
-## Real legacy ASS stress tests
+Source:
 
-External Doraemon subtitle files were used only as local stress inputs; no commercial subtitle text is bundled with SubtitleFlow.
+`哆啦A梦：大雄与天空的理想乡 (2023) - 1080p.BluRay Remux.H.264.DTS-HD TrueHD Dolby Atmos MA 7.1.chs.ass`
 
-### Large legacy dialogue file
+Observed:
 
-1980 legacy ASS:
+- Total events: **3435**
+- CN ordinary dialogue: **1678**
+- JP ordinary dialogue: **1678**
+- Title: **1**
+- Notes: **12**
+- Songs: **66**
+- Hybrid-preserved special-style events: **79 / 79**
+- Unique referenced font families: **5**
+- `@方正粗圆_GBK` correctly normalized to `方正粗圆_GBK`
+- Source SHA before/after analysis: `9f788f4275ed43fd49fcc185517ca22f195ff1b4d3bed0e8c80470d0f084c678`
+- Source unchanged: **PASS**
 
-- 824 events processed;
-- full normalize → workfile → compile → QA → mechanical release path completed;
-- source SHA-256 before and after was identical:
-  `cc2ea32bb92ed59928fb06d150934b543af5436970d61a5c7e58a6c60101e08b`.
+Machine-readable evidence: `verification/doraemon-2023-style-check.json`.
 
-Result: **passed**.
+## Legacy Doraemon stress tests
 
-### Complex ASS protection test
+### 1980 large ASS
 
-2008 complex ASS:
+- Parsed events: **824**
+- Normalize: **PASS**
+- Alignment/workfile generation: **PASS**
+- TW compile: **PASS**
+- JP compile: **PASS**
+- Deterministic QA: **PASS**
+- Mechanical release path: **PASS**
+- Source SHA before/after: `cc2ea32bb92ed59928fb06d150934b543af5436970d61a5c7e58a6c60101e08b`
+- Source unchanged: **PASS**
 
-- protected events detected: 7,363;
-- protected raw event lines retained after round-trip: 7,363 / 7,363.
+The stress harness disables production-only research/semantic/visual/font gates because its purpose is parser/workfile/compiler round-trip verification, not to declare that historical subtitle final.
 
-Result: **passed**.
+### 2008 complex ASS
 
-Machine-readable counts are in `verification-results.json`.
+- Protected events detected: **7363**
+- Protected events retained after round-trip: **7363**
+- Result: **7363 / 7363 PASS**
 
-## Real FFmpeg/libass verification
+Machine-readable evidence: `verification/verification-results-v020.json`.
 
-Environment:
+## FFmpeg/libass render verification
 
-- FFmpeg: 7.1.5
-- `ass` filter: available
-- `subtitles` filter: available
-- ffprobe: available
+- FFmpeg: **7.1.5**
+- `ffprobe`: available
+- libass subtitle filter: available
+- Synthetic 1920x1080 H.264 test video: generated successfully
+- `examples/kiwi-collector-style-specimen.ass`: rendered successfully
+- Non-empty output PNG: **PASS**
 
-Actual PNG frames were generated from a synthetic MKV and inspected.
+This verifies the ASS is renderable and the render path works. It does **not** certify the exact final typography because the selected user fonts are not installed in this verification container; libass therefore uses fallback fonts here. Exact-font visual approval must be performed on the user's machine after the selected font files are available.
 
-During this verification two rendering bugs were found and fixed:
+Machine-readable evidence: `verification/render-v020.json`.
 
-1. FFmpeg could return success for an out-of-range timestamp without creating a PNG; SubtitleFlow now checks media duration and verifies every output file exists and is non-empty.
-2. Input seeking reset timestamps in a way that could produce blank subtitle frames; rendering now preserves timestamps with `-copyts` and selects actual work-unit timestamps when layout candidates are unavailable.
+## Environment-limited checks
 
-## Release / state invalidation verification
+The following tools were absent from the verification container:
 
-The suite verifies that downstream state cannot remain falsely green after upstream changes. In particular:
+- `mkvmerge`: **not installed** — actual final MKV remux was not executed.
+- `mkvextract`: **not installed** — real existing-attachment SHA extraction was not executed; collision logic is covered by tests.
+- OpenCC: **not installed** — real `t2s` conversion was not executed.
+- OpenCode: **not installed** — `.opencode/` assets were statically validated, but no live OpenCode session was started.
 
-- prepare changes invalidate compiled/QA/visual/release state;
-- compile changes invalidate QA and later gates;
-- QA reruns invalidate semantic and visual approvals;
-- semantic proposal import or human decision invalidates compile and all downstream gates;
-- rendering invalidates prior visual approval;
-- source/canon changes invalidate normalization and downstream state;
-- release compares a SHA-256 input snapshot and refuses stale QA;
-- remux rechecks the frozen QA snapshot, QA report hash, release ASS hashes, and source hashes.
+Available:
 
-Result: **passed**.
+- Git
+- FFmpeg / ffprobe / libass
+- FontTools in the development verification environment
 
-## OpenCode V2 assets
+See `verification/environment-v020.json`.
 
-Static tests verify:
+## Final artifact acceptance criteria
 
-- project `AGENTS.md` exists;
-- four custom agents exist with expected primary/subagent modes;
-- seven project skills exist under `.opencode/skills/*/SKILL.md`;
-- subtitle slash-command templates exist under `.opencode/commands/subtitle/`;
-- configuration uses the V2 `permissions` array and V2 action names;
-- deprecated V1 field/action names (`permission`, `bash`, `task`) are not present in `opencode.jsonc`.
+Before the ZIP is delivered, the release procedure additionally requires:
 
-The OpenCode binary itself was unavailable, so live discovery/invocation is **not claimed**.
+1. remove caches/build scratch data;
+2. keep the built wheel and verification evidence;
+3. create the ZIP;
+4. verify the ZIP contains no font binaries;
+5. extract the ZIP into a separate temporary directory;
+6. run all 42 tests from the extracted artifact;
+7. install the wheel from the extracted artifact into another clean virtualenv;
+8. confirm version, CLI entry point, and bundled style resource;
+9. record the final ZIP SHA-256.
 
-## MKVToolNix / Remux
+The final response reports the results of those artifact-level checks.
 
-The remux command builder and stale-release protections are unit tested. A dry-run command was also generated from the strict synthetic release using current option names such as `--default-track-flag` and BCP 47 `zh-CN` language tags.
+## Artifact-level verification result
 
-`mkvmerge` was not installed in the build container, so a real MKV output was **not produced and is not claimed as verified**.
+The distribution ZIP was built and tested as an independent artifact:
 
-## OpenCC
+- ZIP contained font binaries: **0**
+- ZIP extracted to a separate temporary directory: **PASS**
+- Test suite executed from extracted ZIP: **42 / 42 PASS**
+- `compileall` executed from extracted ZIP: **PASS**
+- Included wheel installed into a second clean virtualenv: **PASS**
+- `pip check` in that virtualenv: **PASS**
+- Installed package version: **0.2.0**
+- Installed `kiwi-collector-v1` package resource: **PASS**
+- Installed dialogue profile check: Chinese `文泉驿微米黑` 60; Japanese `文泉驿微米黑` 50: **PASS**
+- Installed `subflow doctor` starts successfully: **PASS**
 
-SubtitleFlow deliberately refuses to pretend Traditional→Simplified conversion happened when OpenCC is unavailable. The synthetic tests disable T2S explicitly because their fixture text is already Simplified Chinese.
-
-The OpenCC executable/library was not available in this container; real T2S execution remains a local-environment check.
-
-## Defects found and fixed during verification
-
-- FFmpeg success-without-output false positive.
-- FFmpeg timestamp-reset blank-frame behavior.
-- Preview fallback choosing timestamps with no active subtitle.
-- Render success incorrectly conflated with visual approval.
-- QA remaining apparently valid after work/review/canon changes.
-- State page retaining stale downstream `passed` values.
-- Remux accepting drift after a frozen release.
-- Older `mkvmerge --default-track` spelling replaced with current `--default-track-flag`.
-- Packaging failure caused by obsolete license classifier under current setuptools.
-- ASS drawing protection generalized beyond `\\p1`–`\\p4` and protected zero-duration comment metadata made parse-safe.
-
-## Environment snapshot
-
-See `environment.json` for the exact detected tools used by this verification run.
+The final ZIP SHA-256 is reported alongside the download link because embedding a ZIP's own hash inside itself would change the archive hash.

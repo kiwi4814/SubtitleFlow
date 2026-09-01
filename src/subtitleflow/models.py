@@ -5,8 +5,8 @@ from typing import Any, Literal
 
 from .errors import ValidationError
 
-SourceRole = Literal["A", "B", "C", "D"]
-BranchName = Literal["tw", "jp"]
+SourceRole = Literal["A", "B", "C", "D", "S"]
+BranchName = Literal["clean", "tw", "jp"]
 ReviewStatus = Literal["pending", "approved", "rejected", "superseded"]
 
 
@@ -209,7 +209,7 @@ class ReviewCandidate:
     def validate(self) -> None:
         if not self.candidate_id:
             raise ValidationError("Review candidate missing candidate_id")
-        if self.branch not in {"tw", "jp"}:
+        if self.branch not in {"clean", "tw", "jp"}:
             raise ValidationError(f"Unknown review branch: {self.branch}")
         if not 0 <= self.confidence <= 1:
             raise ValidationError("Review confidence must be between 0 and 1")

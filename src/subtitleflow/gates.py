@@ -26,8 +26,8 @@ def mark_semantic_qa_complete(paths: TitlePaths, *, note: str | None = None) -> 
 
 
 def mark_visual_qa_complete(paths: TitlePaths, branch: str, *, note: str | None = None) -> None:
-    if branch not in {"tw", "jp"}:
-        raise ValidationError("branch must be tw or jp")
+    if branch not in {"clean", "tw", "jp"}:
+        raise ValidationError("branch must be clean, tw, or jp")
     state = read_json(paths.state)
     render_stage = state.get("stages", {}).get(f"render_{branch}", {})
     if render_stage.get("status") != "passed":

@@ -1,39 +1,49 @@
 from __future__ import annotations
 
-import math
 from pathlib import Path
 from typing import Any
 
+from .fonts import audit_fonts
 from .formats.ass import parse_ass
 from .glossary import forbidden_hits, load_glossary
 from .io import read_json, write_json
 from .review import pending_count
 from .state import invalidate_after_qa, update_stage
-from .workfile import load_workfile
+from .style import ass_style_values, layout_settings, load_style_profile
 from .util import sha256_file
+from .workflow import active_branches, branch_release_filename
+from .workfile import load_workfile
 from .workspace import TitlePaths, verify_sources
 
 
-
-
 def qa_input_snapshot(paths: TitlePaths) -> dict[str, str]:
-    """Hash all durable inputs/outputs whose change makes a QA result stale."""
+    """Hash durable inputs/outputs whose change makes deterministic QA stale."""
     candidates = [
         paths.title_config,
         paths.manifest,
         paths.project_canon / "glossary.json",
         paths.title_canon / "glossary.json",
         paths.review / "candidates.json",
-        paths.work / "tw.json",
-        paths.work / "jp.json",
-        paths.release / f"{paths.title_id}.zh-CN.tw.ass",
-        paths.release / f"{paths.title_id}.zh-CN-ja.ass",
+        paths.qa / "fonts.json",
     ]
+    for branch in ("clean", "tw", "jp"):
+        candidates.append(paths.work / f"{branch}.json")
+        candidates.append(paths.release / branch_release_filename(paths.title_id, branch))
+    try:
+        profile = load_style_profile(paths)
+        candidates.append(Path(str(profile["_profile_path"])))
+    except Exception:
+        pass
     snapshot: dict[str, str] = {}
     for path in candidates:
         if path.is_file():
-            snapshot[str(path.relative_to(paths.title if path.is_relative_to(paths.title) else paths.repo))] = sha256_file(path)
+            try:
+                key = str(path.relative_to(paths.title))
+            except ValueError:
+                key = str(path.relative_to(paths.repo)) if path.is_relative_to(paths.repo) else str(path)
+            snapshot[key] = sha256_file(path)
     return dict(sorted(snapshot.items()))
+
 
 def _display_width(text: str, font_size: int) -> float:
     width = 0.0
@@ -63,9 +73,10 @@ def structural_qa(paths: TitlePaths) -> dict[str, Any]:
         integrity = {"ok": False, "error": str(exc)}
         errors.append({"kind": "source-integrity", "message": str(exc)})
 
-    for branch in ("tw", "jp"):
+    for branch in active_branches(paths):
         work_path = paths.work / f"{branch}.json"
         if not work_path.exists():
+            errors.append({"branch": branch, "kind": "missing-workfile"})
             continue
         work = load_workfile(paths, branch)
         previous_end = -1
@@ -76,6 +87,8 @@ def structural_qa(paths: TitlePaths) -> dict[str, Any]:
                 errors.append({"branch": branch, "unit": unit.id, "kind": "empty-final-text"})
             if branch == "jp" and not (unit.source_text or "").strip():
                 errors.append({"branch": branch, "unit": unit.id, "kind": "missing-japanese-source"})
+            if branch == "clean" and work.metadata.get("source_assisted") and not (unit.source_text or "").strip():
+                warnings.append({"branch": branch, "unit": unit.id, "kind": "missing-source-evidence"})
             if previous_end > unit.start_ms:
                 warnings.append(
                     {
@@ -86,7 +99,7 @@ def structural_qa(paths: TitlePaths) -> dict[str, Any]:
                     }
                 )
             previous_end = max(previous_end, unit.end_ms)
-            if "low-alignment-confidence" in unit.flags or "low-japanese-alignment-confidence" in unit.flags:
+            if any("low-" in flag and "alignment-confidence" in flag for flag in unit.flags):
                 warnings.append({"branch": branch, "unit": unit.id, "kind": "low-alignment-confidence"})
     pending = pending_count(paths)
     if pending:
@@ -105,7 +118,7 @@ def structural_qa(paths: TitlePaths) -> dict[str, Any]:
 def terminology_qa(paths: TitlePaths) -> dict[str, Any]:
     rules = load_glossary(paths)
     hits: list[dict[str, Any]] = []
-    for branch in ("tw", "jp"):
+    for branch in active_branches(paths):
         work_path = paths.work / f"{branch}.json"
         if not work_path.exists():
             continue
@@ -119,17 +132,21 @@ def terminology_qa(paths: TitlePaths) -> dict[str, Any]:
 
 
 def layout_qa(paths: TitlePaths) -> dict[str, Any]:
-    config = read_json(paths.title_config)
-    ass_cfg = config.get("ass", {})
-    target_size = int(ass_cfg.get("target_size", 48))
-    source_size = int(ass_cfg.get("source_size", 38))
-    max_rows_warning = int(ass_cfg.get("max_visual_rows_warning", 4))
-    usable_width = 1840.0
+    zh_style = ass_style_values(paths, "SF-ZH")
+    ja_style = ass_style_values(paths, "SF-JA")
+    target_size = int(float(zh_style.get("Fontsize", 60)))
+    source_size = int(float(ja_style.get("Fontsize", 50)))
+    layout = layout_settings(paths)
+    max_rows_warning = int(layout.get("max_visual_rows_warning", 4))
+    usable_width = float(layout.get("usable_width", 1840))
+    wide_ratio = float(layout.get("wide_warning_ratio", 0.82))
+    very_wide_ratio = float(layout.get("very_wide_warning_ratio", 0.90))
+    overflow_ratio = float(layout.get("overflow_ratio", 1.0))
     warnings: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
     candidates: list[dict[str, Any]] = []
 
-    for branch in ("tw", "jp"):
+    for branch in active_branches(paths):
         path = paths.work / f"{branch}.json"
         if not path.exists():
             continue
@@ -142,13 +159,13 @@ def layout_qa(paths: TitlePaths) -> dict[str, Any]:
             max_source = max((_display_width(row, source_size) for row in source_rows), default=0.0)
             ratio = max(max_target, max_source) / usable_width if usable_width else 0.0
             severity: str | None = None
-            if ratio > 1.0:
+            if ratio > overflow_ratio:
                 errors.append({"branch": branch, "unit": unit.id, "kind": "estimated-overflow", "width_ratio": round(ratio, 3)})
                 severity = "error"
-            elif ratio > 0.9:
+            elif ratio > very_wide_ratio:
                 warnings.append({"branch": branch, "unit": unit.id, "kind": "very-wide", "width_ratio": round(ratio, 3)})
                 severity = "warning"
-            elif ratio > 0.82:
+            elif ratio > wide_ratio:
                 warnings.append({"branch": branch, "unit": unit.id, "kind": "wide", "width_ratio": round(ratio, 3)})
                 severity = "warning"
             if visual_rows >= max_rows_warning:
@@ -177,6 +194,7 @@ def layout_qa(paths: TitlePaths) -> dict[str, Any]:
             "play_res_x": 1920,
             "usable_width": int(usable_width),
             "static_estimate_only": True,
+            "style_profile": load_style_profile(paths).get("id"),
         },
     }
     write_json(paths.qa / "layout.json", report)
@@ -187,6 +205,8 @@ def compiled_ass_qa(paths: TitlePaths) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
     for ass in sorted(paths.release.glob("*.ass")):
+        if ass.name.endswith(".preview.ass"):
+            continue
         try:
             doc = parse_ass(ass)
             results.append(
@@ -209,6 +229,7 @@ def run_all_qa(paths: TitlePaths) -> dict[str, Any]:
     terminology = terminology_qa(paths)
     layout = layout_qa(paths)
     compiled = compiled_ass_qa(paths)
+    fonts = audit_fonts(paths)
     overall = structural["ok"] and terminology["ok"] and layout["ok"] and compiled["ok"]
     report = {
         "schema_version": 1,
@@ -217,6 +238,7 @@ def run_all_qa(paths: TitlePaths) -> dict[str, Any]:
         "terminology": terminology,
         "layout": layout,
         "compiled_ass": compiled,
+        "fonts": fonts,
         "input_snapshot": qa_input_snapshot(paths),
     }
     write_json(paths.qa / "summary.json", report)

@@ -12,31 +12,35 @@ from .formats.ass import (
     parse_ass,
     render_from_template,
 )
-from .io import read_json
 from .review import pending_count
 from .state import invalidate_after_compile, update_stage
+from .style import ass_style_values, event_override_tag, is_special_source_style
 from .text import ass_text
 from .workfile import load_workfile
+from .workflow import active_branches
 from .workspace import TitlePaths, require_roles, verify_sources
 
 
-def _template(paths: TitlePaths) -> AssDocument:
-    record = require_roles(paths, {"A"})["A"]
+def _template(paths: TitlePaths, role: str) -> AssDocument:
+    record = require_roles(paths, {role})[role]
     source = paths.title / record["path"]
     if source.suffix.lower() in {".ass", ".ssa"}:
         return parse_ass(source)
     return minimal_ass_document()
 
 
-def _style_args(config: dict) -> dict[str, object]:
-    ass = config.get("ass", {})
+def _profile_styles(paths: TitlePaths) -> dict[str, dict[str, str]]:
     return {
-        "target_font": str(ass.get("target_font", "Noto Sans CJK SC")),
-        "target_size": int(ass.get("target_size", 48)),
-        "target_margin_v": int(ass.get("target_margin_v", 52)),
-        "source_font": str(ass.get("source_font", "Noto Sans CJK JP")),
-        "source_size": int(ass.get("source_size", 38)),
-        "source_margin_v": int(ass.get("source_margin_v", 106)),
+        "SF-ZH": ass_style_values(paths, "SF-ZH"),
+        "SF-JA": ass_style_values(paths, "SF-JA"),
+    }
+
+
+def _preserved_style_names(paths: TitlePaths, template: AssDocument) -> set[str]:
+    return {
+        event.fields.get("Style", "").strip()
+        for event in template.events
+        if is_special_source_style(paths, event.fields.get("Style", ""))
     }
 
 
@@ -53,24 +57,52 @@ def _write_rendered(paths: TitlePaths, filename: str, text: str) -> Path:
     return output
 
 
-def compile_tw(paths: TitlePaths, *, preview: bool = False) -> Path:
-    _ensure_compile_gate(paths, preview=preview)
-    work = load_workfile(paths, "tw")
-    config = read_json(paths.title_config)
-    template = _template(paths)
+def _target_events(template: AssDocument, units: Iterable, *, paths: TitlePaths | None = None, serial_base: int = 1_000_000) -> list[tuple[int, int, str]]:
     events: list[tuple[int, int, str]] = []
-    for index, unit in enumerate(work.units, start=1):
+    for index, unit in enumerate(units, start=1):
         if not unit.final_text.strip():
-            raise ValidationError(f"TW unit {unit.id} has empty final_text")
+            raise ValidationError(f"{unit.id} has empty final_text")
+        target_text = ass_text(unit.final_text)
+        override = event_override_tag(paths, "SF-ZH") if paths is not None else None
+        if override:
+            target_text = "{" + override + "}" + target_text
         values = make_dialogue_values(
             template.events_format,
             start_ms=unit.start_ms,
             end_ms=unit.end_ms,
-            text=ass_text(unit.final_text),
+            text=target_text,
             style="SF-ZH",
         )
-        events.append((unit.start_ms, 1_000_000 + index, build_event_line(template.events_format, values)))
-    rendered = render_from_template(template, events, **_style_args(config))
+        events.append((unit.start_ms, serial_base + index, build_event_line(template.events_format, values)))
+    return events
+
+
+def compile_clean(paths: TitlePaths, *, preview: bool = False) -> Path:
+    _ensure_compile_gate(paths, preview=preview)
+    work = load_workfile(paths, "clean")
+    template = _template(paths, "S")
+    rendered = render_from_template(
+        template,
+        _target_events(template, work.units, paths=paths),
+        style_values=_profile_styles(paths),
+        preserve_style_names=_preserved_style_names(paths, template),
+    )
+    suffix = ".preview.ass" if preview else ".ass"
+    output = _write_rendered(paths, f"{paths.title_id}.zh-CN{suffix}", rendered)
+    update_stage(paths, "compile_clean", "preview" if preview else "passed", output=str(output.relative_to(paths.title)))
+    return output
+
+
+def compile_tw(paths: TitlePaths, *, preview: bool = False) -> Path:
+    _ensure_compile_gate(paths, preview=preview)
+    work = load_workfile(paths, "tw")
+    template = _template(paths, "A")
+    rendered = render_from_template(
+        template,
+        _target_events(template, work.units, paths=paths),
+        style_values=_profile_styles(paths),
+        preserve_style_names=_preserved_style_names(paths, template),
+    )
     suffix = ".preview.ass" if preview else ".ass"
     output = _write_rendered(paths, f"{paths.title_id}.zh-CN.tw{suffix}", rendered)
     update_stage(paths, "compile_tw", "preview" if preview else "passed", output=str(output.relative_to(paths.title)))
@@ -105,37 +137,27 @@ def _contiguous_source_groups(units: Iterable) -> list[tuple[int, int, str]]:
 def compile_jp_bilingual(paths: TitlePaths, *, preview: bool = False) -> Path:
     _ensure_compile_gate(paths, preview=preview)
     work = load_workfile(paths, "jp")
-    config = read_json(paths.title_config)
-    template = _template(paths)
-    events: list[tuple[int, int, str]] = []
-    serial = 0
-    for unit in work.units:
-        if not unit.final_text.strip():
-            raise ValidationError(f"JP unit {unit.id} has empty Chinese final_text")
-        serial += 1
-        values = make_dialogue_values(
-            template.events_format,
-            start_ms=unit.start_ms,
-            end_ms=unit.end_ms,
-            text=ass_text(unit.final_text),
-            style="SF-ZH",
-        )
-        events.append((unit.start_ms, 1_000_000 + serial, build_event_line(template.events_format, values)))
-
+    template = _template(paths, "A")
+    events = _target_events(template, work.units, paths=paths)
+    serial = len(events)
     for start_ms, end_ms, text in _contiguous_source_groups(work.units):
         if not text.strip():
             continue
         serial += 1
+        source_text = ass_text(text)
+        override = event_override_tag(paths, "SF-JA")
+        if override:
+            source_text = "{" + override + "}" + source_text
         values = make_dialogue_values(
             template.events_format,
             start_ms=start_ms,
             end_ms=end_ms,
-            text=ass_text(text),
+            text=source_text,
             style="SF-JA",
         )
         events.append((start_ms, 2_000_000 + serial, build_event_line(template.events_format, values)))
 
-    rendered = render_from_template(template, events, **_style_args(config))
+    rendered = render_from_template(template, events, style_values=_profile_styles(paths))
     suffix = ".preview.ass" if preview else ".ass"
     output = _write_rendered(paths, f"{paths.title_id}.zh-CN-ja{suffix}", rendered)
     update_stage(paths, "compile_jp", "preview" if preview else "passed", output=str(output.relative_to(paths.title)))
@@ -145,10 +167,12 @@ def compile_jp_bilingual(paths: TitlePaths, *, preview: bool = False) -> Path:
 def compile_all(paths: TitlePaths, *, preview: bool = False) -> dict[str, str]:
     if not preview:
         invalidate_after_compile(paths)
-    config = read_json(paths.title_config)
     outputs: dict[str, str] = {}
-    if config.get("tw_branch", {}).get("enabled", True):
-        outputs["tw"] = str(compile_tw(paths, preview=preview))
-    if config.get("jp_branch", {}).get("enabled", True):
-        outputs["jp"] = str(compile_jp_bilingual(paths, preview=preview))
+    for branch in active_branches(paths):
+        if branch == "clean":
+            outputs["clean"] = str(compile_clean(paths, preview=preview))
+        elif branch == "tw":
+            outputs["tw"] = str(compile_tw(paths, preview=preview))
+        elif branch == "jp":
+            outputs["jp"] = str(compile_jp_bilingual(paths, preview=preview))
     return outputs
