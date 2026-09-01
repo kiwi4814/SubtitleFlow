@@ -1,0 +1,389 @@
+{
+  "policy": "Evidence retention takes precedence over deduplication. No subtitle was deleted.",
+  "byte_identical_group_count": 0,
+  "possible_semantic_duplicate_pair_count": 19,
+  "byte_identical_groups": [],
+  "possible_semantic_duplicates": [
+    {
+      "duplicate_group_id": "SEM-001",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M01",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0037",
+        "EV0062"
+      ],
+      "organized_paths": [
+        "M01_1980_大雄的恐龙/02_ZH_JP_AUDIO/M01.1980.zh-CN.jp-audio.WOWOWCN.漫游字幕组.ass",
+        "M01_1980_大雄的恐龙/02_ZH_JP_AUDIO/M01.1980.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.923544,
+      "cue_count_ratio": 1.0,
+      "median_start_delta_seconds": 0.5,
+      "p90_start_delta_seconds": 0.5,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-002",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M02",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0038",
+        "EV0064"
+      ],
+      "organized_paths": [
+        "M02_1981_大雄的宇宙开拓史/02_ZH_JP_AUDIO/M02.1981.zh-CN.jp-audio.WOWOWCN.漫游字幕组.ass",
+        "M02_1981_大雄的宇宙开拓史/02_ZH_JP_AUDIO/M02.1981.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.949775,
+      "cue_count_ratio": 1.0,
+      "median_start_delta_seconds": 0.5,
+      "p90_start_delta_seconds": 3.4,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-003",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M04",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0040",
+        "EV0068"
+      ],
+      "organized_paths": [
+        "M04_1983_大雄的海底鬼岩城/02_ZH_JP_AUDIO/M04.1983.zh-CN.jp-audio.WOWOWCN.漫游字幕组.ass",
+        "M04_1983_大雄的海底鬼岩城/02_ZH_JP_AUDIO/M04.1983.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.948875,
+      "cue_count_ratio": 0.999416,
+      "median_start_delta_seconds": null,
+      "p90_start_delta_seconds": null,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-004",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M05",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0041",
+        "EV0070"
+      ],
+      "organized_paths": [
+        "M05_1984_大雄的魔界大冒险/02_ZH_JP_AUDIO/M05.1984.zh-CN.jp-audio.WOWOWCN.漫游字幕组.ass",
+        "M05_1984_大雄的魔界大冒险/02_ZH_JP_AUDIO/M05.1984.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.943474,
+      "cue_count_ratio": 0.995215,
+      "median_start_delta_seconds": null,
+      "p90_start_delta_seconds": null,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-005",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M06",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0042",
+        "EV0072"
+      ],
+      "organized_paths": [
+        "M06_1985_大雄的宇宙小战争/02_ZH_JP_AUDIO/M06.1985.zh-CN.jp-audio.WOWOWCN.Unknown.ass",
+        "M06_1985_大雄的宇宙小战争/02_ZH_JP_AUDIO/M06.1985.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.90936,
+      "cue_count_ratio": 0.997783,
+      "median_start_delta_seconds": null,
+      "p90_start_delta_seconds": null,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-006",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M07",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0043",
+        "EV0074"
+      ],
+      "organized_paths": [
+        "M07_1986_大雄与铁人兵团/02_ZH_JP_AUDIO/M07.1986.zh-CN.jp-audio.WOWOWCN.漫游字幕组.ass",
+        "M07_1986_大雄与铁人兵团/02_ZH_JP_AUDIO/M07.1986.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.926675,
+      "cue_count_ratio": 1.0,
+      "median_start_delta_seconds": 0.0,
+      "p90_start_delta_seconds": 0.0,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-007",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M10",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0046",
+        "EV0080"
+      ],
+      "organized_paths": [
+        "M10_1989_大雄的日本诞生/02_ZH_JP_AUDIO/M10.1989.zh-CN.jp-audio.WOWOWCN.Unknown.ass",
+        "M10_1989_大雄的日本诞生/02_ZH_JP_AUDIO/M10.1989.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.91989,
+      "cue_count_ratio": 0.997241,
+      "median_start_delta_seconds": null,
+      "p90_start_delta_seconds": null,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-008",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M11",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0047",
+        "EV0082"
+      ],
+      "organized_paths": [
+        "M11_1990_大雄与动物行星/02_ZH_JP_AUDIO/M11.1990.zh-CN.jp-audio.WOWOWCN.漫游字幕组.ass",
+        "M11_1990_大雄与动物行星/02_ZH_JP_AUDIO/M11.1990.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.984927,
+      "cue_count_ratio": 0.995851,
+      "median_start_delta_seconds": null,
+      "p90_start_delta_seconds": null,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-009",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M12",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0048",
+        "EV0084"
+      ],
+      "organized_paths": [
+        "M12_1991_大雄的天方夜谭/02_ZH_JP_AUDIO/M12.1991.zh-CN.jp-audio.WOWOWCN.漫游字幕组.ass",
+        "M12_1991_大雄的天方夜谭/02_ZH_JP_AUDIO/M12.1991.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.998088,
+      "cue_count_ratio": 0.999454,
+      "median_start_delta_seconds": null,
+      "p90_start_delta_seconds": null,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-010",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M13",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0049",
+        "EV0086"
+      ],
+      "organized_paths": [
+        "M13_1992_大雄与云之王国/02_ZH_JP_AUDIO/M13.1992.zh-CN.jp-audio.WOWOWCN.HKG字幕组+影月字幕组.ass",
+        "M13_1992_大雄与云之王国/02_ZH_JP_AUDIO/M13.1992.zh-CN.jp-audio.Fansub.HKG字幕组+影月字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.980331,
+      "cue_count_ratio": 0.979604,
+      "median_start_delta_seconds": null,
+      "p90_start_delta_seconds": null,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-011",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M14",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0050",
+        "EV0088"
+      ],
+      "organized_paths": [
+        "M14_1993_大雄与白金迷宫/02_ZH_JP_AUDIO/M14.1993.zh-CN.jp-audio.WOWOWCN.漫游字幕组.ass",
+        "M14_1993_大雄与白金迷宫/02_ZH_JP_AUDIO/M14.1993.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.999393,
+      "cue_count_ratio": 1.0,
+      "median_start_delta_seconds": 0.0,
+      "p90_start_delta_seconds": 0.5,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-012",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M17",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0053",
+        "EV0094"
+      ],
+      "organized_paths": [
+        "M17_1996_大雄与银河超特急/02_ZH_JP_AUDIO/M17.1996.zh-CN.jp-audio.WOWOWCN.漫游字幕组.ass",
+        "M17_1996_大雄与银河超特急/02_ZH_JP_AUDIO/M17.1996.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.95593,
+      "cue_count_ratio": 1.0,
+      "median_start_delta_seconds": 0.0,
+      "p90_start_delta_seconds": 0.0,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-013",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M18",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0054",
+        "EV0096"
+      ],
+      "organized_paths": [
+        "M18_1997_大雄的发条都市冒险记/02_ZH_JP_AUDIO/M18.1997.zh-CN.jp-audio.WOWOWCN.Unknown.ass",
+        "M18_1997_大雄的发条都市冒险记/02_ZH_JP_AUDIO/M18.1997.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.946519,
+      "cue_count_ratio": 0.999328,
+      "median_start_delta_seconds": null,
+      "p90_start_delta_seconds": null,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-014",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M19",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0055",
+        "EV0098"
+      ],
+      "organized_paths": [
+        "M19_1998_大雄的南海大冒险/02_ZH_JP_AUDIO/M19.1998.zh-CN.jp-audio.WOWOWCN.HKG字幕组+影月字幕组.ass",
+        "M19_1998_大雄的南海大冒险/02_ZH_JP_AUDIO/M19.1998.zh-CN.jp-audio.Fansub.HKG字幕组+影月字幕组.ass"
+      ],
+      "cue_sequence_similarity": 1.0,
+      "cue_count_ratio": 1.0,
+      "median_start_delta_seconds": 0.4,
+      "p90_start_delta_seconds": 0.4,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-015",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M20",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0056",
+        "EV0100"
+      ],
+      "organized_paths": [
+        "M20_1999_大雄的宇宙漂流记/02_ZH_JP_AUDIO/M20.1999.zh-CN.jp-audio.WOWOWCN.HKG字幕组+影月字幕组.ass",
+        "M20_1999_大雄的宇宙漂流记/02_ZH_JP_AUDIO/M20.1999.zh-CN.jp-audio.Fansub.HKG字幕组+影月字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.961048,
+      "cue_count_ratio": 0.999311,
+      "median_start_delta_seconds": 0.1,
+      "p90_start_delta_seconds": 0.1,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-016",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M21",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0057",
+        "EV0102"
+      ],
+      "organized_paths": [
+        "M21_2000_大雄的太阳王传说/02_ZH_JP_AUDIO/M21.2000.zh-CN.jp-audio.WOWOWCN.HKG字幕组+影月字幕组.ass",
+        "M21_2000_大雄的太阳王传说/02_ZH_JP_AUDIO/M21.2000.zh-CN.jp-audio.Fansub.HKG字幕组+影月字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.991379,
+      "cue_count_ratio": 0.992842,
+      "median_start_delta_seconds": null,
+      "p90_start_delta_seconds": null,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-017",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M22",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0058",
+        "EV0104"
+      ],
+      "organized_paths": [
+        "M22_2001_大雄与翼之勇者/02_ZH_JP_AUDIO/M22.2001.zh-CN.jp-audio.WOWOWCN.Unknown.ass",
+        "M22_2001_大雄与翼之勇者/02_ZH_JP_AUDIO/M22.2001.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.998481,
+      "cue_count_ratio": 1.0,
+      "median_start_delta_seconds": 0.5,
+      "p90_start_delta_seconds": 0.5,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-018",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M23",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0059",
+        "EV0106"
+      ],
+      "organized_paths": [
+        "M23_2002_大雄与机器人王国/02_ZH_JP_AUDIO/M23.2002.zh-CN.jp-audio.WOWOWCN.Unknown.ass",
+        "M23_2002_大雄与机器人王国/02_ZH_JP_AUDIO/M23.2002.zh-CN.jp-audio.Fansub.漫游字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.997369,
+      "cue_count_ratio": 0.999249,
+      "median_start_delta_seconds": null,
+      "p90_start_delta_seconds": null,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    },
+    {
+      "duplicate_group_id": "SEM-019",
+      "duplicate_type": "possible-duplicate",
+      "movie_id": "M24",
+      "language": "zh-CN",
+      "record_ids": [
+        "EV0060",
+        "EV0108"
+      ],
+      "organized_paths": [
+        "M24_2003_大雄与风之使者/02_ZH_JP_AUDIO/M24.2003.zh-CN.jp-audio.WOWOWCN.地狱字幕组+HKG字幕组+影月字幕组.ass",
+        "M24_2003_大雄与风之使者/02_ZH_JP_AUDIO/M24.2003.zh-CN.jp-audio.Fansub.地狱字幕组+HKG字幕组+影月字幕组.ass"
+      ],
+      "cue_sequence_similarity": 0.987105,
+      "cue_count_ratio": 0.999111,
+      "median_start_delta_seconds": 0.3,
+      "p90_start_delta_seconds": 0.3,
+      "action": "retained-both",
+      "note": "Analytical similarity only; no file was deleted or merged."
+    }
+  ],
+  "cross_language_note": "SC/TC branches are not treated as semantic duplicates solely because they may represent Simplified/Traditional variants; both are retained independently."
+}

@@ -1,0 +1,99 @@
+{
+  "source_master_archive": "字幕原始素材.zip",
+  "source_master_sha256": "208ff6987b5d80185368032c8c7b4321bf58cb0a9a417755f40344ef869b5acf",
+  "source_file_count": 135,
+  "organized_file_count": 135,
+  "successfully_mapped_to_movie_count": 135,
+  "unresolved_file_count": 0,
+  "byte_identical_count": 135,
+  "modified_file_count": 0,
+  "content_modified_files": 0,
+  "subtitle_content_modifications": 0,
+  "subtitle_files_by_inner_pack": {
+    "JP": 11,
+    "P01": 25,
+    "P02": 25,
+    "P03": 74
+  },
+  "byte_identical_duplicate_group_count": 0,
+  "possible_semantic_duplicate_pair_count": 19,
+  "sample_hash_checks": [
+    {
+      "bucket": "1980 explicit",
+      "record_id": "EV0037",
+      "movie_id": "M01",
+      "year": 1980,
+      "organized_path": "M01_1980_大雄的恐龙/02_ZH_JP_AUDIO/M01.1980.zh-CN.jp-audio.WOWOWCN.漫游字幕组.ass",
+      "sha256_before": "d0b568fa45f7ca608ac0f2e39a6ce931fe30de417767662cdb30e632f46fa9e8",
+      "sha256_after": "d0b568fa45f7ca608ac0f2e39a6ce931fe30de417767662cdb30e632f46fa9e8",
+      "match": true
+    },
+    {
+      "bucket": "1980s",
+      "record_id": "EV0076",
+      "movie_id": "M08",
+      "year": 1987,
+      "organized_path": "M08_1987_大雄与龙骑士/02_ZH_JP_AUDIO/M08.1987.zh-CN.jp-audio.Fansub.漫游字幕组.ass",
+      "sha256_before": "cdd16c377dc5124398d33a9403a3b0046664522ecf73636e10cebfd1db6ec1ba",
+      "sha256_after": "cdd16c377dc5124398d33a9403a3b0046664522ecf73636e10cebfd1db6ec1ba",
+      "match": true
+    },
+    {
+      "bucket": "1990s",
+      "record_id": "EV0082",
+      "movie_id": "M11",
+      "year": 1990,
+      "organized_path": "M11_1990_大雄与动物行星/02_ZH_JP_AUDIO/M11.1990.zh-CN.jp-audio.Fansub.漫游字幕组.ass",
+      "sha256_before": "44418008ec4fb11e03ce94634ea049a74527478978d937045546c51ac5d21071",
+      "sha256_after": "44418008ec4fb11e03ce94634ea049a74527478978d937045546c51ac5d21071",
+      "match": true
+    },
+    {
+      "bucket": "2000s",
+      "record_id": "EV0116",
+      "movie_id": "M28",
+      "year": 2008,
+      "organized_path": "M28_2008_大雄与绿巨人传/02_ZH_JP_AUDIO/M28.2008.zh-CN.jp-audio.Fansub.HKG字幕组+影月字幕组+C2字幕组.ass",
+      "sha256_before": "549eea325cad23c6d03c6bff9d112335ee3eda198e4de84c47de57fc20e2483d",
+      "sha256_after": "549eea325cad23c6d03c6bff9d112335ee3eda198e4de84c47de57fc20e2483d",
+      "match": true
+    },
+    {
+      "bucket": "2010s",
+      "record_id": "EV0134",
+      "movie_id": "M36",
+      "year": 2016,
+      "organized_path": "M36_2016_新大雄的日本诞生/02_ZH_JP_AUDIO/M36.2016.zh-CN.jp-audio.Fansub.银光字幕组YGSUB.ass",
+      "sha256_before": "4afa7ede91c11c9c3751cfdd82427fe575de899d92839cdd6e4110446c731fb6",
+      "sha256_after": "4afa7ede91c11c9c3751cfdd82427fe575de899d92839cdd6e4110446c731fb6",
+      "match": true
+    },
+    {
+      "bucket": "2020s",
+      "record_id": "EV0011",
+      "movie_id": "M43",
+      "year": 2024,
+      "organized_path": "M43_2024_大雄的地球交响乐/01_JA_SOURCE/M43.2024.ja-JP.source.Netflix.Unknown.srt",
+      "sha256_before": "31d3cf417067f1dc5d9c4a73284351da1100f1ea1824438cadd0400e1f567ba2",
+      "sha256_after": "31d3cf417067f1dc5d9c4a73284351da1100f1ea1824438cadd0400e1f567ba2",
+      "match": true
+    },
+    {
+      "bucket": "SBM01",
+      "record_id": "EV0131",
+      "movie_id": "SBM01",
+      "year": 2014,
+      "organized_path": "SBM01_2014_STAND_BY_ME_哆啦A梦/02_ZH_JP_AUDIO/SBM01.2014.zh-TW.jp-audio.Fansub.旋風字幕組+丸子家族.ass",
+      "sha256_before": "d8ba975f1888238b64522a2df89f52a31b57eba80b46c5bd8aa26d454c7bc970",
+      "sha256_after": "d8ba975f1888238b64522a2df89f52a31b57eba80b46c5bd8aa26d454c7bc970",
+      "match": true
+    }
+  ],
+  "sbm02_present": false,
+  "all_subtitle_hashes_match_before_after": true,
+  "final_zip": "Doraemon-Subtitle-Evidence-Library-v1.zip",
+  "final_zip_crc_test": "pass",
+  "final_zip_evidence_payload_sha256_verification": "pass",
+  "final_zip_raw_pack_sha256_verification": "pass",
+  "final_zip_hash_note": "The final archive SHA-256 is intentionally detached because embedding an archive hash inside the archive is self-referential. Use the delivered .zip.sha256 sidecar."
+}
