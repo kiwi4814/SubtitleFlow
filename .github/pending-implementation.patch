@@ -1,0 +1,162 @@
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,6 +1,6 @@
+ [project]
+ name = "subtitleflow"
+-version = "0.4.1"
++version = "0.5.0"
+ description = "Evidence-driven subtitle polishing, bilingual production, font-safe ASS styling, and MKV remux workflow"
+ readme = "README.md"
+ requires-python = ">=3.11"
+--- a/src/subtitleflow/__init__.py
++++ b/src/subtitleflow/__init__.py
+@@ -3,4 +3,4 @@
+ from __future__ import annotations
+ 
+ __all__ = ["__version__"]
+-__version__ = "0.4.1"
++__version__ = "0.5.0"
+--- a/src/subtitleflow/workspace.py
++++ b/src/subtitleflow/workspace.py
+@@ -179,6 +179,11 @@
+         "created_at": utc_now(),
+         "workflow": {"profile": "auto"},
+         "research": {"mode": "off", "branch_map": {}},
++        "editorial": {
++            "translation_provenance": "unknown",
++            "translation_trust": "unknown",
++            "editing_policy": "preserve",
++        },
+         "sources": {"A": None, "B": None, "C": None, "D": None, "S": None},
+         "alignment": {
+             "max_group": 3,
+--- a/README.md
++++ b/README.md
+@@ -190,3 +190,7 @@
+ - frozen release, gate evidence, selected visual-QA media identity and font hashes are rechecked before Remux.
+ 
+ Start with [`START_HERE.md`](START_HERE.md). See [`docs/research.md`](docs/research.md), [`docs/fonts.md`](docs/fonts.md), [`docs/workflow.md`](docs/workflow.md), [`docs/configuration.md`](docs/configuration.md), [`docs/testing.md`](docs/testing.md), and the prioritized [`docs/roadmap.md`](docs/roadmap.md).
++
++## Evidence-driven release policies (v0.5)
++
++SubtitleFlow now separates **translation provenance**, **translation trust**, and **editing policy**. A human/official source is never automatically treated as high-trust. The JP branch supports `preserve`, `proofread`, `retranslate`, and assessment-first `auto`; alignment is separated from bilingual reconciliation (`exact-pair`, `source-split`, `source-merge`, `SOURCE_GAP`), and generated bilingual blocks use deterministic ZH-above-JA layout verified by FFmpeg/libass when available. Semantic releases generate first-class change/provenance/alignment/coverage/QA audit artifacts. See [`docs/evidence-driven-release.md`](docs/evidence-driven-release.md).
+--- a/START_HERE.md
++++ b/START_HERE.md
+@@ -152,3 +152,9 @@
+ Never treat a local font fallback as a successful release. The goal is a self-contained MKV whose ASS looks the same after moving to another machine/player that supports Matroska ASS font attachments.
+ 
+ Read `docs/workflow.md` next.
++
++## 8. Choose the editorial policy before semantic editing
++
++New titles persist an `editorial` context in `title.json`. `preserve` is the conservative default; use `proofread` when B is only a translation seed that must be checked line-by-line against C, `retranslate` when B is merely reference material, or `auto` when quality is unknown and a structured Translation Quality Assessment should select a recommendation first. Provenance (`official`, `human-fansub`, etc.) never implies trust. See `docs/evidence-driven-release.md`.
++
++For JP, rerun `subflow prepare` after upgrading an older title so the work directory gains first-class reconciliation and bilingual-coverage artifacts before compile.
+--- a/docs/evidence-driven-release.md
++++ b/docs/evidence-driven-release.md
+@@ -105,4 +105,4 @@
+ 
+ ## Compatibility
+ 
+-The project/workfile schema version is not bumped. New `Cue`, `BranchUnit`, `ChangeRecord` and `ReviewCandidate` fields are optional/defaulted so existing JSON continues to load. Existing JP workfiles must rerun `subflow prepare` before a new bilingual compile because reconciliation is now a first-class required artifact. Release manifest schema advances to version 5 to include audit artifact metadata.
++The project/workfile schema version is not bumped. New `Cue`, `BranchUnit`, `ChangeRecord` and `ReviewCandidate` fields are optional/defaulted so existing JSON continues to load. Existing JP workfiles must rerun `subflow prepare` before a new bilingual compile because reconciliation is now a first-class required artifact. Release Manifest remains schema version 4 for compatibility; audit artifact metadata is added as optional fields.
+--- a/docs/configuration.md
++++ b/docs/configuration.md
+@@ -193,3 +193,19 @@
+ Research gating is controlled by `research.mode`, not by `quality_gates.require_research` for v0.4-native titles. The old `require_research` flag is read only as a compatibility shim when a v0.3 title has no `research` object.
+ 
+ Relax a gate only as an explicit project decision. Research remains optional by default; semantic, visual, and font release gates remain strict.
++
++## Editorial policy
++
++```json
++{
++  "editorial": {
++    "translation_provenance": "human-fansub",
++    "translation_trust": "unknown",
++    "editing_policy": "proofread"
++  }
++}
++```
++
++`translation_provenance` records origin only. `translation_trust` records the current project's quality judgment. `editing_policy` controls the edit envelope: `preserve`, `proofread`, `retranslate`, or `auto`. Branch-specific objects such as `editorial.jp` may override the top-level values. Explicit policies always outrank any quality-assessment recommendation. `auto` requires `quality_assessment` before semantic proposals are imported. Existing v0.4 titles without `editorial` retain legacy preserve-like Minimal Editorial Intervention.
++
++For 1-source-to-N-target Japanese reconciliation, `jp_branch.source_split_decisions` may persist explicit target-unit-to-source-fragment decisions. This field records editorial split decisions; SubtitleFlow never invents them with a language model inside the deterministic engine.
+--- a/docs/data-model.md
++++ b/docs/data-model.md
+@@ -82,3 +82,9 @@
+ ## Release manifest
+ 
+ `release/release-manifest.json` freezes `project_id`, `title_id`, and effective `series_id` alongside active branches, workflow profile, style id, ASS hashes, QA snapshot, review counts, resolved font attachment hashes, and compact research mode/binding/digest evidence when SRP is active. Remux must verify this frozen state before creating an MKV.
++
++## Editorial, evidence, and reconciliation extensions
++
++`Cue` carries optional `semantic_role`, `position_intent`, and release-inclusion state. `BranchUnit` may carry `source_operation` and parent/source cue IDs. `ChangeRecord` and `ReviewCandidate` may carry primary/secondary evidence, authority domain, evidence grade, conflicts, confidence, proposal source, review status, and final decision. All additions are optional/defaulted; the workfile schema stays at version 1.
++
++JP prepare writes `work/bilingual-reconciliation.json` and `work/bilingual-coverage.json`. Reconciliation operations are `exact-pair`, `source-split`, `source-merge`, `source-gap`, and `unresolved`; `fabricated` must remain zero. Release Manifest stays schema 4 and adds optional `audit` metadata pointing to first-class audit files.
+--- a/docs/human-review.md
++++ b/docs/human-review.md
+@@ -27,3 +27,7 @@
+ ## Known rebase decision
+ 
+ The current engine **detects and blocks** an approval that is no longer materialized after a new `prepare`, but it does not yet auto-replay approvals. The recommended future behavior is: replay an accepted edit only when its unit/evidence fingerprint is unchanged; otherwise mark the old candidate `superseded` and require a new Human Review decision. That behavior is intentionally not inferred silently because it changes project workflow semantics.
++
++## Policy permission is not review approval
++
++The centralized Editorial Policy matrix answers whether an AI/editor may propose a change type. Evidence answers why the proposal is justified. Human Review independently decides whether a substantive semantic proposal is accepted. `proofread` therefore permits broader detection without auto-approving low-confidence semantic changes, and `official`/`human-fansub` provenance never bypasses review. Approved changes copy their structured evidence, conflicts, grade, confidence, proposal source and final decision into the workfile Change Record so Release can answer exactly what changed.
+--- a/docs/testing.md
++++ b/docs/testing.md
+@@ -66,3 +66,7 @@
+ 8. verify the ZIP contains no `.ttf`, `.otf`, `.ttc`, or `.otc` files.
+ 
+ `mkvmerge` success may be claimed only when the binary is installed and a real Remux was executed. If unavailable, record command construction and postcondition logic as tested but real mux execution as unverified.
++
++## v0.5 release-system regressions
++
++The release-system suite covers human preserve/proofread/retranslate behavior, explicit-user-policy priority over Auto, evidence conflict grading, 1:N split provenance, N:1 merge provenance, SOURCE_GAP/fabrication guards, alignment semantic-risk signals, clean-vs-bilingual geometry, ZH1+JA2 collision inversion, OP bilingual layout, Style2 classification, translator-credit exclusion, style-profile drift, release audit fields, and a real FFmpeg/libass synthetic render smoke test. `tests/fixtures/release-system/` is the durable real-world specimen for 1+1, 1+2, screen-text overlap, OP, source gap, human proofread and primary-vs-secondary evidence conflict.
+--- a/docs/workflow.md
++++ b/docs/workflow.md
+@@ -132,3 +132,7 @@
+ ## Stage 14 — MKV Remux
+ 
+ `subflow remux` verifies the frozen release, frozen gate evidence, selected visual-QA media identity and font hashes before invoking MKVToolNix. Input and output may not be the same path. Existing video/audio remain untouched. Existing MKV attachments are preserved by default. If an existing attachment has the same filename as a frozen font, SubtitleFlow uses `mkvextract` to SHA-compare it; only byte-identical content is reused, while mismatched collisions block Remux. Missing frozen fonts are added as Matroska attachments using canonical attachment names; default MIME selection is left to MKVToolNix automatic detection rather than forcing legacy MIME values. After muxing, SubtitleFlow runs `mkvmerge -J` and confirms the required attachment names/sizes exist in the output.
++
++## v0.5 semantic-release stages
++
++Before semantic editing, resolve the Editorial Context (`provenance -> trust/assessment -> editing policy`). Alignment then identifies cue membership and emits semantic-risk signals; JP reconciliation separately converts groups into exact/split/merge/gap release relations. Compile consumes only reconciled relations, applies mode-aware deterministic geometry, and never fabricates missing Japanese. QA proceeds Structural -> Static Layout -> Renderer QA -> real-video Visual Review when video exists. Release adds change audit, raw-source provenance, reconciliation/alignment, verified bilingual coverage, unresolved, QA/layout and render reports while keeping A/B/C/D/S raw files immutable.
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,17 @@
+ # Changelog
+ 
++## 0.5.0
++
++- Separated translation provenance, translation trust and editing policy; added centralized `preserve` / `proofread` / `retranslate` / assessment-first `auto` behavior with explicit user-policy priority.
++- Extended Human Review and Change Records with structured primary/secondary evidence, authority domain, evidence grade, conflicts, confidence and final decision.
++- Split alignment membership from JP bilingual reconciliation; added exact/split/merge/SOURCE_GAP/unresolved provenance, semantic-risk signals, fabrication guard and verified bilingual coverage.
++- Added semantic-role classification so source style names are evidence rather than position authority; generic `Style2` remains dialogue and translator/fansub credits are excluded by default.
++- Added separate clean/bilingual geometry and deterministic ZH-above-JA visual blocks for dialogue and songs, including the JA-multiline libass collision regression.
++- Added structural/static-layout/FFmpeg-libass renderer QA layers, high-risk frame selection and fontselect-based fallback detection.
++- Added first-class release audit artifacts for changes, source provenance, alignment/reconciliation, coverage, unresolved items, QA, layout and renderer evidence.
++- Added real-world synthetic ASS/workfile specimens, regression coverage, OpenCode policy synchronization, style-profile drift protection and CI verification.
++- Kept project/workfile schemas backward-readable; existing JP workfiles must rerun `prepare` to create reconciliation artifacts. Release Manifest remains schema 4 with optional audit metadata.
++
+ ## 0.4.1
+ 
+ - Decoupled SubtitleFlow `project_id` from SRP `series_id`; titles now carry an explicit series identity with a legacy project-ID fallback.
+--- a/.opencode/commands/subtitle/run.md
++++ b/.opencode/commands/subtitle/run.md
+@@ -13,3 +13,5 @@
+ - legacy v0.3 titles continue to use their legacy research evidence gate.
+ 
+ Then run prepare/alignment, delegate semantic anomaly detection, import proposals, and STOP on pending human review. Later gates include deterministic QA, font audit, semantic QA, and visual QA as configured. Never bypass a gate merely to finish the command and never initiate web research unless the user explicitly requests that producer path.
++
++Before semantic editing, read the persisted Editorial Context. If `editing_policy=auto` and `assessment_required=true`, STOP semantic editing after producing/recording the structured Translation Quality Assessment; do not silently choose a policy. Alignment anomalies are review signals, while `bilingual-reconciliation.json` is the release-pairing authority. SOURCE_GAP is legal and must never be back-translated into fabricated Japanese.
+--- a/.opencode/commands/subtitle/release.md
++++ b/.opencode/commands/subtitle/release.md
+@@ -6,3 +6,5 @@
+ For project `$1` title `$2`, require zero pending human reviews. Inspect `subflow research status $1 $2`: `off` has no Research Gate, `advisory` resolves knowledge but does not independently require approval for Release, `enforce` requires current approved SRP evidence, and legacy titles retain the v0.3 gate.
+ 
+ Run `subflow compile $1 $2`, `subflow qa $1 $2`, and `subflow fonts audit $1 $2`. Missing actually referenced fonts are release blockers by default. Delegate independent semantic QA and route any correction through human review. Render and approve each active branch when visual QA is required. Only after all configured gates pass run `subflow release $1 $2`.
++
++Deterministic QA is layered: structural and static layout first, then FFmpeg/libass Renderer QA when exact fonts are resolvable; real-video visual approval remains separate. Freeze the generated Change Audit, source provenance, alignment/reconciliation, verified bilingual coverage, unresolved, QA/layout and render reports with the ASS release.
