@@ -47,9 +47,9 @@ def _make_test_font(path: Path, family: str = "WenQuanYi Micro Hei") -> Path:
     from fontTools.pens.ttGlyphPen import TTGlyphPen
 
     fb = FontBuilder(1024, isTTF=True)
-    glyph_order = [".notdef", "space", "A"]
+    glyph_order = [".notdef", "space", "A", "uni5B57", "uni5E55"]
     fb.setupGlyphOrder(glyph_order)
-    fb.setupCharacterMap({32: "space", 65: "A"})
+    fb.setupCharacterMap({32: "space", 65: "A", ord("字"): "uni5B57", ord("幕"): "uni5E55"})
     glyphs = {}
     for name in glyph_order:
         pen = TTGlyphPen(None)

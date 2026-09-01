@@ -337,6 +337,7 @@ def render_from_template(
     source_margin_v: int = 106,
     preserve_style_names: set[str] | None = None,
     preserve_event_indices: set[int] | None = None,
+    exclude_event_indices: set[int] | None = None,
 ) -> str:
     lines = inject_styles(
         template.lines,
@@ -361,7 +362,10 @@ def render_from_template(
     preserved: list[tuple[int, int, str]] = []
     preserve_style_names = preserve_style_names or set()
     preserve_event_indices = preserve_event_indices or set()
+    exclude_event_indices = exclude_event_indices or set()
     for event in template.events:
+        if event.index in exclude_event_indices:
+            continue
         event_style = event.fields.get("Style", "").strip()
         if event.protected or event_style in preserve_style_names or event.index in preserve_event_indices:
             preserved.append((event.start_ms, event.index, event.raw_line))

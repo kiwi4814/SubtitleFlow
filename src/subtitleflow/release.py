@@ -151,7 +151,7 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
         research_manifest["gate"] = stages.get("research", {}).get("status")
 
     manifest = {
-        "schema_version": 5,
+        "schema_version": 4,
         "created_at": utc_now(),
         "project_id": paths.project_id,
         "title_id": paths.title_id,

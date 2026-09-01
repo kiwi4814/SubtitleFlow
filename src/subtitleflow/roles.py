@@ -21,7 +21,7 @@ SemanticRole = Literal[
 ]
 PositionIntent = Literal["preserve", "top", "center", "bottom", "manual"]
 
-_URL_RE = re.compile(r"(?:https?://|www\.|(?:discord|telegram|twitter|weibo)\s*[:：])", re.I)
+_URL_RE = re.compile(r"(?:https?://|www\.|(?:discord|telegram|twitter|weibo)\s*[:\uFF1A])", re.I)
 _CREDIT_RE = re.compile(
     r"(?:字幕(?:组|制作|翻译|校对)|translator|translation|subbed\s+by|timing\s+by|fansub|译制|听写)",
     re.I,
@@ -74,9 +74,7 @@ def classify_event_role(
     if value in {"title", "标题", "movie title"}:
         return RoleClassification("title", confidence=0.85, basis="style-evidence")
     if value in {"note", "notes", "annotation", "注释"}:
-        return RoleClassification(
-            "annotation", include_by_default=False, confidence=0.82, basis="style-evidence"
-        )
+        return RoleClassification("annotation", confidence=0.82, basis="style-evidence")
     if value in {"document", "newspaper", "letter"}:
         return RoleClassification("document", confidence=0.82, basis="style-evidence")
     if value in {"prop", "wantedposter", "formal", "formalscreentext"}:

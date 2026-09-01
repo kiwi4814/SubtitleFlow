@@ -6,7 +6,6 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from .errors import GateError
 from .fonts import require_font_attachments
 from .io import read_json, write_json
 from .style import ass_style_values, load_style_profile
@@ -96,6 +95,12 @@ def run_renderer_qa(paths: TitlePaths, *, max_frames: int = 12) -> dict[str, Any
                 name = str(attachment["attachment_name"])
                 shutil.copy2(source, fonts_dir / name)
                 staged_names.add(name.casefold())
+                staged_names.add(Path(name).stem.casefold())
+                metadata = attachment.get("metadata", {})
+                if isinstance(metadata, dict):
+                    for key in ("names", "families", "full_names", "postscript_names"):
+                        for value in metadata.get(key, []):
+                            staged_names.add(str(value).casefold())
             filter_value = "ass=subs.ass" + (":fontsdir=fonts" if attachments else "")
             for index, timestamp in enumerate(times, start=1):
                 output = output_dir / f"renderer-{index:02d}-{timestamp}ms.png"
@@ -137,16 +142,20 @@ def run_renderer_qa(paths: TitlePaths, *, max_frames: int = 12) -> dict[str, Any
             if not matches:
                 errors.append({"kind": "font-resolution-unobserved", "family": family})
                 continue
-            if attachments and not any(
-                any(name in item["resolved"].casefold() for name in staged_names) for item in matches
-            ):
-                errors.append(
-                    {
-                        "kind": "unexpected-font-fallback",
-                        "family": family,
-                        "resolved": [item["resolved"] for item in matches],
-                    }
-                )
+            if attachments:
+                unexpected = [
+                    item["resolved"]
+                    for item in matches
+                    if not any(name in item["resolved"].casefold() for name in staged_names)
+                ]
+                if unexpected:
+                    errors.append(
+                        {
+                            "kind": "unexpected-font-fallback",
+                            "family": family,
+                            "resolved": unexpected,
+                        }
+                    )
         branches[branch] = {
             "ok": not errors,
             "canvas": "synthetic",

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from .errors import GateError, ValidationError
 from .formats.ass import (
@@ -60,6 +61,10 @@ def _play_resolution(paths: TitlePaths, template: AssDocument) -> tuple[int, int
     return int(x or profile_res.get("x", 1920)), int(y or profile_res.get("y", 1080))
 
 
+def _excluded_event_indices(template: AssDocument) -> set[int]:
+    return {cue.index for cue in template.cues if not cue.include_in_release}
+
+
 def _preserved_event_indices(template: AssDocument) -> set[int]:
     """Preserve authored non-dialogue semantics, not arbitrary source style names.
 
@@ -97,6 +102,7 @@ def _event(
     text: str,
     style: str,
     override: str | None,
+    margin_v: int | None = None,
 ) -> str:
     rendered_text = ass_text(text)
     if override:
@@ -108,6 +114,8 @@ def _event(
         text=rendered_text,
         style=style,
     )
+    if margin_v is not None:
+        values["MarginV"] = str(max(0, margin_v))
     return build_event_line(template.events_format, values)
 
 
@@ -136,9 +144,11 @@ def _target_events(
             mode=mode,
             semantic_role=getattr(unit, "semantic_role", "dialogue"),
         )
-        override = positioned_override(
-            event_override_tag(paths, "SF-ZH"), geometry.target_x, geometry.target_y
-        )
+        # Clean/TW have no second language block, so event MarginV is deterministic without
+        # introducing an absolute \pos override. Bilingual events use explicit coordinates to
+        # defeat libass collision reordering.
+        override = event_override_tag(paths, "SF-ZH")
+        margin_v = max(0, play_y - geometry.target_y)
         events.append(
             (
                 unit.start_ms,
@@ -150,6 +160,7 @@ def _target_events(
                     text=unit.final_text,
                     style="SF-ZH",
                     override=override,
+                    margin_v=margin_v,
                 ),
             )
         )
@@ -166,6 +177,7 @@ def _render_standard(paths: TitlePaths, *, branch: str, template_role: str, file
         style_values=_profile_styles(paths),
         preserve_style_names=set(),
         preserve_event_indices=_preserved_event_indices(template),
+        exclude_event_indices=_excluded_event_indices(template),
     )
     suffix = ".preview.ass" if preview else ".ass"
     output = _write_rendered(paths, filename + suffix, rendered)
@@ -293,6 +305,7 @@ def compile_jp_bilingual(paths: TitlePaths, *, preview: bool = False) -> Path:
         style_values=styles,
         preserve_style_names=set(),
         preserve_event_indices=_preserved_event_indices(template),
+        exclude_event_indices=_excluded_event_indices(template),
     )
     suffix = ".preview.ass" if preview else ".ass"
     output = _write_rendered(paths, f"{paths.title_id}.zh-CN-ja{suffix}", rendered)

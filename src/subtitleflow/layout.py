@@ -60,7 +60,7 @@ def block_geometry(
 
     The profile supplies dimensionless safe-area/spacing intent. Row counts and style metrics
     determine actual coordinates, so no title- or row-combination-specific pixel constants are
-    embedded in Python. Explicit \an2/\pos anchors keep libass collision avoidance from
+    embedded in Python. Explicit ``\\an2``/``\\pos`` anchors keep libass collision avoidance from
     reordering the language block.
     """
     target_rows = visual_rows(target_text)
