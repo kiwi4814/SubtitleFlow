@@ -6,7 +6,7 @@ from typing import Any
 
 from ..errors import ValidationError
 from ..io import read_json, write_json
-from ..state import invalidate_stages
+from ..state import invalidate_after_research_semantic_change, invalidate_stages
 from ..workspace import TitlePaths, effective_series_id
 
 VALID_RESEARCH_MODES = {"off", "advisory", "enforce"}
@@ -50,16 +50,16 @@ def set_mode(paths: TitlePaths, mode: str) -> dict[str, Any]:
         raise ValidationError(
             f"research mode must be one of {', '.join(sorted(VALID_RESEARCH_MODES))}"
         )
+    previous_mode = research_mode(paths)
     config = read_json(paths.title_config)
     research = config.setdefault("research", {})
     research["mode"] = mode
     research.setdefault("branch_map", {})
     write_json(paths.title_config, config)
-    invalidate_stages(
-        paths,
-        ("research_resolve", "research", "qa", "semantic_qa", "release", "remux"),
-        reason="research mode changed",
-    )
+    if previous_mode != mode:
+        reason = f"research mode changed: {previous_mode} -> {mode}"
+        invalidate_stages(paths, ("research_resolve",), reason=reason)
+        invalidate_after_research_semantic_change(paths, reason=reason)
     return dict(research)
 
 
@@ -69,19 +69,24 @@ def map_branch(paths: TitlePaths, branch: str, srp_branch_id: str | None) -> dic
     config = read_json(paths.title_config)
     research = config.setdefault("research", {"mode": "off", "branch_map": {}})
     mapping = research.setdefault("branch_map", {})
+    if not isinstance(mapping, dict):
+        raise ValidationError("research.branch_map must be an object")
+    previous = mapping.get(branch)
     if srp_branch_id is None:
-        mapping.pop(branch, None)
+        if branch not in mapping:
+            return dict(mapping)
+        mapping.pop(branch)
     else:
         value = srp_branch_id.strip()
         if not value:
             raise ValidationError("SRP branch id cannot be empty")
+        if previous == value:
+            return dict(mapping)
         mapping[branch] = value
     write_json(paths.title_config, config)
-    invalidate_stages(
-        paths,
-        ("research_resolve", "research", "qa", "semantic_qa", "release", "remux"),
-        reason="research branch mapping changed",
-    )
+    reason = f"research branch mapping changed for {branch}"
+    invalidate_stages(paths, ("research_resolve",), reason=reason)
+    invalidate_after_research_semantic_change(paths, reason=reason)
     return dict(mapping)
 
 
@@ -166,6 +171,12 @@ def bind_pack(paths: TitlePaths, pack_ref: str) -> dict[str, Any]:
         None,
     )
     if existing is not None:
+        existing_series_id = existing.get("series_id")
+        if existing_series_id is not None and existing_series_id != pack_series_id:
+            raise ValidationError(
+                "Existing SRP binding series_id does not match the imported pack: "
+                f"{existing_series_id} != {pack_series_id}"
+            )
         return dict(existing)
 
     binding = {
@@ -203,9 +214,7 @@ def unbind_pack(paths: TitlePaths, pack_ref: str) -> dict[str, Any]:
 
 
 def bound_registry_entries(paths: TitlePaths) -> list[dict[str, Any]]:
-    registry_by_digest = {
-        str(item.get("pack_digest")): item for item in list_packs(paths)
-    }
+    registry_by_digest = {str(item.get("pack_digest")): item for item in list_packs(paths)}
     title_series_id = effective_series_id(paths)
     result: list[dict[str, Any]] = []
     for binding in load_bindings(paths).get("bindings", []):
@@ -224,6 +233,12 @@ def bound_registry_entries(paths: TitlePaths) -> list[dict[str, Any]]:
         pack_series_id = scope.get("series_id") if isinstance(scope, dict) else None
         if not isinstance(pack_series_id, str) or not pack_series_id.strip():
             raise ValidationError(f"Imported SRP registry entry is missing scope.series_id: {digest}")
+        binding_series_id = binding.get("series_id")
+        if binding_series_id is not None and binding_series_id != pack_series_id:
+            raise ValidationError(
+                "Bound SRP series_id does not match registry: "
+                f"{binding_series_id} != {pack_series_id} ({digest})"
+            )
         if pack_series_id != title_series_id:
             raise ValidationError(
                 "Bound SRP series_id is incompatible with the title: "

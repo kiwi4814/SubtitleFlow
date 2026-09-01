@@ -34,8 +34,6 @@ def _find_unit(paths: TitlePaths, branch: str, unit_id: str):
     raise ValidationError(f"Unknown {branch} unit: {unit_id}")
 
 
-
-
 def unimported_proposal_files(paths: TitlePaths) -> list[Path]:
     root = paths.review_proposals
     if not root.is_dir():
@@ -83,12 +81,19 @@ def _unit_fingerprint(unit: Any) -> str:
 
 
 def _semantic_context_fingerprint(paths: TitlePaths, unit: Any) -> str:
-    """Bind a proposal to the repository evidence that informed semantic judgment."""
+    """Bind a proposal to every durable semantic input that informed the judgment."""
+    from .srp.registry import research_mode
+    from .srp.resolver import effective_semantic_digest
+
     canon_files = [
         *sorted(paths.project_canon.glob("*.json")),
         *sorted(paths.title_canon.glob("*.json")),
     ]
     research_files = [paths.research / "context.md", paths.research / "sources.md"]
+    mode = research_mode(paths)
+    srp_semantic_digest: str | None = None
+    if mode in {"advisory", "enforce"}:
+        srp_semantic_digest = effective_semantic_digest(paths)
     payload = {
         "unit": _unit_fingerprint(unit),
         "source_manifest_sha256": sha256_file(paths.manifest),
@@ -98,9 +103,13 @@ def _semantic_context_fingerprint(paths: TitlePaths, unit: Any) -> str:
             if path.is_file()
         },
         "research": {
-            str(path.relative_to(paths.title)).replace("\\", "/"): sha256_file(path)
-            for path in research_files
-            if path.is_file()
+            "mode": mode,
+            "effective_semantic_sha256": srp_semantic_digest,
+            "legacy_files": {
+                str(path.relative_to(paths.title)).replace("\\", "/"): sha256_file(path)
+                for path in research_files
+                if path.is_file()
+            },
         },
     }
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -192,7 +201,7 @@ def import_proposals(paths: TitlePaths, proposal_path: Path) -> list[ReviewCandi
             raise ValidationError("Each proposal must be an object")
         branch = str(item.get("branch", ""))
         unit_id = str(item.get("unit_id", ""))
-        work, unit = _find_unit(paths, branch, unit_id)
+        _work, unit = _find_unit(paths, branch, unit_id)
         original = str(item.get("original_text", unit.final_text))
         if original != unit.final_text:
             raise GateError(

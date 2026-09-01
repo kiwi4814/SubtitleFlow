@@ -6,30 +6,84 @@ from .io import read_json, write_json
 from .util import utc_now
 from .workspace import TitlePaths, effective_series_id
 
+_RESEARCH_SEMANTIC_DEPENDENTS = (
+    "research",
+    "human_review",
+    "alignment_and_seed",
+    "compile_clean",
+    "compile_tw",
+    "compile_jp",
+    "fonts",
+    "qa",
+    "semantic_qa",
+    "render_clean",
+    "render_tw",
+    "render_jp",
+    "visual_clean",
+    "visual_tw",
+    "visual_jp",
+    "release",
+    "remux",
+)
+
+
+def _mark_stale(stages: dict[str, Any], names: Iterable[str], *, reason: str) -> bool:
+    changed = False
+    timestamp = utc_now()
+    for stage in names:
+        if stage not in stages:
+            continue
+        previous = stages.get(stage)
+        preserved = dict(previous) if isinstance(previous, dict) else {}
+        stages[stage] = {
+            **preserved,
+            "status": "stale",
+            "updated_at": timestamp,
+            "reason": reason,
+        }
+        changed = True
+    return changed
+
 
 def update_stage(paths: TitlePaths, stage: str, status: str, **details: Any) -> None:
     data = read_json(paths.state)
     stages = data.setdefault("stages", {})
+
+    # research_resolve carries the effective semantic digest. If a re-resolve changes
+    # meaning, every persisted edit/review/output that could have depended on the old
+    # Effective Knowledge must become stale. Preserve prior stage evidence during
+    # invalidation so this comparison survives bind/unbind marking research_resolve stale.
+    if stage == "research_resolve" and status == "passed":
+        previous = stages.get(stage)
+        previous_evidence = previous.get("evidence", {}) if isinstance(previous, dict) else {}
+        next_evidence = details.get("evidence", {})
+        previous_semantic = (
+            previous_evidence.get("effective_semantic_sha256")
+            if isinstance(previous_evidence, dict)
+            else None
+        )
+        next_semantic = (
+            next_evidence.get("effective_semantic_sha256")
+            if isinstance(next_evidence, dict)
+            else None
+        )
+        if previous_semantic and next_semantic and previous_semantic != next_semantic:
+            _mark_stale(
+                stages,
+                _RESEARCH_SEMANTIC_DEPENDENTS,
+                reason="effective research semantics changed",
+            )
+
     stages[stage] = {"status": status, "updated_at": utc_now(), **details}
     data["updated_at"] = utc_now()
     write_json(paths.state, data)
 
 
 def invalidate_stages(paths: TitlePaths, stages_to_invalidate: Iterable[str], *, reason: str) -> None:
-    """Mark only previously-created downstream stages stale; do not fabricate unrun stages."""
+    """Mark only previously-created downstream stages stale; preserve their evidence."""
     data = read_json(paths.state)
     stages = data.setdefault("stages", {})
-    changed = False
-    for stage in stages_to_invalidate:
-        if stage not in stages:
-            continue
-        stages[stage] = {
-            "status": "stale",
-            "updated_at": utc_now(),
-            "reason": reason,
-        }
-        changed = True
-    if changed:
+    if _mark_stale(stages, stages_to_invalidate, reason=reason):
         data["updated_at"] = utc_now()
         write_json(paths.state, data)
 
@@ -37,56 +91,8 @@ def invalidate_stages(paths: TitlePaths, stages_to_invalidate: Iterable[str], *,
 def invalidate_after_prepare(paths: TitlePaths, *, reason: str = "workfiles regenerated") -> None:
     invalidate_stages(
         paths,
-        ("compile_clean", "compile_tw", "compile_jp", "fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
-        reason=reason,
-    )
-
-
-def invalidate_after_compile(paths: TitlePaths, *, reason: str = "compiled ASS regenerated") -> None:
-    invalidate_stages(
-        paths,
-        ("fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
-        reason=reason,
-    )
-
-
-def invalidate_after_qa(paths: TitlePaths, *, reason: str = "deterministic QA rerun") -> None:
-    invalidate_stages(
-        paths,
-        ("semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
-        reason=reason,
-    )
-
-
-def invalidate_after_review_change(paths: TitlePaths, *, reason: str = "human review state changed") -> None:
-    invalidate_stages(
-        paths,
-        ("compile_clean", "compile_tw", "compile_jp", "fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
-        reason=reason,
-    )
-
-
-def invalidate_after_source_or_canon_change(paths: TitlePaths, *, reason: str) -> None:
-    invalidate_stages(
-        paths,
-        ("research_resolve", "research", "normalize", "alignment_and_seed", "compile_clean", "compile_tw", "compile_jp", "fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
-        reason=reason,
-    )
-
-
-def invalidate_after_series_identity_change(
-    paths: TitlePaths,
-    *,
-    reason: str = "title series identity changed",
-) -> None:
-    """Stale every artifact whose semantic evidence depends on title series."""
-    invalidate_stages(
-        paths,
         (
-            "research_resolve",
-            "research",
             "human_review",
-            "alignment_and_seed",
             "compile_clean",
             "compile_tw",
             "compile_jp",
@@ -104,6 +110,114 @@ def invalidate_after_series_identity_change(
         ),
         reason=reason,
     )
+
+
+def invalidate_after_compile(paths: TitlePaths, *, reason: str = "compiled ASS regenerated") -> None:
+    invalidate_stages(
+        paths,
+        (
+            "fonts",
+            "qa",
+            "semantic_qa",
+            "render_clean",
+            "render_tw",
+            "render_jp",
+            "visual_clean",
+            "visual_tw",
+            "visual_jp",
+            "release",
+            "remux",
+        ),
+        reason=reason,
+    )
+
+
+def invalidate_after_qa(paths: TitlePaths, *, reason: str = "deterministic QA rerun") -> None:
+    invalidate_stages(
+        paths,
+        (
+            "semantic_qa",
+            "render_clean",
+            "render_tw",
+            "render_jp",
+            "visual_clean",
+            "visual_tw",
+            "visual_jp",
+            "release",
+            "remux",
+        ),
+        reason=reason,
+    )
+
+
+def invalidate_after_review_change(paths: TitlePaths, *, reason: str = "human review state changed") -> None:
+    invalidate_stages(
+        paths,
+        (
+            "compile_clean",
+            "compile_tw",
+            "compile_jp",
+            "fonts",
+            "qa",
+            "semantic_qa",
+            "render_clean",
+            "render_tw",
+            "render_jp",
+            "visual_clean",
+            "visual_tw",
+            "visual_jp",
+            "release",
+            "remux",
+        ),
+        reason=reason,
+    )
+
+
+def invalidate_after_research_semantic_change(
+    paths: TitlePaths,
+    *,
+    reason: str = "effective research semantics changed",
+) -> None:
+    """Stale every persisted decision/output that can depend on effective research meaning."""
+    invalidate_stages(paths, _RESEARCH_SEMANTIC_DEPENDENTS, reason=reason)
+
+
+def invalidate_after_source_or_canon_change(paths: TitlePaths, *, reason: str) -> None:
+    invalidate_stages(
+        paths,
+        (
+            "research_resolve",
+            "research",
+            "normalize",
+            "alignment_and_seed",
+            "human_review",
+            "compile_clean",
+            "compile_tw",
+            "compile_jp",
+            "fonts",
+            "qa",
+            "semantic_qa",
+            "render_clean",
+            "render_tw",
+            "render_jp",
+            "visual_clean",
+            "visual_tw",
+            "visual_jp",
+            "release",
+            "remux",
+        ),
+        reason=reason,
+    )
+
+
+def invalidate_after_series_identity_change(
+    paths: TitlePaths,
+    *,
+    reason: str = "title series identity changed",
+) -> None:
+    """Stale every artifact whose semantic evidence depends on title series."""
+    invalidate_stages(paths, ("research_resolve",), reason=reason)
+    invalidate_after_research_semantic_change(paths, reason=reason)
 
 
 def state_summary(paths: TitlePaths) -> dict[str, Any]:
