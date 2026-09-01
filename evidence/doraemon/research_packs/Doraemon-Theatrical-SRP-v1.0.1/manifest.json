@@ -1,0 +1,46 @@
+{
+  "format": "subtitle-research-pack",
+  "schema_version": "1.0",
+  "pack_id": "doraemon-theatrical-cn-tw-canon",
+  "pack_version": "1.0.1",
+  "scope": {
+    "series_id": "doraemon-theatrical"
+  },
+  "languages": {
+    "source": [
+      "ja-JP",
+      "zh-TW"
+    ],
+    "target": [
+      "zh-CN",
+      "zh-TW",
+      "zh-Hans"
+    ],
+    "branches": [
+      "jp-audio-zh-cn-modern",
+      "jp-audio-zh-tw-modern",
+      "tw-dub-faithful-zh-hans",
+      "tw-dub-2026-modern-zh-hans-candidate"
+    ]
+  },
+  "created_at": "2026-09-01T08:34:00Z",
+  "updated_at": "2026-09-01T08:34:00Z",
+  "producer": {
+    "type": "ai-assisted",
+    "name": "OpenAI ChatGPT",
+    "tool": "Subtitle Canon Research",
+    "model": "GPT-5.6 Sol"
+  },
+  "description": "Evidence-backed normalization canon for released mainline Doraemon theatrical films M01-M45 (1980-2026), separating Japanese-audio Mainland/Taiwan localization from Taiwan-Mandarin dub-faithful Simplified-Chinese transcription branches.",
+  "extensions": {
+    "coverage": {
+      "released_mainline": "m01-m45",
+      "excluded_announced_future": [
+        "2027 のび太の蒸気時間車"
+      ],
+      "side_films": "not-in-mainline-scope"
+    },
+    "normalization_intent": "canonical-semantic-mapping-not-blind-string-replacement",
+    "script_policy": "tw-dub branches use zh-Hans for Simplified-script output while branch identity preserves Taiwan-dub lexical lineage"
+  }
+}
