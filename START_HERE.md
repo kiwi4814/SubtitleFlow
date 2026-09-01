@@ -152,3 +152,9 @@ After `subflow release`, the release manifest freezes final ASS and resolved fon
 Never treat a local font fallback as a successful release. The goal is a self-contained MKV whose ASS looks the same after moving to another machine/player that supports Matroska ASS font attachments.
 
 Read `docs/workflow.md` next.
+
+## 8. Choose the editorial policy before semantic editing
+
+New titles persist an `editorial` context in `title.json`. `preserve` is the conservative default; use `proofread` when B is only a translation seed that must be checked line-by-line against C, `retranslate` when B is merely reference material, or `auto` when quality is unknown and a structured Translation Quality Assessment should select a recommendation first. Provenance (`official`, `human-fansub`, etc.) never implies trust. See `docs/evidence-driven-release.md`.
+
+For JP, rerun `subflow prepare` after upgrading an older title so the work directory gains first-class reconciliation and bilingual-coverage artifacts before compile.

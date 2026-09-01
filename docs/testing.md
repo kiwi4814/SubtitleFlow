@@ -66,3 +66,7 @@ Before delivery:
 8. verify the ZIP contains no `.ttf`, `.otf`, `.ttc`, or `.otc` files.
 
 `mkvmerge` success may be claimed only when the binary is installed and a real Remux was executed. If unavailable, record command construction and postcondition logic as tested but real mux execution as unverified.
+
+## v0.5 release-system regressions
+
+The release-system suite covers human preserve/proofread/retranslate behavior, explicit-user-policy priority over Auto, evidence conflict grading, 1:N split provenance, N:1 merge provenance, SOURCE_GAP/fabrication guards, alignment semantic-risk signals, clean-vs-bilingual geometry, ZH1+JA2 collision inversion, OP bilingual layout, Style2 classification, translator-credit exclusion, style-profile drift, release audit fields, and a real FFmpeg/libass synthetic render smoke test. `tests/fixtures/release-system/` is the durable real-world specimen for 1+1, 1+2, screen-text overlap, OP, source gap, human proofread and primary-vs-secondary evidence conflict.

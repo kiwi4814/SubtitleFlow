@@ -82,3 +82,9 @@ No font binary is copied into persistent project data by font audit.
 ## Release manifest
 
 `release/release-manifest.json` freezes `project_id`, `title_id`, and effective `series_id` alongside active branches, workflow profile, style id, ASS hashes, QA snapshot, review counts, resolved font attachment hashes, and compact research mode/binding/digest evidence when SRP is active. Remux must verify this frozen state before creating an MKV.
+
+## Editorial, evidence, and reconciliation extensions
+
+`Cue` carries optional `semantic_role`, `position_intent`, and release-inclusion state. `BranchUnit` may carry `source_operation` and parent/source cue IDs. `ChangeRecord` and `ReviewCandidate` may carry primary/secondary evidence, authority domain, evidence grade, conflicts, confidence, proposal source, review status, and final decision. All additions are optional/defaulted; the workfile schema stays at version 1.
+
+JP prepare writes `work/bilingual-reconciliation.json` and `work/bilingual-coverage.json`. Reconciliation operations are `exact-pair`, `source-split`, `source-merge`, `source-gap`, and `unresolved`; `fabricated` must remain zero. Release Manifest stays schema 4 and adds optional `audit` metadata pointing to first-class audit files.

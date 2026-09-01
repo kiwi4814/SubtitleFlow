@@ -179,6 +179,11 @@ def default_title_config(
         "created_at": utc_now(),
         "workflow": {"profile": "auto"},
         "research": {"mode": "off", "branch_map": {}},
+        "editorial": {
+            "translation_provenance": "unknown",
+            "translation_trust": "unknown",
+            "editing_policy": "preserve",
+        },
         "sources": {"A": None, "B": None, "C": None, "D": None, "S": None},
         "alignment": {
             "max_group": 3,

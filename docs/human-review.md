@@ -27,3 +27,7 @@ Approve/reject/custom decisions are durable. An accepted wording change creates 
 ## Known rebase decision
 
 The current engine **detects and blocks** an approval that is no longer materialized after a new `prepare`, but it does not yet auto-replay approvals. The recommended future behavior is: replay an accepted edit only when its unit/evidence fingerprint is unchanged; otherwise mark the old candidate `superseded` and require a new Human Review decision. That behavior is intentionally not inferred silently because it changes project workflow semantics.
+
+## Policy permission is not review approval
+
+The centralized Editorial Policy matrix answers whether an AI/editor may propose a change type. Evidence answers why the proposal is justified. Human Review independently decides whether a substantive semantic proposal is accepted. `proofread` therefore permits broader detection without auto-approving low-confidence semantic changes, and `official`/`human-fansub` provenance never bypasses review. Approved changes copy their structured evidence, conflicts, grade, confidence, proposal source and final decision into the workfile Change Record so Release can answer exactly what changed.

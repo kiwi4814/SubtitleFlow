@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0
+
+- Separated translation provenance, translation trust and editing policy; added centralized `preserve` / `proofread` / `retranslate` / assessment-first `auto` behavior with explicit user-policy priority.
+- Extended Human Review and Change Records with structured primary/secondary evidence, authority domain, evidence grade, conflicts, confidence and final decision.
+- Split alignment membership from JP bilingual reconciliation; added exact/split/merge/SOURCE_GAP/unresolved provenance, semantic-risk signals, fabrication guard and verified bilingual coverage.
+- Added semantic-role classification so source style names are evidence rather than position authority; generic `Style2` remains dialogue and translator/fansub credits are excluded by default.
+- Added separate clean/bilingual geometry and deterministic ZH-above-JA visual blocks for dialogue and songs, including the JA-multiline libass collision regression.
+- Added structural/static-layout/FFmpeg-libass renderer QA layers, high-risk frame selection and fontselect-based fallback detection.
+- Added first-class release audit artifacts for changes, source provenance, alignment/reconciliation, coverage, unresolved items, QA, layout and renderer evidence.
+- Added real-world synthetic ASS/workfile specimens, regression coverage, OpenCode policy synchronization, style-profile drift protection and CI verification.
+- Kept project/workfile schemas backward-readable; existing JP workfiles must rerun `prepare` to create reconciliation artifacts. Release Manifest remains schema 4 with optional audit metadata.
+
 ## 0.4.1
 
 - Decoupled SubtitleFlow `project_id` from SRP `series_id`; titles now carry an explicit series identity with a legacy project-ID fallback.

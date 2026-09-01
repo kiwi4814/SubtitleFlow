@@ -105,4 +105,4 @@ Raw A/B/C/D/S sources remain immutable and source hashes remain in the source ma
 
 ## Compatibility
 
-The project/workfile schema version is not bumped. New `Cue`, `BranchUnit`, `ChangeRecord` and `ReviewCandidate` fields are optional/defaulted so existing JSON continues to load. Existing JP workfiles must rerun `subflow prepare` before a new bilingual compile because reconciliation is now a first-class required artifact. Release manifest schema advances to version 5 to include audit artifact metadata.
+The project/workfile schema version is not bumped. New `Cue`, `BranchUnit`, `ChangeRecord` and `ReviewCandidate` fields are optional/defaulted so existing JSON continues to load. Existing JP workfiles must rerun `subflow prepare` before a new bilingual compile because reconciliation is now a first-class required artifact. Release Manifest remains schema version 4 for compatibility; audit artifact metadata is added as optional fields.
