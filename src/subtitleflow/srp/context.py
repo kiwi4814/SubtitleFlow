@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..io import atomic_write_text
-from ..workspace import TitlePaths
+from ..workspace import TitlePaths, effective_series_id
 
 
 def _term_line(term: dict[str, Any]) -> str:
@@ -15,9 +15,11 @@ def _term_line(term: dict[str, Any]) -> str:
 
 def render_context(paths: TitlePaths, effective: dict[str, Any]) -> None:
     paths.research_context.mkdir(parents=True, exist_ok=True)
+    series_id = effective_series_id(paths)
     summary = [
         f"# Research summary — {paths.project_id}/{paths.title_id}",
         "",
+        f"Series: `{series_id}`",
         f"Mode: `{effective.get('mode')}`",
         f"Bindings: {len(effective.get('bindings', []))}",
         f"Blocking conflicts: {effective.get('blocking_conflicts', 0)}",
@@ -36,6 +38,7 @@ def render_context(paths: TitlePaths, effective: dict[str, Any]) -> None:
         lines = [
             f"# Effective research context — {branch}",
             "",
+            f"Series: `{series_id}`",
             f"SRP branch: `{data.get('srp_branch_id') or 'none'}`",
             "",
         ]

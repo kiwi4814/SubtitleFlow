@@ -150,11 +150,6 @@ def import_pack(paths: TitlePaths, input_path: Path, *, dry_run: bool = False) -
     _ensure_project_research(paths)
     with materialize_pack_input(input_path) as (pack_root, archive_sha256):
         validated = validate_pack_dir(pack_root)
-        if validated.manifest.get("scope", {}).get("series_id") != paths.project_id:
-            raise ValidationError(
-                "SRP series_id does not match the target SubtitleFlow project: "
-                f"{validated.manifest.get('scope', {}).get('series_id')} != {paths.project_id}"
-            )
         digest = compute_pack_digest(pack_root)
         digest_hex = digest.split(":", 1)[1]
         destination_root = (

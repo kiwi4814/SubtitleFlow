@@ -163,11 +163,18 @@ def create_project(repo: Path, project_id: str, display_name: str) -> Path:
     return root
 
 
-def default_title_config(project_id: str, title_id: str, display_name: str) -> dict[str, Any]:
+def default_title_config(
+    project_id: str,
+    title_id: str,
+    display_name: str,
+    series_id: str | None = None,
+) -> dict[str, Any]:
+    effective_series_id = slugify(series_id) if series_id is not None else project_id
     return {
         "schema_version": SCHEMA_VERSION,
         "project_id": project_id,
         "title_id": title_id,
+        "series_id": effective_series_id,
         "display_name": display_name,
         "created_at": utc_now(),
         "workflow": {"profile": "auto"},
@@ -246,12 +253,19 @@ def configure_workflow_profile(config: dict[str, Any], profile: str) -> dict[str
     return config
 
 
-def create_title(repo: Path, project_id: str, title_id: str, display_name: str) -> Path:
+def create_title(
+    repo: Path,
+    project_id: str,
+    title_id: str,
+    display_name: str,
+    series_id: str | None = None,
+) -> Path:
     paths = title_paths(repo, project_id, title_id)
     if not paths.project.exists():
         raise SubtitleFlowError(f"Project does not exist: {paths.project_id}")
     if paths.title.exists():
         raise SubtitleFlowError(f"Title already exists: {paths.title_id}")
+    normalized_series_id = slugify(series_id) if series_id is not None else paths.project_id
     for directory in (
         paths.source,
         paths.normalized,
@@ -264,7 +278,13 @@ def create_title(repo: Path, project_id: str, title_id: str, display_name: str) 
         paths.title_canon,
     ):
         directory.mkdir(parents=True, exist_ok=True)
-    write_json(paths.title_config, default_title_config(paths.project_id, paths.title_id, display_name))
+    config = default_title_config(
+        paths.project_id,
+        paths.title_id,
+        display_name,
+        series_id=normalized_series_id,
+    )
+    write_json(paths.title_config, config)
     write_json(paths.manifest, {"schema_version": 1, "sources": {}, "history": []})
     write_json(paths.title_canon / "glossary.json", {"schema_version": 1, "terms": []})
     write_json(paths.research_bindings, {"schema_version": 1, "bindings": []})
@@ -275,11 +295,57 @@ def create_title(repo: Path, project_id: str, title_id: str, display_name: str) 
             "schema_version": 1,
             "project_id": paths.project_id,
             "title_id": paths.title_id,
+            "series_id": config["series_id"],
             "updated_at": utc_now(),
             "stages": {},
         },
     )
     return paths.title
+
+
+def effective_series_id(paths: TitlePaths) -> str:
+    """Return the title's canon/SRP series identity.
+
+    v0.4 titles created before the explicit identity field existed intentionally
+    fall back to their containing project ID.  Empty values use the same
+    compatibility fallback; a non-string value is rejected instead of
+    silently matching a different series.
+    """
+    config = read_json(paths.title_config)
+    value = config.get("series_id")
+    if value is None:
+        return paths.project_id
+    if not isinstance(value, str):
+        raise ValidationError("title series_id must be a string")
+    return value.strip() or paths.project_id
+
+
+def set_title_series_id(paths: TitlePaths, series_id: str) -> dict[str, Any]:
+    """Set a title's explicit series identity and stale dependent evidence."""
+    normalized = slugify(series_id)
+    config = read_json(paths.title_config)
+    previous = effective_series_id(paths)
+    previous_value = config.get("series_id")
+
+    config["series_id"] = normalized
+    changed = previous != normalized
+    if changed or previous_value != normalized:
+        write_json(paths.title_config, config)
+        if paths.state.exists():
+            state = read_json(paths.state)
+            state["series_id"] = normalized
+            state["updated_at"] = utc_now()
+            write_json(paths.state, state)
+    if changed:
+        from .state import invalidate_after_series_identity_change
+
+        invalidate_after_series_identity_change(paths)
+
+    return {
+        "series_id": normalized,
+        "previous_series_id": previous,
+        "changed": changed,
+    }
 
 
 def _make_read_only(path: Path) -> None:

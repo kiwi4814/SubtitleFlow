@@ -7,7 +7,7 @@ from typing import Any
 from ..errors import ValidationError
 from ..io import read_json, write_json
 from ..state import invalidate_stages
-from ..workspace import TitlePaths
+from ..workspace import TitlePaths, effective_series_id
 
 VALID_RESEARCH_MODES = {"off", "advisory", "enforce"}
 VALID_INTERNAL_BRANCHES = {"clean", "tw", "jp"}
@@ -148,6 +148,17 @@ def bindings_digest(paths: TitlePaths) -> str:
 
 def bind_pack(paths: TitlePaths, pack_ref: str) -> dict[str, Any]:
     entry = resolve_pack_ref(paths, pack_ref)
+    scope = entry.get("scope")
+    pack_series_id = scope.get("series_id") if isinstance(scope, dict) else None
+    if not isinstance(pack_series_id, str) or not pack_series_id.strip():
+        raise ValidationError("Imported SRP registry entry is missing scope.series_id")
+    title_series_id = effective_series_id(paths)
+    if pack_series_id != title_series_id:
+        raise ValidationError(
+            "SRP series_id is incompatible with the title: "
+            f"title {paths.project_id}/{paths.title_id} uses {title_series_id}, "
+            f"but {entry['pack_id']}@{entry['pack_version']} uses {pack_series_id}"
+        )
     bindings = load_bindings(paths)
     items = bindings.setdefault("bindings", [])
     existing = next(
@@ -161,6 +172,7 @@ def bind_pack(paths: TitlePaths, pack_ref: str) -> dict[str, Any]:
         "pack_id": entry["pack_id"],
         "pack_version": entry["pack_version"],
         "pack_digest": entry["pack_digest"],
+        "series_id": pack_series_id,
         "enabled": True,
     }
     items.append(binding)
@@ -194,6 +206,7 @@ def bound_registry_entries(paths: TitlePaths) -> list[dict[str, Any]]:
     registry_by_digest = {
         str(item.get("pack_digest")): item for item in list_packs(paths)
     }
+    title_series_id = effective_series_id(paths)
     result: list[dict[str, Any]] = []
     for binding in load_bindings(paths).get("bindings", []):
         if not binding.get("enabled", True):
@@ -207,6 +220,16 @@ def bound_registry_entries(paths: TitlePaths) -> list[dict[str, Any]]:
             or binding.get("pack_version") != entry.get("pack_version")
         ):
             raise ValidationError(f"Bound SRP identity does not match registry: {digest}")
+        scope = entry.get("scope")
+        pack_series_id = scope.get("series_id") if isinstance(scope, dict) else None
+        if not isinstance(pack_series_id, str) or not pack_series_id.strip():
+            raise ValidationError(f"Imported SRP registry entry is missing scope.series_id: {digest}")
+        if pack_series_id != title_series_id:
+            raise ValidationError(
+                "Bound SRP series_id is incompatible with the title: "
+                f"title {paths.project_id}/{paths.title_id} uses {title_series_id}, "
+                f"but bound pack {entry['pack_id']}@{entry['pack_version']} uses {pack_series_id}"
+            )
         result.append(dict(entry))
     return result
 
@@ -215,6 +238,7 @@ def research_status(paths: TitlePaths) -> dict[str, Any]:
     state = read_json(paths.state)
     snapshot = read_json(paths.research_snapshot) if paths.research_snapshot.exists() else None
     return {
+        "series_id": effective_series_id(paths),
         "mode": research_mode(paths),
         "branch_map": branch_map(paths) if research_mode(paths) != "legacy" else {},
         "bindings": load_bindings(paths).get("bindings", []),

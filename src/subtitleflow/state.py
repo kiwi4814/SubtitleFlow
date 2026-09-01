@@ -4,7 +4,7 @@ from typing import Any, Iterable
 
 from .io import read_json, write_json
 from .util import utc_now
-from .workspace import TitlePaths
+from .workspace import TitlePaths, effective_series_id
 
 
 def update_stage(paths: TitlePaths, stage: str, status: str, **details: Any) -> None:
@@ -74,6 +74,38 @@ def invalidate_after_source_or_canon_change(paths: TitlePaths, *, reason: str) -
     )
 
 
+def invalidate_after_series_identity_change(
+    paths: TitlePaths,
+    *,
+    reason: str = "title series identity changed",
+) -> None:
+    """Stale every artifact whose semantic evidence depends on title series."""
+    invalidate_stages(
+        paths,
+        (
+            "research_resolve",
+            "research",
+            "human_review",
+            "alignment_and_seed",
+            "compile_clean",
+            "compile_tw",
+            "compile_jp",
+            "fonts",
+            "qa",
+            "semantic_qa",
+            "render_clean",
+            "render_tw",
+            "render_jp",
+            "visual_clean",
+            "visual_tw",
+            "visual_jp",
+            "release",
+            "remux",
+        ),
+        reason=reason,
+    )
+
+
 def state_summary(paths: TitlePaths) -> dict[str, Any]:
     state = read_json(paths.state)
     manifest = read_json(paths.manifest)
@@ -92,6 +124,7 @@ def state_summary(paths: TitlePaths) -> dict[str, Any]:
     return {
         "project_id": paths.project_id,
         "title_id": paths.title_id,
+        "series_id": effective_series_id(paths),
         "sources": sorted(manifest.get("sources", {}).keys()),
         "research": {
             "mode": research_cfg.get("mode", "off") if research_cfg is not None else "legacy",

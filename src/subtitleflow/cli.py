@@ -37,10 +37,11 @@ from .style import load_style_profile
 from .workfile import build_all_workfiles
 from .workspace import (
     add_source,
+    configure_workflow_profile,
     create_project,
     create_title,
-    configure_workflow_profile,
     find_repo_root,
+    set_title_series_id,
     title_paths,
     verify_sources,
 )
@@ -86,12 +87,22 @@ def cmd_project_init(args: argparse.Namespace) -> Any:
 
 def cmd_title_init(args: argparse.Namespace) -> Any:
     repo = _repo(args)
-    path = create_title(repo, args.project, args.title, args.name or args.title)
+    path = create_title(
+        repo,
+        args.project,
+        args.title,
+        args.name or args.title,
+        series_id=args.series_id,
+    )
     paths = title_paths(repo, args.project, args.title)
     data = read_json(paths.title_config)
     configure_workflow_profile(data, args.profile)
     write_json(paths.title_config, data)
     return {"created": str(path), "workflow_profile": args.profile}
+
+
+def cmd_title_set_series(args: argparse.Namespace) -> Any:
+    return set_title_series_id(_paths(args), args.series_id)
 
 
 def cmd_title_set_media(args: argparse.Namespace) -> Any:
@@ -354,7 +365,12 @@ def build_parser() -> argparse.ArgumentParser:
     add_title_selector(p)
     p.add_argument("--name")
     p.add_argument("--profile", choices=["auto", "full", "single", "source-assisted", "dub", "bilingual"], default="auto")
+    p.add_argument("--series-id")
     p.set_defaults(func=cmd_title_init)
+    p = title_sub.add_parser("set-series", help="Set the title's SRP/canon series identity")
+    add_title_selector(p)
+    p.add_argument("series_id")
+    p.set_defaults(func=cmd_title_set_series)
     p = title_sub.add_parser("set-media")
     add_title_selector(p)
     p.add_argument("--video")

@@ -10,7 +10,7 @@ from ..io import read_json, write_json
 from ..state import invalidate_stages, update_stage
 from ..util import sha256_file, utc_now
 from ..workflow import active_branches
-from ..workspace import TitlePaths
+from ..workspace import TitlePaths, effective_series_id
 from . import RESOLVER_VERSION
 from .archive import compute_pack_digest
 from .context import render_context
@@ -121,7 +121,7 @@ def _load_local_terms(paths: TitlePaths, branch: str) -> list[dict[str, Any]]:
                 origin=origin,
                 branches=branches,
                 current_branch=branch,
-                series_id=paths.project_id,
+                series_id=effective_series_id(paths),
                 title_id=paths.title_id,
             )
             if scoped is None:
@@ -208,7 +208,7 @@ def _applicable_records(
                 continue
             rank = _scope_rank(
                 scope,
-                series_id=paths.project_id,
+                series_id=effective_series_id(paths),
                 title_id=paths.title_id,
                 branch_id=branch_id,
             )
@@ -492,6 +492,7 @@ def _semantic_copy(effective: dict[str, Any]) -> dict[str, Any]:
     payload = {
         "resolver_version": effective["resolver_version"],
         "mode": effective["mode"],
+        "series_id": effective.get("series_id"),
         "branch_map": effective["branch_map"],
         "branches": {},
         "blocking_conflicts": effective["blocking_conflicts"],
@@ -532,6 +533,7 @@ def research_input_digest(paths: TitlePaths) -> str:
     research = config.get("research") if isinstance(config.get("research"), dict) else None
     payload: dict[str, Any] = {
         "mode": mode,
+        "series_id": effective_series_id(paths),
         "research": research,
         "bindings": load_bindings(paths).get("bindings", []),
         "canon": {},
@@ -557,6 +559,7 @@ def build_effective(paths: TitlePaths) -> tuple[dict[str, Any], dict[str, Any]]:
     if mode == "legacy":
         raise ValidationError("Legacy v0.3 research does not use SRP resolution")
     mapping = branch_map(paths)
+    series_id = effective_series_id(paths)
     bindings = load_bindings(paths).get("bindings", [])
     packs = [] if mode == "off" else _load_bound_packs(paths)
     conflicts: list[dict[str, Any]] = []
@@ -635,6 +638,7 @@ def build_effective(paths: TitlePaths) -> tuple[dict[str, Any], dict[str, Any]]:
         "resolver_version": RESOLVER_VERSION,
         "project_id": paths.project_id,
         "title_id": paths.title_id,
+        "series_id": series_id,
         "mode": mode,
         "branch_map": mapping,
         "bindings": bindings,
@@ -649,6 +653,9 @@ def build_effective(paths: TitlePaths) -> tuple[dict[str, Any], dict[str, Any]]:
     snapshot = {
         "schema_version": 1,
         "resolver_version": RESOLVER_VERSION,
+        "project_id": paths.project_id,
+        "title_id": paths.title_id,
+        "series_id": series_id,
         "mode": mode,
         "bindings_sha256": bindings_digest(paths),
         "pack_digests": sorted(
@@ -712,6 +719,12 @@ def validate_resolved_snapshot(paths: TitlePaths) -> dict[str, Any]:
         raise GateError("research is not resolved; run subflow research resolve")
     snapshot = read_json(paths.research_snapshot)
     state = read_json(paths.state)
+    current_series_id = effective_series_id(paths)
+    if snapshot.get("series_id", current_series_id) != current_series_id:
+        raise GateError("research resolution is stale; title series identity changed")
+    effective = read_json(paths.research_effective)
+    if effective.get("series_id", current_series_id) != current_series_id:
+        raise GateError("research resolution is stale; title series identity changed")
     if state.get("stages", {}).get("research_resolve", {}).get("status") != "passed":
         raise GateError("research resolve stage is not passed")
     current_input = research_input_digest(paths)
