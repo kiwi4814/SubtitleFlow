@@ -7,6 +7,7 @@ from typing import Any
 
 from ..errors import ValidationError
 from ..models import Cue
+from ..roles import classify_event_role
 from ..text import normalize_dialogue_text, strip_ass_tags
 from ..timecode import format_ass_time, parse_ass_time
 
@@ -162,6 +163,11 @@ def parse_ass(path: Path) -> AssDocument:
         )
         events.append(event)
         plain = normalize_dialogue_text(strip_ass_tags(fields.get("Text", "")))
+        role = classify_event_role(
+            style=fields.get("Style", "Default"),
+            text=plain,
+            protected_reason=reason,
+        )
         cue = Cue(
             id=f"ass-{len(events):06d}",
             index=len(events) - 1,
@@ -174,6 +180,9 @@ def parse_ass(path: Path) -> AssDocument:
             protected=protected,
             protected_reason=reason,
             raw_line=raw,
+            semantic_role=role.role,
+            position_intent=role.position_intent,
+            include_in_release=role.include_by_default,
         )
         cue.validate()
         cues.append(cue)
@@ -264,11 +273,6 @@ def inject_styles(
     source_size: int = 38,
     source_margin_v: int = 106,
 ) -> list[str]:
-    """Upsert SubtitleFlow-generated styles while leaving source styles untouched.
-
-    `style_values` is the v0.2 profile path. The legacy scalar arguments remain for API
-    compatibility and are used when no profile values are supplied.
-    """
     output = list(lines)
     bounds = _sections(output)
     styles_bound = bounds.get("[v4+ styles]") or bounds.get("[v4 styles]")
@@ -296,18 +300,10 @@ def inject_styles(
 
     values_by_name = style_values or {
         "SF-ZH": _default_style_values(
-            "SF-ZH",
-            font=target_font,
-            size=target_size,
-            margin_v=target_margin_v,
-            bold=True,
+            "SF-ZH", font=target_font, size=target_size, margin_v=target_margin_v, bold=True
         ),
         "SF-JA": _default_style_values(
-            "SF-JA",
-            font=source_font,
-            size=source_size,
-            margin_v=source_margin_v,
-            bold=False,
+            "SF-JA", font=source_font, size=source_size, margin_v=source_margin_v, bold=False
         ),
     }
 
@@ -340,6 +336,7 @@ def render_from_template(
     source_size: int = 38,
     source_margin_v: int = 106,
     preserve_style_names: set[str] | None = None,
+    preserve_event_indices: set[int] | None = None,
 ) -> str:
     lines = inject_styles(
         template.lines,
@@ -363,9 +360,10 @@ def render_from_template(
 
     preserved: list[tuple[int, int, str]] = []
     preserve_style_names = preserve_style_names or set()
+    preserve_event_indices = preserve_event_indices or set()
     for event in template.events:
         event_style = event.fields.get("Style", "").strip()
-        if event.protected or event_style in preserve_style_names:
+        if event.protected or event_style in preserve_style_names or event.index in preserve_event_indices:
             preserved.append((event.start_ms, event.index, event.raw_line))
 
     merged = preserved + generated_events
