@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from .editorial import editorial_context, normalize_change_type, policy_action
 from .errors import GateError, ValidationError
 from .io import read_json, write_json
 from .models import ChangeRecord, ReviewCandidate
@@ -57,12 +58,7 @@ def _archive_proposal_path(paths: TitlePaths, proposal_path: Path) -> Path | Non
 
 
 def _unit_fingerprint(unit: Any) -> str:
-    """Fingerprint the evidence/timing context a semantic proposal was made against.
-
-    final_text is intentionally checked separately through original_text. This fingerprint
-    protects against the more subtle stale case where timing or source evidence changes
-    while the editable text happens to remain byte-for-byte identical.
-    """
+    """Fingerprint the evidence/timing context a semantic proposal was made against."""
     payload = {
         "id": unit.id,
         "start_ms": unit.start_ms,
@@ -75,6 +71,9 @@ def _unit_fingerprint(unit: Any) -> str:
         "source_text_cue_ids": list(unit.source_text_cue_ids),
         "alignment_confidence": unit.alignment_confidence,
         "flags": list(unit.flags),
+        "semantic_role": getattr(unit, "semantic_role", "dialogue"),
+        "source_operation": getattr(unit, "source_operation", None),
+        "parent_source_cue_ids": list(getattr(unit, "parent_source_cue_ids", [])),
     }
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -94,9 +93,11 @@ def _semantic_context_fingerprint(paths: TitlePaths, unit: Any) -> str:
     srp_semantic_digest: str | None = None
     if mode in {"advisory", "enforce"}:
         srp_semantic_digest = effective_semantic_digest(paths)
+    title_config = read_json(paths.title_config)
     payload = {
         "unit": _unit_fingerprint(unit),
         "source_manifest_sha256": sha256_file(paths.manifest),
+        "editorial": editorial_context(title_config, branch=getattr(unit, "id", "").split("-", 1)[0]).to_dict(),
         "canon": {
             str(path.relative_to(paths.repo)).replace("\\", "/"): sha256_file(path)
             for path in canon_files
@@ -195,6 +196,7 @@ def import_proposals(paths: TitlePaths, proposal_path: Path) -> list[ReviewCandi
     if not isinstance(items, list):
         raise ValidationError("candidates must be a list")
 
+    config = read_json(paths.title_config)
     store = _candidate_store(paths)
     existing_ids = {item.get("candidate_id") for item in store["candidates"]}
     imported: list[ReviewCandidate] = []
@@ -209,9 +211,25 @@ def import_proposals(paths: TitlePaths, proposal_path: Path) -> list[ReviewCandi
             raise GateError(
                 f"Stale proposal for {unit_id}: original_text no longer matches current final_text"
             )
+        context = editorial_context(config, branch=branch)
+        if context.assessment_required:
+            raise GateError(
+                f"Editorial policy for {branch} is auto but no Translation Quality Assessment exists; "
+                "record the structured assessment before importing semantic proposals"
+            )
+        change_type = normalize_change_type(str(item.get("change_type", "semantic")))
+        action = policy_action(context, change_type)
+        if action == "block":
+            raise GateError(
+                f"Editorial policy {context.effective_policy} blocks change type {change_type} "
+                f"for {branch}/{unit_id}"
+            )
         candidate_id = str(item.get("candidate_id") or f"rev-{uuid.uuid4().hex[:12]}")
         if candidate_id in existing_ids:
             raise ValidationError(f"Duplicate candidate_id: {candidate_id}")
+        primary = item.get("primary_evidence")
+        secondary = item.get("secondary_evidence", [])
+        conflicts = item.get("source_conflicts", [])
         candidate = ReviewCandidate(
             schema_version=1,
             candidate_id=candidate_id,
@@ -219,17 +237,26 @@ def import_proposals(paths: TitlePaths, proposal_path: Path) -> list[ReviewCandi
             title_id=paths.title_id,
             branch=branch,  # type: ignore[arg-type]
             unit_id=unit_id,
-            change_type=str(item.get("change_type", "semantic")),
+            change_type=change_type,
             original_text=original,
             proposed_text=str(item.get("proposed_text", "")),
             reason=str(item.get("reason", "")),
             confidence=float(item.get("confidence", 0.5)),
             severity=str(item.get("severity", "medium")),
             evidence={str(k): str(v) for k, v in dict(item.get("evidence", {})).items()},
+            primary_evidence=dict(primary) if isinstance(primary, dict) else None,
+            secondary_evidence=[dict(value) for value in secondary if isinstance(value, dict)],
+            authority_domain=item.get("authority_domain"),
+            evidence_grade=item.get("evidence_grade"),
+            source_conflicts=[str(value) for value in conflicts],
+            editorial_policy=context.effective_policy,
+            policy_action=action,
             unit_fingerprint=_unit_fingerprint(unit),
             context_fingerprint=_semantic_context_fingerprint(paths, unit),
             proposal_source=proposal_source,
             proposal_sha256=proposal_sha,
+            # Editing permission and review policy are separate. Semantic AI edits remain
+            # human-gated even when the editorial matrix says the change type is allowed.
             requires_human=True,
             status="pending",
             created_at=utc_now(),
@@ -302,7 +329,7 @@ def decide_candidate(
             and _semantic_context_fingerprint(paths, unit) != candidate.context_fingerprint
         ):
             raise GateError(
-                f"Candidate {candidate_id} is stale: canon, research, or source manifest changed after proposal creation"
+                f"Candidate {candidate_id} is stale: editorial policy, canon, research, or source manifest changed after proposal creation"
             )
         replacement = candidate.proposed_text if decision == "approve" else (custom_text or "")
         if not replacement.strip():
@@ -316,6 +343,16 @@ def decide_candidate(
                 after=replacement,
                 rule_id=candidate.candidate_id,
                 note=note or candidate.reason,
+                reason=candidate.reason,
+                primary_evidence=candidate.primary_evidence,
+                secondary_evidence=list(candidate.secondary_evidence),
+                authority_domain=candidate.authority_domain,
+                evidence_grade=candidate.evidence_grade,
+                source_conflicts=list(candidate.source_conflicts),
+                confidence=candidate.confidence,
+                proposal_source=candidate.proposal_source,
+                review_status="approved",
+                final_decision=decision,
             )
         )
         save_workfile(paths, work)
@@ -345,15 +382,24 @@ def render_review_markdown(candidates: list[ReviewCandidate]) -> str:
     parts: list[str] = []
     for candidate in candidates:
         evidence = "\n".join(f"- **{key}**: {value}" for key, value in candidate.evidence.items())
+        structured = []
+        if candidate.evidence_grade:
+            structured.append(f"- Evidence grade: **{candidate.evidence_grade}**")
+        if candidate.authority_domain:
+            structured.append(f"- Authority domain: `{candidate.authority_domain}`")
+        if candidate.source_conflicts:
+            structured.append("- Source conflicts: " + "; ".join(candidate.source_conflicts))
         parts.append(
             f"## {candidate.candidate_id} · {candidate.branch}/{candidate.unit_id}\n\n"
             f"- Status: **{candidate.status}**\n"
             f"- Severity: **{candidate.severity}**\n"
             f"- Confidence: **{candidate.confidence:.2f}**\n"
-            f"- Type: `{candidate.change_type}`\n\n"
+            f"- Type: `{candidate.change_type}`\n"
+            f"- Editorial policy: `{candidate.editorial_policy or 'legacy'}`\n\n"
             f"**Original**\n\n> {candidate.original_text.replace(chr(10), chr(10) + '> ')}\n\n"
             f"**Proposed**\n\n> {candidate.proposed_text.replace(chr(10), chr(10) + '> ')}\n\n"
             f"**Reason**\n\n{candidate.reason}\n\n"
             + (f"**Evidence**\n\n{evidence}\n" if evidence else "")
+            + ("\n" + "\n".join(structured) + "\n" if structured else "")
         )
     return "\n\n".join(parts).rstrip() + "\n"
