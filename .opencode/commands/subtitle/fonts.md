@@ -5,4 +5,4 @@ agent: subtitle-orchestrator
 
 First run `subflow fonts verify` to report whether the repository-local registered font assets are complete and byte/name-table correct. Then, for project `$1` title `$2`, run `subflow fonts audit $1 $2` and report requested/canonical families, canonical attachment names, local files, MIME metadata, SHA-256 records, and missing/mismatched families.
 
-Do not acquire or redistribute font binaries. `subflow fonts install SOURCE` is a write operation and should only be run when the user explicitly supplies/authorizes a local font source. Source releases must exclude `fonts/local/` binaries.
+The repository bundles the pre-verified default fonts in `fonts/local/`. `subflow fonts install SOURCE` remains available when the user wants to re-import or update local font assets.

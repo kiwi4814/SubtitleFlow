@@ -10,7 +10,7 @@ Title configs may use environment variables and `~` for media/font paths. Prefer
 
 ## Fonts
 
-Do not commit or distribute font binaries with SubtitleFlow. `fonts/local/` and `fonts/font-map.json` are intentionally ignored; `fonts/font-registry.json` is committed because it contains only identities/policy, not font bytes. On another workstation, run `subflow fonts install /path/to/user-fonts.zip`, `subflow fonts verify`, then rerun the title-level font audit. Exact SHA matching makes the local asset set reproducible even when incoming filenames differ. For strict Name Table verification install FontTools.
+For personal workflow usage, default verified fonts are bundled directly in `fonts/local/`. `fonts/font-map.json` remains ignored for optional user-specific overrides. `fonts/font-registry.json` defines the canonical identities. Exact SHA matching makes the asset set reproducible, and `subflow fonts verify` ensures font integrity on any workstation. For strict Name Table verification install FontTools.
 
 Final collector MKVs can be more portable than loose ASS files because `subflow remux` attaches the exact frozen font files into Matroska when enabled. Player support for ASS attachments is still a playback-environment concern, so visual QA on the target player remains authoritative.
 

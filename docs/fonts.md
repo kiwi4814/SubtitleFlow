@@ -9,9 +9,7 @@ Font handling is deliberately split into two layers:
 ```text
 fonts/font-registry.json       committed identity/policy evidence
         ↓
-user-supplied file/dir/ZIP
-        ↓  exact SHA-256 match
-fonts/local/                   ignored local binary store
+fonts/local/                   bundled pre-verified font binaries (personal use)
         ↓
 compiled ASS font scan
         ↓
@@ -76,29 +74,23 @@ WantedPoster / document / newspaper / formal screen text
 These are defaults for the Kiwi Collector system, not a prohibition on project-specific fonts. A title may still map extra fonts through its local `font-map.json`; the final attachment set is derived from the compiled ASS actually being released.
 
 ## 4. Supplying fonts locally
-
-Font binaries are not source-controlled. Import user-provided/local-licensed assets with:
+The repository includes the verified font binaries pre-installed under `fonts/local/`. You can also re-import or update them from user-provided assets with:
 
 ```bash
 subflow fonts install /path/to/fonts.zip
 subflow fonts verify
 ```
 
-The source can be a file, directory, or ZIP. Incoming filenames are not trusted as identity. SubtitleFlow hashes each candidate and copies a matching font to its canonical `fonts/local/` name. Existing conflicting local bytes are rejected unless replacement is explicitly requested.
+The importer identifies candidates by exact SHA-256 and copies/replaces matching fonts to their canonical `fonts/local/` names.
 
-`subflow fonts verify` checks every registered local file for exact SHA-256 and size, and, when FontTools is available, reparses the Name Table. This is a repository-local reproducibility check; it does not change the internal names of the font.
+`subflow fonts verify` checks every registered local file for exact SHA-256 and size, and, when FontTools is available, reparses the Name Table. This is a repository-local reproducibility check.
+## 5. Personal repository & licensing boundary
 
-## 5. Font licensing boundary
+This repository is configured for personal workflow usage and includes the verified font binaries in `fonts/local/` out of the box.
 
-The registry can record open-font and proprietary/local-license metadata, but SubtitleFlow does not treat that metadata as permission to redistribute binaries.
-
-- `fonts/local/` is ignored.
-- public/source release ZIPs must exclude all font binaries.
-- the user supplies fonts they are permitted to use locally.
-- final personal MKV attachment policy remains a user/project licensing decision.
-
-This boundary is especially important for the Founder and Reeji fonts.
-
+- Default fonts are pre-verified against `fonts/font-registry.json`.
+- Additional project-specific fonts can be placed in `fonts/local/` or mapped via `fonts/font-map.json`.
+- Final personal MKV attachment policy remains a user/project decision.
 ## 6. ASS matching and QA
 
 After compilation:

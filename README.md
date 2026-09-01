@@ -44,7 +44,7 @@ SubtitleFlow does **not** regenerate risky authored typesetting by default. Exis
 
 ## Font registry and MKV attachments
 
-SubtitleFlow 0.4.0 keeps `fonts/font-registry.json` the authoritative registry for the five verified Kiwi Collector font roles. The registry freezes canonical ASS family names, aliases, canonical attachment filenames, exact SHA-256 identities, versions and intended roles. **Font binaries are still local assets and are not included in source releases.**
+SubtitleFlow 0.4.0 keeps `fonts/font-registry.json` the authoritative registry for the five verified Kiwi Collector font roles. The registry freezes canonical ASS family names, aliases, canonical attachment filenames, exact SHA-256 identities, versions and intended roles. **For out-of-the-box personal use, the five pre-verified font binaries are included in `fonts/local/`.**
 
 | Role | Canonical ASS family | Canonical local/attachment file |
 |---|---|---|
@@ -56,7 +56,7 @@ SubtitleFlow 0.4.0 keeps `fonts/font-registry.json` the authoritative registry f
 
 Legacy/internal aliases such as `文泉驿微米黑`, `思源黑体 CN Heavy`, `锐字云字库综艺体1.0`, `FZCuYuan-M03`, `@方正粗圆_GBK`, and `思源宋体 CN` resolve through the registry; `@` vertical-font prefixes normalize to the same family.
 
-Import a user-supplied font directory or ZIP into the git-ignored local store:
+The repository comes with the verified font binaries pre-installed under `fonts/local/`. You can also re-import or update them anytime:
 
 ```bash
 subflow fonts install /path/to/fonts.zip

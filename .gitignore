@@ -12,7 +12,18 @@ wheels/
 .coverage
 htmlcov/
 
-# Local licensed font assets and user-specific mappings
-fonts/local/*
-!fonts/local/.gitkeep
+# User-specific font mappings (optional override)
 fonts/font-map.json
+
+# OS artifacts
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# User projects data (keep placeholder)
+projects/*
+!projects/.gitkeep

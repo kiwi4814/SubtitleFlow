@@ -54,13 +54,12 @@ Hybrid mode keeps risky source typesetting instead of recreating it. Existing No
 
 ## 4. Supply and verify local fonts
 
-`fonts/font-registry.json` freezes the verified SubtitleFlow font identities. The project repository does **not** ship font binaries. Put your own legally available copies into the local store by importing a directory, a single file, or a ZIP:
+`fonts/font-registry.json` freezes the verified SubtitleFlow font identities. For personal out-of-the-box usage, the five verified canonical font binaries are pre-installed in `fonts/local/`. You can also re-import or update them anytime from a directory, file, or ZIP:
 
 ```bash
 subflow fonts install /path/to/fonts.zip
 subflow fonts verify
 ```
-
 The installer ignores source filenames as identity. It matches exact SHA-256 values, verifies internal Name Table data when FontTools is installed, and writes canonical filenames under the git-ignored `fonts/local/` directory. The five canonical mappings are:
 
 ```text
