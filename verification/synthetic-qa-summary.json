@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "ok": true,
+  "structural": {
+    "schema_version": 1,
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "source_integrity": {
+      "ok": true,
+      "results": [
+        {
+          "role": "A",
+          "status": "ok",
+          "expected": "e93b92159d8c0f61747d077fed3a59d43c397352448fecc1050f61b864567698",
+          "actual": "e93b92159d8c0f61747d077fed3a59d43c397352448fecc1050f61b864567698",
+          "path": "/mnt/data/SubtitleFlow/projects/_visualtest/titles/demo/source/A.ass"
+        },
+        {
+          "role": "B",
+          "status": "ok",
+          "expected": "988a5871582deed148ef80d55c31655f91dd3145ff4bc671156e47d7d3133c0c",
+          "actual": "988a5871582deed148ef80d55c31655f91dd3145ff4bc671156e47d7d3133c0c",
+          "path": "/mnt/data/SubtitleFlow/projects/_visualtest/titles/demo/source/B.ass"
+        },
+        {
+          "role": "C",
+          "status": "ok",
+          "expected": "8a598011dad3328d77a03a3091be5dfd470dd5a986a05ca2f462d548f03130bc",
+          "actual": "8a598011dad3328d77a03a3091be5dfd470dd5a986a05ca2f462d548f03130bc",
+          "path": "/mnt/data/SubtitleFlow/projects/_visualtest/titles/demo/source/C.srt"
+        },
+        {
+          "role": "D",
+          "status": "ok",
+          "expected": "c59b1cbf3432257880d243bb443fd8ee02a96a9c37041f4e47cc181bd996016d",
+          "actual": "c59b1cbf3432257880d243bb443fd8ee02a96a9c37041f4e47cc181bd996016d",
+          "path": "/mnt/data/SubtitleFlow/projects/_visualtest/titles/demo/source/D.ass"
+        }
+      ],
+      "checked_at": "2026-08-31T08:24:10+00:00"
+    }
+  },
+  "terminology": {
+    "schema_version": 1,
+    "ok": true,
+    "hits": []
+  },
+  "layout": {
+    "schema_version": 1,
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "preview_candidates": [],
+    "assumptions": {
+      "play_res_x": 1920,
+      "usable_width": 1840,
+      "static_estimate_only": true
+    }
+  },
+  "compiled_ass": {
+    "schema_version": 1,
+    "ok": true,
+    "results": [
+      {
+        "file": "demo.zh-CN-ja.ass",
+        "events": 9,
+        "protected_events": 1
+      },
+      {
+        "file": "demo.zh-CN.tw.ass",
+        "events": 5,
+        "protected_events": 1
+      }
+    ],
+    "errors": []
+  },
+  "input_snapshot": {
+    "canon/glossary.json": "265d217e2f0f5ab53cff7fef55215d79d29c60bcaa21071089089fb1d892666c",
+    "projects/_visualtest/canon/glossary.json": "c46eb7d2a5e033ae23a0130bb12afe0de4700f482d9fcd858b5d608642c48c10",
+    "release/demo.zh-CN-ja.ass": "5be35bdcb005d05a9ead6f116c328f9c702b2a7d241031ffb6067e9d7e163f70",
+    "release/demo.zh-CN.tw.ass": "c6362f9659975ffda4f2237eedd3161e7734fde8e14e0559e62e14765f819444",
+    "review/candidates.json": "7ba15ba3b2b170c6a5cbb805294193112090387d9b5d45fd0065f36b46511248",
+    "source/manifest.json": "897e89aaa4579704e799fd6364d5b492f1c8d3e5391512c342447ff8898d63e3",
+    "title.json": "98c91e97c0284b1509e58caf2e3669fce3cb27f6ae55d50f5a88f60087b74b3a",
+    "work/jp.json": "75bfe4a00888637fd827d4ef7a54c389affa21f58a2e05da16e490a3761cffc3",
+    "work/tw.json": "9cb6d419eca197858035865fc3c693fd4bb390c09ed6802184f4965010ac4555"
+  }
+}

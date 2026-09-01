@@ -1,0 +1,27 @@
+{
+  "large_ass": {
+    "source_sha256_before": "cc2ea32bb92ed59928fb06d150934b543af5436970d61a5c7e58a6c60101e08b",
+    "source_sha256_after": "cc2ea32bb92ed59928fb06d150934b543af5436970d61a5c7e58a6c60101e08b",
+    "source_unchanged": true,
+    "events": 824,
+    "protected": 0,
+    "workfiles": {
+      "tw": "work/tw.json",
+      "jp": "work/jp.json"
+    },
+    "compiled": {
+      "tw": "title.zh-CN.tw.ass",
+      "jp": "title.zh-CN-ja.ass"
+    },
+    "qa_ok": true,
+    "release_files": [
+      "title.zh-CN-ja.ass",
+      "title.zh-CN.tw.ass"
+    ]
+  },
+  "complex_ass": {
+    "protected": 7363,
+    "retained": 7363,
+    "roundtrip": true
+  }
+}

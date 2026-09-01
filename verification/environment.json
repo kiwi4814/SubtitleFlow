@@ -1,0 +1,28 @@
+{
+  "python": "3.13.5",
+  "python_ok": true,
+  "platform": "Linux-6.18.35-x86_64-with-glibc2.41",
+  "tools": {
+    "git": "/usr/bin/git",
+    "opencode": null,
+    "ffmpeg": "/usr/bin/ffmpeg",
+    "ffprobe": "/usr/bin/ffprobe",
+    "ffmpeg_libass": true,
+    "mkvmerge": null,
+    "opencc": null
+  },
+  "required_for_core": {
+    "python": true
+  },
+  "required_for_visual": {
+    "ffmpeg": true,
+    "ffprobe": true,
+    "libass_filter": true
+  },
+  "required_for_remux": {
+    "mkvmerge": false
+  },
+  "required_for_tw_conversion": {
+    "opencc": false
+  }
+}
