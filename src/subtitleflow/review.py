@@ -189,7 +189,9 @@ def import_proposals(paths: TitlePaths, proposal_path: Path) -> list[ReviewCandi
     elif isinstance(raw, dict):
         items = [raw]
     else:
-        raise ValidationError("Proposal file must be an object, array, or {candidates: [...]} object")
+        raise ValidationError(
+            "Proposal file must be an object, array, or {candidates: [...]} object"
+        )
     if not isinstance(items, list):
         raise ValidationError("candidates must be a list")
 
@@ -241,7 +243,9 @@ def import_proposals(paths: TitlePaths, proposal_path: Path) -> list[ReviewCandi
         shutil.move(str(proposal_path), str(archive_path))
     if imported:
         invalidate_after_review_change(paths, reason="semantic proposals imported")
-    update_stage(paths, "human_review", "blocked" if imported else "passed", pending=pending_count(paths))
+    update_stage(
+        paths, "human_review", "blocked" if imported else "passed", pending=pending_count(paths)
+    )
     return imported
 
 
@@ -270,7 +274,11 @@ def decide_candidate(
         raise ValidationError("Decision must be approve, reject, or custom")
     store = _candidate_store(paths)
     index = next(
-        (i for i, item in enumerate(store["candidates"]) if item.get("candidate_id") == candidate_id),
+        (
+            i
+            for i, item in enumerate(store["candidates"])
+            if item.get("candidate_id") == candidate_id
+        ),
         None,
     )
     if index is None:
@@ -343,8 +351,8 @@ def render_review_markdown(candidates: list[ReviewCandidate]) -> str:
             f"- Severity: **{candidate.severity}**\n"
             f"- Confidence: **{candidate.confidence:.2f}**\n"
             f"- Type: `{candidate.change_type}`\n\n"
-            f"**Original**\n\n> {candidate.original_text.replace(chr(10), chr(10)+'> ')}\n\n"
-            f"**Proposed**\n\n> {candidate.proposed_text.replace(chr(10), chr(10)+'> ')}\n\n"
+            f"**Original**\n\n> {candidate.original_text.replace(chr(10), chr(10) + '> ')}\n\n"
+            f"**Proposed**\n\n> {candidate.proposed_text.replace(chr(10), chr(10) + '> ')}\n\n"
             f"**Reason**\n\n{candidate.reason}\n\n"
             + (f"**Evidence**\n\n{evidence}\n" if evidence else "")
         )
