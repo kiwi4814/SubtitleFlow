@@ -49,9 +49,16 @@ def _prepared_single(tmp_path: Path, *, video: Path | None = None):
     assert run_all_qa(paths)["ok"] is True
     return paths
 
+def _enable_legacy_research(paths) -> None:
+    config = read_json(paths.title_config)
+    config.pop("research", None)
+    config.setdefault("quality_gates", {})["require_research"] = True
+    write_json(paths.title_config, config)
 
-def test_research_gate_requires_evidence_files(tmp_path: Path) -> None:
+
+def test_legacy_research_gate_requires_evidence_files(tmp_path: Path) -> None:
     paths = _paths(tmp_path)
+    _enable_legacy_research(paths)
     with pytest.raises(GateError):
         mark_research_complete(paths)
     (paths.research / "context.md").write_text("context\n", encoding="utf-8")
@@ -62,13 +69,10 @@ def test_research_gate_requires_evidence_files(tmp_path: Path) -> None:
     assert set(stage["evidence"]) == {"research/context.md", "research/sources.md"}
 
 
-def test_semantic_gate_requires_current_qa_research_and_report(tmp_path: Path) -> None:
+def test_semantic_gate_requires_current_qa_and_report_when_research_off(tmp_path: Path) -> None:
     paths = _prepared_single(tmp_path)
     with pytest.raises(GateError):
         mark_semantic_qa_complete(paths)
-    (paths.research / "context.md").write_text("context\n", encoding="utf-8")
-    (paths.research / "sources.md").write_text("sources\n", encoding="utf-8")
-    mark_research_complete(paths)
     (paths.qa / "semantic-review.md").write_text("No unresolved semantic findings.\n", encoding="utf-8")
     mark_semantic_qa_complete(paths)
     stage = read_json(paths.state)["stages"]["semantic_qa"]
@@ -80,9 +84,6 @@ def test_semantic_gate_becomes_stale_if_report_changes(tmp_path: Path) -> None:
     from subtitleflow.gates import validate_semantic_qa_evidence
 
     paths = _prepared_single(tmp_path)
-    (paths.research / "context.md").write_text("context\n", encoding="utf-8")
-    (paths.research / "sources.md").write_text("sources\n", encoding="utf-8")
-    mark_research_complete(paths)
     report = paths.qa / "semantic-review.md"
     report.write_text("No unresolved semantic findings.\n", encoding="utf-8")
     mark_semantic_qa_complete(paths)

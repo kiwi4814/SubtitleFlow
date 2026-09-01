@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision.schema.json",
+  "title": "SRP 1.0 Decision Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "key", "scope", "kind", "directive", "enforcement", "status"],
+  "properties": {
+    "id": {"$ref": "common.schema.json#/$defs/record_id"},
+    "key": {"$ref": "common.schema.json#/$defs/semantic_key"},
+    "scope": {"$ref": "common.schema.json#/$defs/scope"},
+    "kind": {"enum": ["translation", "naming", "register", "honorific", "annotation", "cultural", "branch_policy", "continuity", "other"]},
+    "directive": {"type": "string", "minLength": 1},
+    "applies_to": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "branch_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "common.schema.json#/$defs/slug"}
+        },
+        "entity_ids": {"$ref": "common.schema.json#/$defs/id_list"},
+        "term_keys": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "common.schema.json#/$defs/semantic_key"}
+        },
+        "languages": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "common.schema.json#/$defs/language_tag"}
+        }
+      }
+    },
+    "enforcement": {"$ref": "common.schema.json#/$defs/enforcement"},
+    "status": {"$ref": "common.schema.json#/$defs/status"},
+    "rationale": {"type": "string"},
+    "evidence_ids": {"$ref": "common.schema.json#/$defs/id_list"},
+    "extensions": {"$ref": "common.schema.json#/$defs/extensions"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "provisional"}}, "required": ["status"]},
+      "then": {"properties": {"enforcement": {"enum": ["preferred", "informational"]}}}
+    },
+    {
+      "if": {"properties": {"status": {"const": "deprecated"}}, "required": ["status"]},
+      "then": {"properties": {"enforcement": {"const": "informational"}}}
+    }
+  ]
+}

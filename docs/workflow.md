@@ -21,9 +21,11 @@ Do once per series/franchise, then version it. Store recurring canonical names, 
 
 Import with `subflow source add`. SubtitleFlow copies the source into the title workspace, records SHA-256, and makes it read-only on a best-effort basis. Hash verification is authoritative. Before `--replace`, the existing source hash is verified; the prior source is then moved to a unique immutable archive path and that archive path/SHA is recorded in source history. A tampered source cannot be hidden by replacing it first.
 
-## Stage 3 — Title research
+## Stage 3 — Optional research knowledge
 
-When required, OpenCode's researcher creates `research/context.md` and `research/sources.md` before semantic editing. Stable recurring decisions belong to project canon; one-title terms remain title-scoped.
+New v0.4 titles default to `research.mode=off`; no research producer is required. If SRP is enabled, import immutable packs at project scope, bind exact digests to the title, map any output branches, and resolve deterministic Effective Knowledge before semantic editing. `advisory` mode exposes the resolved context without a release-blocking Research Gate. `enforce` mode requires a current human-approved SRP snapshot before `prepare`.
+
+A web/high-end model, local researcher, human editor, or other tool may produce SRP/1.0. SubtitleFlow itself consumes the offline pack and never depends on the producer or network. Legacy v0.3 titles without a `research` object retain the old `research/context.md` + `research/sources.md` gate. See `docs/research.md`.
 
 ## Stage 4 — Normalize and protect authored typesetting
 
@@ -78,7 +80,7 @@ LLM output is proposal JSON, not a direct workfile edit.
 
 ## Stage 8 — Human review
 
-Every semantic wording change requires an explicit approve/reject/custom decision. Proposal stale protection binds text, timing/source-unit evidence, the source manifest, canon and title research context. Unimported proposal files remain visible durable evidence and block Release. Approved/custom candidates must still be materialized in the current workfile. See `docs/human-review.md`.
+Every semantic wording change requires an explicit approve/reject/custom decision. Proposal stale protection binds text, timing/source-unit evidence, the source manifest, local canon and the active research/effective-context inputs. Unimported proposal files remain visible durable evidence and block Release. Approved/custom candidates must still be materialized in the current workfile. See `docs/human-review.md`.
 
 ## Stage 9 — Compile with versioned style
 
@@ -93,7 +95,7 @@ Styling and semantic editing are separate. Changing the style profile invalidate
 
 ## Stage 10 — Deterministic QA and font audit
 
-`subflow qa` checks source integrity, structural validity, pending/unmaterialized review, terminology, alignment warnings, layout estimates and reparses compiled ASS. Its input snapshot also binds the current workfiles/compiled ASS, canon JSON, proposal files, configured font registry/font map and other deterministic inputs so later upstream changes stale the QA result.
+`subflow qa` checks source integrity, structural validity, pending/unmaterialized review, terminology, alignment warnings, layout estimates and reparses compiled ASS. Its input snapshot also binds the current workfiles/compiled ASS, canon JSON, proposal files, configured font registry/font map and, in advisory/enforce research modes, the Effective Knowledge semantic digest. Later upstream semantic changes therefore stale the QA result without making provenance-only changes unnecessarily invalidate visual work.
 
 Low-confidence alignment is currently reported as a warning. A durable alignment-review ledger with `Approve / Adjust / Defer` is the recommended next gate; simply converting the warning into a hard error would create no legitimate unlock path. Until that ledger exists, low-confidence alignments are a known production gap and require operator review before Release.
 
@@ -103,7 +105,7 @@ The production font gate is intentionally separate from semantic QA: unresolved 
 
 ## Stage 11 — Independent semantic QA
 
-A separate QA agent audits high-risk semantics and all human-approved changes. Corrections return to the normal human-review loop. Semantic QA must leave a non-empty report before it can be marked passed. The semantic-QA mark freezes the report SHA plus the deterministic QA snapshot (and research evidence when required); changing any of those inputs invalidates the gate.
+A separate QA agent audits high-risk semantics and all human-approved changes. Corrections return to the normal human-review loop. Semantic QA must leave a non-empty report before it can be marked passed. The semantic-QA mark freezes the report SHA plus the deterministic QA snapshot. In `enforce` mode it also binds current Research Gate evidence; in `advisory` mode research semantics are already represented by the QA snapshot; in `off` mode no research evidence is required.
 
 ## Stage 12 — Render and visual approval
 
@@ -118,7 +120,8 @@ A separate QA agent audits high-risk semantics and all human-approved changes. C
 - active workflow profile and branches;
 - style profile;
 - font attachment file paths, names, MIME types, sizes and SHA-256 values;
-- research/semantic/visual gate evidence snapshots;
+- compact research mode/binding/effective semantic/provenance evidence when SRP is active;
+- semantic/visual gate evidence snapshots;
 - the visual-QA media identity when visual QA is required.
 
 Any upstream change makes the frozen release stale.

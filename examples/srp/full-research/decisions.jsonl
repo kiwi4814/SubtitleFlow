@@ -1,0 +1,1 @@
+{"id":"decision:tw-dub-wording","key":"policy.tw-dub-wording","scope":{"level":"series","series_id":"doraemon"},"kind":"branch_policy","applies_to":{"branch_ids":["tw-dub-zh-cn"]},"directive":"台配字幕优先保留实际配音措辞，仅进行必要的简体化、错字修正和可读性优化。","enforcement":"locked","status":"accepted","rationale":"保持台配版本的语言身份"}

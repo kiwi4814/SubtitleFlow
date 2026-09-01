@@ -39,6 +39,14 @@ Branches:
 - `tw`: A timing + D wording.
 - `jp`: A timing + B Chinese + C Japanese.
 
+## Research Pack and Effective Knowledge
+
+SRP imports are immutable project-level snapshots under `projects/<project>/research/packs/`; title activation is stored separately in `research/bindings.json`. Raw packs are never merged by an LLM.
+
+For v0.4-native titles in `advisory` or `enforce`, the resolver generates `research/effective.json`, `research/snapshot.json`, `research/summary.md`, and branch context files. Effective knowledge contains resolved Terms, Decisions, Entities, Facts, Unresolved items, and any cross-pack conflicts for `clean`/`tw`/`jp`. It freezes separate semantic and provenance digests.
+
+The resolver combines SRP scopes deterministically (title+branch > series+branch > title > series) and overlays existing local project/title canon at the same scope. SRP Sources/Evidence are provenance, not subtitle text.
+
 ## Review candidates
 
 AI proposals store branch, unit id, exact original text, proposed text, reason/type/severity/confidence/evidence and durable status. They cannot apply themselves.
@@ -63,4 +71,4 @@ No font binary is copied into persistent project data by font audit.
 
 ## Release manifest
 
-`release/release-manifest.json` freezes active branches, workflow profile, style id, ASS hashes, QA snapshot, review counts and resolved font attachment hashes. Remux must verify this frozen state before creating an MKV.
+`release/release-manifest.json` freezes active branches, workflow profile, style id, ASS hashes, QA snapshot, review counts, resolved font attachment hashes, and compact research mode/binding/digest evidence when SRP is active. Remux must verify this frozen state before creating an MKV.

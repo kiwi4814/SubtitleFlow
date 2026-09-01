@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "evidence.schema.json",
+  "title": "SRP 1.0 Evidence Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "source_id", "stance", "claim"],
+  "properties": {
+    "id": {"$ref": "common.schema.json#/$defs/record_id"},
+    "source_id": {"$ref": "common.schema.json#/$defs/record_id"},
+    "stance": {"enum": ["supports", "contradicts", "contextualizes"]},
+    "claim": {"type": "string", "minLength": 1},
+    "locator_note": {"type": "string"},
+    "related_records": {"$ref": "common.schema.json#/$defs/id_list"},
+    "extensions": {"$ref": "common.schema.json#/$defs/extensions"}
+  }
+}

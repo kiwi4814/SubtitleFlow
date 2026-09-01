@@ -9,6 +9,7 @@ from .glossary import apply_glossary, load_glossary
 from .io import read_json, write_json
 from .models import BranchUnit, BranchWorkfile, Cue
 from .normalize import load_normalized
+from .srp.resolver import require_research_ready_for_edit
 from .state import invalidate_after_prepare, update_stage
 from .text import TraditionalToSimplified, normalize_dialogue_text
 from .workflow import active_branches, missing_roles_for_profile
@@ -383,6 +384,7 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
 
 
 def build_all_workfiles(paths: TitlePaths, *, allow_no_opencc: bool = False) -> dict[str, str]:
+    require_research_ready_for_edit(paths)
     invalidate_after_prepare(paths)
     branches = active_branches(paths)
     missing = missing_roles_for_profile(paths)

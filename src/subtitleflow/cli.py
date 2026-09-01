@@ -20,6 +20,18 @@ from .qa import run_all_qa
 from .release import create_release_manifest
 from .remux import remux
 from .review import decide_candidate, import_proposals, list_candidates, render_review_markdown
+from .srp.archive import compute_pack_digest, import_pack, materialize_pack_input
+from .srp.diff import diff_research
+from .srp.registry import (
+    bind_pack,
+    list_packs,
+    map_branch,
+    research_status,
+    set_mode,
+    unbind_pack,
+)
+from .srp.resolver import approve_research, resolve_research
+from .srp.validate import validate_pack_dir
 from .state import invalidate_stages, state_summary
 from .style import load_style_profile
 from .workfile import build_all_workfiles
@@ -40,6 +52,10 @@ def _repo(args: argparse.Namespace) -> Path:
 
 def _paths(args: argparse.Namespace):
     return title_paths(_repo(args), args.project, args.title)
+
+
+def _project_paths(args: argparse.Namespace):
+    return title_paths(_repo(args), args.project, "research-registry")
 
 
 def _print(data: Any, *, as_json: bool = False) -> None:
@@ -165,6 +181,58 @@ def cmd_status(args: argparse.Namespace) -> Any:
     return state_summary(_paths(args))
 
 
+def cmd_research_validate_pack(args: argparse.Namespace) -> Any:
+    with materialize_pack_input(Path(args.path)) as (pack_root, archive_sha256):
+        validated = validate_pack_dir(pack_root)
+        return {
+            "ok": True,
+            "manifest": validated.manifest,
+            "counts": validated.counts,
+            "pack_digest": compute_pack_digest(pack_root),
+            "archive_sha256": archive_sha256,
+        }
+
+
+def cmd_research_import(args: argparse.Namespace) -> Any:
+    return import_pack(_project_paths(args), Path(args.path), dry_run=args.dry_run)
+
+
+def cmd_research_list(args: argparse.Namespace) -> Any:
+    return {"packs": list_packs(_project_paths(args))}
+
+
+def cmd_research_set_mode(args: argparse.Namespace) -> Any:
+    return set_mode(_paths(args), args.mode)
+
+
+def cmd_research_map_branch(args: argparse.Namespace) -> Any:
+    return map_branch(_paths(args), args.branch, args.srp_branch)
+
+
+def cmd_research_bind(args: argparse.Namespace) -> Any:
+    return bind_pack(_paths(args), args.pack_ref)
+
+
+def cmd_research_unbind(args: argparse.Namespace) -> Any:
+    return unbind_pack(_paths(args), args.pack_ref)
+
+
+def cmd_research_resolve(args: argparse.Namespace) -> Any:
+    return resolve_research(_paths(args))
+
+
+def cmd_research_diff(args: argparse.Namespace) -> Any:
+    return diff_research(_paths(args))
+
+
+def cmd_research_approve(args: argparse.Namespace) -> Any:
+    return approve_research(_paths(args), note=args.note)
+
+
+def cmd_research_status(args: argparse.Namespace) -> Any:
+    return research_status(_paths(args))
+
+
 def cmd_research_mark(args: argparse.Namespace) -> Any:
     paths = _paths(args)
     mark_research_complete(paths, note=args.note)
@@ -182,6 +250,8 @@ def cmd_canon_add(args: argparse.Namespace) -> Any:
         context_sensitive=args.context_sensitive,
         branches=args.branch or ["clean", "tw", "jp"],
         notes=args.notes,
+        key=args.key,
+        enforcement=args.enforcement,
     )
 
 
@@ -346,9 +416,65 @@ def build_parser() -> argparse.ArgumentParser:
     add_title_selector(p)
     p.set_defaults(func=cmd_status)
 
-    research = sub.add_parser("research", help="Research gate operations")
+    research = sub.add_parser("research", help="Optional SRP research-pack operations")
     research_sub = research.add_subparsers(dest="research_command", required=True)
-    p = research_sub.add_parser("mark-complete")
+
+    p = research_sub.add_parser("validate-pack", help="Validate an SRP/1.0 directory or ZIP")
+    p.add_argument("path")
+    p.set_defaults(func=cmd_research_validate_pack)
+
+    p = research_sub.add_parser("import", help="Import an immutable SRP snapshot into a project")
+    p.add_argument("project")
+    p.add_argument("path")
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(func=cmd_research_import)
+
+    p = research_sub.add_parser("list", help="List imported SRP snapshots for a project")
+    p.add_argument("project")
+    p.set_defaults(func=cmd_research_list)
+
+    p = research_sub.add_parser("set-mode", help="Set off/advisory/enforce for a title")
+    add_title_selector(p)
+    p.add_argument("mode", choices=["off", "advisory", "enforce"])
+    p.set_defaults(func=cmd_research_set_mode)
+
+    p = research_sub.add_parser("map-branch", help="Map a SubtitleFlow branch to an SRP branch id")
+    add_title_selector(p)
+    p.add_argument("branch", choices=["clean", "tw", "jp"])
+    p.add_argument("srp_branch", nargs="?")
+    p.set_defaults(func=cmd_research_map_branch)
+
+    p = research_sub.add_parser("bind", help="Pin an imported SRP snapshot to a title")
+    add_title_selector(p)
+    p.add_argument("pack_ref")
+    p.set_defaults(func=cmd_research_bind)
+
+    p = research_sub.add_parser("unbind", help="Remove an SRP binding from a title")
+    add_title_selector(p)
+    p.add_argument("pack_ref")
+    p.set_defaults(func=cmd_research_unbind)
+
+    p = research_sub.add_parser("resolve", help="Compile deterministic Effective Knowledge")
+    add_title_selector(p)
+    p.set_defaults(func=cmd_research_resolve)
+
+    p = research_sub.add_parser("diff", help="Preview Effective Knowledge changes")
+    add_title_selector(p)
+    p.set_defaults(func=cmd_research_diff)
+
+    p = research_sub.add_parser("approve", help="Approve the current resolved Research snapshot")
+    add_title_selector(p)
+    p.add_argument("--note")
+    p.set_defaults(func=cmd_research_approve)
+
+    p = research_sub.add_parser("status", help="Show research mode, bindings, resolve, and gate state")
+    add_title_selector(p)
+    p.set_defaults(func=cmd_research_status)
+
+    p = research_sub.add_parser(
+        "mark-complete",
+        help="Legacy v0.3 alias; native v0.4 titles should use research approve",
+    )
     add_title_selector(p)
     p.add_argument("--note")
     p.set_defaults(func=cmd_research_mark)
@@ -359,6 +485,12 @@ def build_parser() -> argparse.ArgumentParser:
     add_title_selector(p)
     p.add_argument("--scope", choices=["project", "title"], default="project")
     p.add_argument("--id", required=True)
+    p.add_argument("--key")
+    p.add_argument(
+        "--enforcement",
+        choices=["locked", "preferred", "informational"],
+        default="locked",
+    )
     p.add_argument("--canonical", required=True)
     p.add_argument("--alias", action="append", default=[])
     p.add_argument("--auto", action="store_true")

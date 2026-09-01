@@ -69,7 +69,7 @@ def invalidate_after_review_change(paths: TitlePaths, *, reason: str = "human re
 def invalidate_after_source_or_canon_change(paths: TitlePaths, *, reason: str) -> None:
     invalidate_stages(
         paths,
-        ("normalize", "alignment_and_seed", "compile_clean", "compile_tw", "compile_jp", "fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
+        ("research_resolve", "research", "normalize", "alignment_and_seed", "compile_clean", "compile_tw", "compile_jp", "fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
         reason=reason,
     )
 
@@ -82,10 +82,22 @@ def state_summary(paths: TitlePaths) -> dict[str, Any]:
     pending = sum(1 for item in candidates if item.get("status") == "pending")
     approved = sum(1 for item in candidates if item.get("status") == "approved")
     rejected = sum(1 for item in candidates if item.get("status") == "rejected")
+    config = read_json(paths.title_config)
+    research_cfg = config.get("research") if isinstance(config.get("research"), dict) else None
+    bindings = (
+        read_json(paths.research_bindings).get("bindings", [])
+        if paths.research_bindings.exists()
+        else []
+    )
     return {
         "project_id": paths.project_id,
         "title_id": paths.title_id,
         "sources": sorted(manifest.get("sources", {}).keys()),
+        "research": {
+            "mode": research_cfg.get("mode", "off") if research_cfg is not None else "legacy",
+            "branch_map": research_cfg.get("branch_map", {}) if research_cfg is not None else {},
+            "bindings": bindings,
+        },
         "stages": state.get("stages", {}),
         "review": {"pending": pending, "approved": approved, "rejected": rejected},
         "release_files": sorted(path.name for path in paths.release.glob("*.ass")),

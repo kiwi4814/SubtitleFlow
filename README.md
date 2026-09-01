@@ -1,4 +1,4 @@
-# SubtitleFlow 0.3.0
+# SubtitleFlow 0.4.0
 
 **Evidence-driven subtitle polishing, ASS collector styling, font-safe release, and MKV remux workflow for OpenCode.**
 
@@ -44,7 +44,7 @@ SubtitleFlow does **not** regenerate risky authored typesetting by default. Exis
 
 ## Font registry and MKV attachments
 
-SubtitleFlow 0.3.0 makes `fonts/font-registry.json` the authoritative registry for the five verified Kiwi Collector font roles. The registry freezes canonical ASS family names, aliases, canonical attachment filenames, exact SHA-256 identities, versions and intended roles. **Font binaries are still local assets and are not included in source releases.**
+SubtitleFlow 0.4.0 keeps `fonts/font-registry.json` the authoritative registry for the five verified Kiwi Collector font roles. The registry freezes canonical ASS family names, aliases, canonical attachment filenames, exact SHA-256 identities, versions and intended roles. **Font binaries are still local assets and are not included in source releases.**
 
 | Role | Canonical ASS family | Canonical local/attachment file |
 |---|---|---|
@@ -111,6 +111,38 @@ subflow source add doraemon movie-01 D D.ass
 subflow prepare doraemon movie-01
 ```
 
+## Optional research knowledge — SRP/1.0
+
+Research is **not required** in SubtitleFlow 0.4. New titles default to:
+
+```json
+{"research":{"mode":"off","branch_map":{}}}
+```
+
+If you have a Subtitle Research Pack produced by a web model, local model, human editor, or another tool, SubtitleFlow can validate and consume it entirely offline:
+
+```bash
+subflow research validate-pack Doraemon-Research-Pack.zip
+subflow research import doraemon Doraemon-Research-Pack.zip --dry-run
+subflow research import doraemon Doraemon-Research-Pack.zip
+subflow research bind doraemon movie-01 doraemon-canon@1.0.0
+subflow research set-mode doraemon movie-01 advisory
+subflow research map-branch doraemon movie-01 jp jp-zh-cn
+subflow research map-branch doraemon movie-01 tw tw-dub-zh-cn
+subflow research resolve doraemon movie-01
+```
+
+For collection-grade strict use, choose `enforce`, resolve/diff the Effective Knowledge, then explicitly approve it before semantic editing:
+
+```bash
+subflow research set-mode doraemon movie-01 enforce
+subflow research resolve doraemon movie-01
+subflow research diff doraemon movie-01
+subflow research approve doraemon movie-01
+```
+
+SRP resolution is deterministic: title+branch > series+branch > title > series, with local human canon winning at the same scope. `locked` SRP canon does not enable blind string replacement. See [`docs/research.md`](docs/research.md) and the bundled [`SRP/1.0 protocol`](docs/protocols/srp-v1.md).
+
 ## OpenCode
 
 Run `opencode` in the repository root. The project includes:
@@ -134,8 +166,10 @@ Useful commands include `/subtitle/run`, `/subtitle/review`, `/subtitle/style`, 
 - QA snapshots bind workfiles, compiled ASS, canon, proposal files, the font registry/font-map inputs, and other deterministic evidence;
 - unimported AI proposal files block Release instead of remaining invisible to the gate;
 - approved semantic changes must still be materialized in the current workfile;
-- research, semantic-QA and visual approvals carry evidence snapshots and become stale when their inputs change;
+- optional SRP research uses immutable pack bindings, deterministic Effective Knowledge, separate semantic/provenance digests, and evidence-bound approval in `enforce` mode;
+- legacy v0.3 research gates remain readable for existing titles, while new titles default to research `off`;
+- semantic-QA and visual approvals carry evidence snapshots and become stale when their inputs change;
 - font fallback does not count as a font/visual pass: render uses the exact audited local font files through libass `fontsdir`;
 - frozen release, gate evidence, selected visual-QA media identity and font hashes are rechecked before Remux.
 
-Start with [`START_HERE.md`](START_HERE.md). See [`docs/fonts.md`](docs/fonts.md), [`docs/workflow.md`](docs/workflow.md), [`docs/configuration.md`](docs/configuration.md), [`docs/testing.md`](docs/testing.md), and the prioritized [`docs/roadmap.md`](docs/roadmap.md).
+Start with [`START_HERE.md`](START_HERE.md). See [`docs/research.md`](docs/research.md), [`docs/fonts.md`](docs/fonts.md), [`docs/workflow.md`](docs/workflow.md), [`docs/configuration.md`](docs/configuration.md), [`docs/testing.md`](docs/testing.md), and the prioritized [`docs/roadmap.md`](docs/roadmap.md).

@@ -40,9 +40,12 @@ Authority rules:
 15. Never claim Remux passed unless `mkvmerge` actually ran and output attachments were post-verified.
 16. Unimported proposal JSON is durable evidence and must not be ignored or deleted to bypass Human Review.
 17. Human approvals are valid only for the evidence fingerprint they reviewed and must remain materialized in the current workfile.
-18. Research, semantic-QA, render and visual-QA approvals must bind their input evidence; upstream edits stale downstream gates.
-19. Rendering must use the exact successfully audited font files, not an unverified system fallback.
-20. Source replacement must verify the current source hash first and archive the prior bytes under a unique immutable history path.
+18. Research is optional for v0.4-native titles. `off` must remain fully usable; `advisory` consumes resolved SRP without a release-blocking Research Gate; `enforce` requires a current human-approved SRP snapshot.
+19. SRP is producer-neutral and offline-consumable. Never assume web research, never merge raw packs in an LLM, and never let import silently activate/update a title binding.
+20. Effective SRP precedence is title+branch > series+branch > title > series; local human canon wins at the same scope. `locked` does not imply blind auto-replace.
+21. Research, semantic-QA, render and visual-QA approvals must bind their input evidence; upstream edits stale downstream gates.
+22. Rendering must use the exact successfully audited font files, not an unverified system fallback.
+23. Source replacement must verify the current source hash first and archive the prior bytes under a unique immutable history path.
 
 ## Typical commands
 
@@ -53,6 +56,8 @@ subflow fonts verify
 subflow project init <project>
 subflow title init <project> <title> --profile single|source-assisted|dub|bilingual|full|auto
 subflow source add <project> <title> S /path/to/subtitle.ass
+subflow research status <project> <title>
+# Optional: validate/import/bind/set-mode/resolve/approve SRP when research is enabled.
 subflow prepare <project> <title>
 subflow compile <project> <title>
 subflow qa <project> <title>

@@ -20,6 +20,27 @@ Role meanings never change per title:
 - C: source-language/Japanese semantic evidence.
 - D: Taiwan-dub transcript.
 
+## Research / SRP policy
+
+New v0.4 titles default to:
+
+```json
+{
+  "research": {
+    "mode": "off",
+    "branch_map": {}
+  }
+}
+```
+
+Modes:
+
+- `off`: ignore SRP; local canon continues to work.
+- `advisory`: resolve bound SRP into model/QA context, but SRP completeness is not a release-blocking gate.
+- `enforce`: require a bound, conflict-free, explicitly approved SRP snapshot before semantic editing/release.
+
+`branch_map` maps SubtitleFlow output branches (`clean`, `tw`, `jp`) to producer-defined SRP branch IDs such as `jp-zh-cn` or `tw-dub-zh-cn`. Pack bindings are managed in `research/bindings.json` through the CLI rather than handwritten in `title.json`. See [`research.md`](research.md).
+
 ## Clean branch
 
 ```json
@@ -147,7 +168,6 @@ Font attachments are controlled separately by `fonts.attach_to_mkv`. Existing at
 ```json
 {
   "quality_gates": {
-    "require_research": true,
     "require_semantic_qa": true,
     "require_visual_qa": true,
     "require_fonts": true
@@ -155,4 +175,6 @@ Font attachments are controlled separately by `fonts.attach_to_mkv`. Existing at
 }
 ```
 
-Relax a gate only as an explicit project decision. Default production behavior is strict.
+Research gating is controlled by `research.mode`, not by `quality_gates.require_research` for v0.4-native titles. The old `require_research` flag is read only as a compatibility shim when a v0.3 title has no `research` object.
+
+Relax a gate only as an explicit project decision. Research remains optional by default; semantic, visual, and font release gates remain strict.

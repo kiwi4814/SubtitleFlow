@@ -9,10 +9,18 @@ python -m ruff check .
 python -m ruff format --check .
 ```
 
-## v0.3 regression areas
+## v0.4 regression areas
 
 Tests must cover:
 
+- SRP/1.0 structural + semantic validation, including `series_branch` scope and pack containment;
+- safe ZIP/directory intake, path traversal/symlink rejection, strict UTF-8 and duplicate-key rejection;
+- immutable/idempotent SRP imports and exact digest bindings;
+- new-title research default `off`, advisory non-blocking behavior, enforce approval/blocking behavior, and v0.3 legacy compatibility;
+- deterministic scope precedence (title+branch > series+branch > title > series) plus same-scope local human override;
+- cross-pack value and alias-policy conflicts;
+- semantic vs provenance digest invalidation, with provenance-only changes preserving deterministic/visual QA where appropriate;
+- Release Manifest freezing compact SRP identities/digests;
 - S-only `single` workflow preserving S timings;
 - `source-assisted` attaching C semantics without retiming S;
 - missing-role profile gates;

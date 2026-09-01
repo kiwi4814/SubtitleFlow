@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0
+
+- Added optional Subtitle Research Pack (`SRP/1.0`) support with bundled Draft 2020-12 schemas and strict offline validation; web/high-end-model research is an optional producer, not a SubtitleFlow dependency.
+- Finalized SRP scope semantics with `series`, `title`, `series_branch`, and title-specific `branch`; deterministic SRP precedence is title+branch > series+branch > title > series.
+- Added project-level immutable SRP import registry, ZIP/directory safety checks, deterministic pack digests, exact-digest title bindings, and import/bind separation.
+- Added `research.mode = off | advisory | enforce`; new titles default to `off`, while v0.3 titles without a research object retain the legacy Markdown Research Gate.
+- Added deterministic Effective Knowledge resolution across bound SRP packs and existing local project/title canon using scope-first/origin-second precedence.
+- Extended local glossary records with optional semantic `key` and `enforcement`; SRP `locked` remains separate from deterministic `auto_replace`.
+- Added Research context generation per active SubtitleFlow branch and integrated Effective Terms with terminology QA. Advisory SRP findings warn; enforcing locked/forbidden violations can fail QA.
+- Added semantic/provenance research digests and precise stale propagation: semantic changes stale QA/semantic release evidence while provenance-only changes do not unnecessarily invalidate visual QA.
+- Added explicit SRP Research approval evidence for `enforce` mode and compact SRP identity/digests to Release Manifest schema 4.
+- Added `subflow research validate-pack/import/list/set-mode/map-branch/bind/unbind/resolve/diff/approve/status` and retained `research mark-complete` as a legacy compatibility path.
+- Updated OpenCode orchestration so `/subtitle/run` and `/subtitle/research` respect optional research modes and never assume network access or a specific research producer.
+- Added SRP examples, protocol/research documentation, security/regression coverage, and compatibility tests.
+
 ## 0.3.0
 
 - Added a version-controlled five-font registry with canonical ASS family names, aliases, canonical attachment filenames, verified versions/sizes and exact SHA-256 identities.

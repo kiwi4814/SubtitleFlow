@@ -57,3 +57,45 @@ def test_style_set_invalid_profile_is_transactional(tmp_path: Path) -> None:
 
     assert main(["--repo", repo, "style", "set", "demo", "movie", "missing-profile"]) == 2
     assert read_json(config_path) == before
+
+
+def test_cli_srp_import_bind_resolve_and_approve(tmp_path: Path) -> None:
+    (tmp_path / "projects").mkdir()
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\nversion='0'\n", encoding="utf-8")
+    repo = str(tmp_path)
+    assert main(["--repo", repo, "project", "init", "demo", "--name", "Demo"]) == 0
+    assert main(["--repo", repo, "title", "init", "demo", "movie", "--name", "Movie"]) == 0
+
+    pack = tmp_path / "srp"
+    pack.mkdir()
+    write_json(
+        pack / "manifest.json",
+        {
+            "format": "subtitle-research-pack",
+            "schema_version": "1.0",
+            "pack_id": "canon",
+            "pack_version": "1.0.0",
+            "scope": {"series_id": "demo"},
+        },
+    )
+    (pack / "terms.jsonl").write_text(
+        '{"id":"term:x","key":"gadget.x","scope":{"level":"series","series_id":"demo"},'
+        '"source":{"language":"ja-JP","forms":["X"]},'
+        '"target":{"language":"zh-CN","value":"甲"},'
+        '"enforcement":"locked","status":"accepted"}\n',
+        encoding="utf-8",
+    )
+
+    assert main(["--repo", repo, "research", "validate-pack", str(pack)]) == 0
+    assert main(["--repo", repo, "research", "import", "demo", str(pack)]) == 0
+    assert main(["--repo", repo, "research", "bind", "demo", "movie", "canon@1.0.0"]) == 0
+    assert main(["--repo", repo, "research", "set-mode", "demo", "movie", "enforce"]) == 0
+    assert main(["--repo", repo, "research", "map-branch", "demo", "movie", "jp", "jp-zh-cn"]) == 0
+    assert main(["--repo", repo, "research", "resolve", "demo", "movie"]) == 0
+    assert main(["--repo", repo, "research", "approve", "demo", "movie", "--note", "accepted"]) == 0
+
+    title = tmp_path / "projects" / "demo" / "titles" / "movie"
+    snapshot = read_json(title / "research" / "snapshot.json")
+    state = read_json(title / "state.json")
+    assert snapshot["pack_digests"]
+    assert state["stages"]["research"]["status"] == "passed"

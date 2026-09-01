@@ -8,6 +8,8 @@ from .io import read_json
 from .media import current_render_evidence, expand_media_path
 from .qa import qa_input_snapshot
 from .review import pending_count
+from .srp.registry import research_mode
+from .srp.resolver import approve_research, validate_native_research_evidence
 from .state import invalidate_stages, update_stage
 from .util import file_identity, sha256_file
 from .workspace import TitlePaths
@@ -29,7 +31,7 @@ def research_evidence_snapshot(paths: TitlePaths) -> dict[str, str]:
     }
 
 
-def validate_research_evidence(paths: TitlePaths) -> dict[str, str]:
+def _validate_legacy_research_evidence(paths: TitlePaths) -> dict[str, str]:
     state = read_json(paths.state)
     stage = state.get("stages", {}).get("research", {})
     if stage.get("status") != "passed":
@@ -38,6 +40,15 @@ def validate_research_evidence(paths: TitlePaths) -> dict[str, str]:
     if stage.get("evidence") != current:
         raise GateError("research gate is stale: research evidence changed after approval")
     return current
+
+
+
+
+def validate_research_evidence(paths: TitlePaths) -> dict[str, Any]:
+    mode = research_mode(paths)
+    if mode == "legacy":
+        return _validate_legacy_research_evidence(paths)
+    return validate_native_research_evidence(paths)
 
 
 def _require_current_qa(paths: TitlePaths) -> tuple[dict[str, Any], dict[str, str]]:
@@ -66,7 +77,11 @@ def semantic_qa_evidence_snapshot(paths: TitlePaths) -> dict[str, Any]:
         "qa_input_snapshot": current_qa,
         "semantic_report_sha256": sha256_file(report),
     }
-    if config.get("quality_gates", {}).get("require_research", True):
+    mode = research_mode(paths)
+    if (
+        mode == "enforce"
+        or (mode == "legacy" and config.get("quality_gates", {}).get("require_research", True))
+    ):
         evidence["research"] = validate_research_evidence(paths)
     return evidence
 
@@ -115,6 +130,9 @@ def validate_visual_qa_evidence(paths: TitlePaths, branch: str) -> dict[str, Any
 
 
 def mark_research_complete(paths: TitlePaths, *, note: str | None = None) -> None:
+    if research_mode(paths) != "legacy":
+        approve_research(paths, note=note)
+        return
     evidence = research_evidence_snapshot(paths)
     invalidate_stages(
         paths,

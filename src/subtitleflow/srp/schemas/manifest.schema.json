@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "manifest.schema.json",
+  "title": "Subtitle Research Pack 1.0 Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "schema_version", "pack_id", "pack_version", "scope"],
+  "properties": {
+    "format": {"const": "subtitle-research-pack"},
+    "schema_version": {"const": "1.0"},
+    "pack_id": {"$ref": "common.schema.json#/$defs/slug"},
+    "pack_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "scope": {"$ref": "common.schema.json#/$defs/pack_scope"},
+    "languages": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "common.schema.json#/$defs/language_tag"}
+        },
+        "target": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "common.schema.json#/$defs/language_tag"}
+        },
+        "branches": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "common.schema.json#/$defs/slug"}
+        }
+      }
+    },
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {"enum": ["human", "ai-assisted", "automated", "mixed", "unknown"]},
+        "name": {"type": "string", "minLength": 1},
+        "tool": {"type": "string", "minLength": 1},
+        "model": {"type": "string", "minLength": 1}
+      }
+    },
+    "description": {"type": "string"},
+    "extensions": {"$ref": "common.schema.json#/$defs/extensions"}
+  }
+}

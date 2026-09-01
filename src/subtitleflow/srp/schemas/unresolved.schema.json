@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "unresolved.schema.json",
+  "title": "SRP 1.0 Unresolved Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "scope", "kind", "severity", "question"],
+  "properties": {
+    "id": {"$ref": "common.schema.json#/$defs/record_id"},
+    "scope": {"$ref": "common.schema.json#/$defs/scope"},
+    "kind": {"type": "string", "minLength": 1, "maxLength": 80},
+    "severity": {"enum": ["blocking", "review", "informational"]},
+    "question": {"type": "string", "minLength": 1},
+    "candidates": {"$ref": "common.schema.json#/$defs/string_list"},
+    "evidence_ids": {"$ref": "common.schema.json#/$defs/id_list"},
+    "related_records": {"$ref": "common.schema.json#/$defs/id_list"},
+    "related_keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "common.schema.json#/$defs/semantic_key"}
+    },
+    "notes": {"type": "string"},
+    "extensions": {"$ref": "common.schema.json#/$defs/extensions"}
+  }
+}

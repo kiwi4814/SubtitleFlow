@@ -13,6 +13,8 @@ from .gates import (
 from .io import read_json, write_json
 from .qa import qa_input_snapshot
 from .review import list_candidates, unimported_proposal_files
+from .srp.registry import load_bindings, research_mode
+from .srp.resolver import ensure_resolved
 from .state import update_stage
 from .style import load_style_profile
 from .util import sha256_file, utc_now
@@ -21,6 +23,9 @@ from .workspace import TitlePaths, verify_sources
 
 
 def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
+    mode = research_mode(paths)
+    if mode in {"advisory", "enforce"}:
+        ensure_resolved(paths)
     qa_path = paths.qa / "summary.json"
     if not qa_path.exists():
         raise GateError("Release blocked: QA summary is missing")
@@ -58,7 +63,10 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
             blockers.append(f"{branch} compile stage is not passed")
     if stages.get("qa", {}).get("status") != "passed":
         blockers.append("deterministic QA stage is not passed")
-    if gates.get("require_research", True):
+    research_required = mode == "enforce" or (
+        mode == "legacy" and gates.get("require_research", True)
+    )
+    if research_required:
         try:
             research_evidence = validate_research_evidence(paths)
         except GateError as exc:
@@ -98,8 +106,42 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
         for path in release_files
     ]
     style_profile = load_style_profile(paths)
+    research_snapshot = (
+        read_json(paths.research_snapshot)
+        if mode in {"advisory", "enforce"} and paths.research_snapshot.exists()
+        else None
+    )
+    research_manifest: dict[str, Any] = {"mode": mode}
+    if research_snapshot is not None:
+        research_manifest.update(
+            {
+                "bindings": [
+                    {
+                        "pack_id": item.get("pack_id"),
+                        "pack_version": item.get("pack_version"),
+                        "pack_digest": item.get("pack_digest"),
+                    }
+                    for item in load_bindings(paths).get("bindings", [])
+                    if item.get("enabled", True)
+                ],
+                "effective_semantic_sha256": research_snapshot.get(
+                    "effective_semantic_sha256"
+                ),
+                "provenance_sha256": research_snapshot.get("provenance_sha256"),
+                "blocking_unresolved": research_snapshot.get("blocking_unresolved", 0),
+                "blocking_conflicts": research_snapshot.get("blocking_conflicts", 0),
+                "gate": (
+                    stages.get("research", {}).get("status")
+                    if mode == "enforce"
+                    else "advisory"
+                ),
+            }
+        )
+    elif mode == "legacy":
+        research_manifest["gate"] = stages.get("research", {}).get("status")
+
     manifest = {
-        "schema_version": 3,
+        "schema_version": 4,
         "created_at": utc_now(),
         "project_id": paths.project_id,
         "title_id": paths.title_id,
@@ -107,6 +149,7 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
         "workflow_profile": title.get("workflow", {}).get("profile", "auto"),
         "branches": branches,
         "engine": {"name": "subtitleflow", "version": __version__},
+        "research": research_manifest,
         "style": {
             "profile": style_profile.get("id"),
             "display_name": style_profile.get("display_name"),

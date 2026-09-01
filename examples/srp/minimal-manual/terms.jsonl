@@ -1,0 +1,2 @@
+{"id":"term:anywhere-door","key":"gadget.anywhere-door","scope":{"level":"series","series_id":"doraemon"},"source":{"language":"ja-JP","forms":["どこでもドア"]},"target":{"language":"zh-CN","value":"任意门","deprecated":["随意门"]},"enforcement":"locked","status":"accepted","rationale":"系列统一译名"}
+{"id":"term:take-copter","key":"gadget.take-copter","scope":{"level":"series","series_id":"doraemon"},"source":{"language":"ja-JP","forms":["タケコプター"]},"target":{"language":"zh-CN","value":"竹蜻蜓"},"enforcement":"locked","status":"accepted"}

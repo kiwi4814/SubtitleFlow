@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "entity.schema.json",
+  "title": "SRP 1.0 Entity Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "type", "scope", "primary_name"],
+  "properties": {
+    "id": {"$ref": "common.schema.json#/$defs/record_id"},
+    "type": {"enum": ["character", "gadget", "location", "organization", "species", "event", "work", "concept", "other"]},
+    "scope": {"$ref": "common.schema.json#/$defs/scope"},
+    "primary_name": {"$ref": "common.schema.json#/$defs/localized_text"},
+    "aliases": {
+      "type": "array",
+      "items": {"$ref": "common.schema.json#/$defs/localized_text"}
+    },
+    "description": {"type": "string"},
+    "evidence_ids": {"$ref": "common.schema.json#/$defs/id_list"},
+    "extensions": {"$ref": "common.schema.json#/$defs/extensions"}
+  }
+}

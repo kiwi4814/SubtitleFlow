@@ -40,13 +40,19 @@ def _prepared_title(tmp_path: Path, sample_cues):
     assert run_all_qa(paths)["ok"] is True
     return paths
 
+def _enable_legacy_research(paths) -> None:
+    config = read_json(paths.title_config)
+    config.pop("research", None)
+    config.setdefault("quality_gates", {})["require_research"] = True
+    write_json(paths.title_config, config)
+
 
 def test_release_default_gates_block_incomplete_editorial_work(tmp_path: Path, sample_cues) -> None:
     paths = _prepared_title(tmp_path, sample_cues)
     with pytest.raises(GateError) as exc:
         create_release_manifest(paths)
     message = str(exc.value)
-    assert "research gate" in message
+    assert "research gate" not in message
     assert "semantic QA gate" in message
     assert "visual QA" in message
 
@@ -80,13 +86,11 @@ def test_release_accepts_completed_nonvisual_gates_when_visual_is_disabled(
     config["fonts"]["require_for_release"] = False
     write_json(paths.title_config, config)
     assert run_all_qa(paths)["ok"] is True
-    (paths.research / "context.md").write_text("fixture context\n", encoding="utf-8")
-    (paths.research / "sources.md").write_text("fixture sources\n", encoding="utf-8")
     (paths.qa / "semantic-review.md").write_text("no unresolved findings\n", encoding="utf-8")
-    mark_research_complete(paths, note="fixture")
     mark_semantic_qa_complete(paths, note="fixture")
     manifest = create_release_manifest(paths)
-    assert manifest["quality_gates"]["research"]["status"] == "passed"
+    assert manifest["research"]["mode"] == "off"
+    assert manifest["quality_gates"]["research"] is None
     assert manifest["quality_gates"]["semantic_qa"]["status"] == "passed"
 
 
@@ -110,8 +114,9 @@ def test_release_rejects_stale_qa_after_workfile_change(tmp_path: Path, sample_c
         create_release_manifest(paths)
 
 
-def test_release_rejects_research_evidence_changed_after_mark(tmp_path: Path, sample_cues) -> None:
+def test_release_rejects_legacy_research_evidence_changed_after_mark(tmp_path: Path, sample_cues) -> None:
     paths = _prepared_title(tmp_path, sample_cues)
+    _enable_legacy_research(paths)
     config = read_json(paths.title_config)
     config["quality_gates"]["require_visual_qa"] = False
     config["quality_gates"]["require_fonts"] = False
@@ -137,9 +142,6 @@ def test_release_rejects_semantic_report_changed_after_mark(tmp_path: Path, samp
     config["fonts"]["require_for_release"] = False
     write_json(paths.title_config, config)
     assert run_all_qa(paths)["ok"] is True
-    (paths.research / "context.md").write_text("fixture context\n", encoding="utf-8")
-    (paths.research / "sources.md").write_text("fixture sources\n", encoding="utf-8")
-    mark_research_complete(paths)
     semantic = paths.qa / "semantic-review.md"
     semantic.write_text("no unresolved findings\n", encoding="utf-8")
     mark_semantic_qa_complete(paths)

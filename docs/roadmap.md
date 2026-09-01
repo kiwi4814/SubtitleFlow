@@ -1,6 +1,6 @@
-# SubtitleFlow post-0.3.0 roadmap
+# SubtitleFlow post-0.4.0 roadmap
 
-SubtitleFlow 0.3.0 closes the first production-hardening and verified-font cycle. The next work should continue to prioritize correctness and durable gates over architectural novelty.
+SubtitleFlow 0.4.0 adds optional SRP/1.0 research integration while keeping the default workflow research-independent. The next work should continue to prioritize correctness and durable gates over architectural novelty.
 
 ## P0 — next production blockers
 
@@ -54,14 +54,9 @@ capabilities:
 
 Add authority separately from capability. Migrate stage-planning decisions only when a concrete limitation of role-based branching appears; do not rewrite the entire engine around capabilities pre-emptively.
 
-### 6. Research/Canon provenance
+### 6. Research/Canon provenance — completed in 0.4.0
 
-Make research source authority and scope more structured while preserving Markdown readability:
-
-- official/first-party/secondary/community source class;
-- retrieval date and stable URL/reference;
-- series canon versus title context/glossary;
-- decision provenance for terminology promoted from title scope to series scope.
+SRP/1.0 now provides structured producer-neutral Sources/Evidence, series/title/series-branch/title-branch scope, Terms/Decisions, immutable pack identities, Effective Knowledge resolution, and semantic/provenance digests. Future work here should be additive rather than redesigning the core protocol: richer authority-domain tooling, canon-promotion UX, and the optional web Research Skill/request-bundle workflow.
 
 ## P1 — font/MKV archival hardening
 

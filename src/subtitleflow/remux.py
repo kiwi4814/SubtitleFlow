@@ -14,6 +14,7 @@ from .gates import (
 )
 from .io import read_json
 from .qa import qa_input_snapshot
+from .srp.registry import research_mode
 from .state import update_stage
 from .util import file_identity, run_checked, sha256_file, which
 from .workflow import active_branches, branch_release_filename
@@ -229,7 +230,11 @@ def remux(
     config = read_json(paths.title_config)
     gates = config.get("quality_gates", {})
     frozen_gate_evidence = release_manifest.get("gate_evidence", {})
-    if gates.get("require_research", True):
+    mode = research_mode(paths)
+    research_required = mode == "enforce" or (
+        mode == "legacy" and gates.get("require_research", True)
+    )
+    if research_required:
         current = validate_research_evidence(paths)
         if current != frozen_gate_evidence.get("research"):
             raise GateError("Remux blocked: research evidence changed after the release was frozen")

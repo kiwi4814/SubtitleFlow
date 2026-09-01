@@ -5,9 +5,11 @@ from typing import Any
 
 from .fonts import audit_fonts, configured_font_map_path, configured_font_registry_path
 from .formats.ass import parse_ass
-from .glossary import forbidden_hits, load_glossary
+from .glossary import load_glossary, terminology_hits
 from .io import write_json
 from .review import approved_review_errors, pending_count, unimported_proposal_files
+from .srp.registry import research_mode
+from .srp.resolver import effective_semantic_digest, ensure_resolved
 from .state import invalidate_after_qa, update_stage
 from .style import ass_style_values, layout_settings, load_style_profile
 from .util import sha256_file
@@ -47,6 +49,12 @@ def qa_input_snapshot(paths: TitlePaths) -> dict[str, str]:
             except ValueError:
                 key = str(path.relative_to(paths.repo)) if path.is_relative_to(paths.repo) else str(path)
             snapshot[key] = sha256_file(path)
+    try:
+        semantic_digest = effective_semantic_digest(paths)
+    except Exception:
+        semantic_digest = "STALE"
+    if semantic_digest is not None:
+        snapshot["research:effective-semantic"] = semantic_digest
     return dict(sorted(snapshot.items()))
 
 
@@ -123,6 +131,9 @@ def structural_qa(paths: TitlePaths) -> dict[str, Any]:
 
 def terminology_qa(paths: TitlePaths) -> dict[str, Any]:
     rules = load_glossary(paths)
+    mode = research_mode(paths)
+    errors: list[dict[str, Any]] = []
+    warnings: list[dict[str, Any]] = []
     hits: list[dict[str, Any]] = []
     for branch in active_branches(paths):
         work_path = paths.work / f"{branch}.json"
@@ -130,9 +141,33 @@ def terminology_qa(paths: TitlePaths) -> dict[str, Any]:
             continue
         work = load_workfile(paths, branch)
         for unit in work.units:
-            for hit in forbidden_hits(unit.final_text, rules, branch):
-                hits.append({"branch": branch, "unit": unit.id, **hit})
-    report = {"schema_version": 1, "ok": not hits, "hits": hits}
+            for hit in terminology_hits(unit.final_text, rules, branch):
+                item = {"branch": branch, "unit": unit.id, **hit}
+                hits.append(item)
+                is_srp = hit.get("origin") == "srp"
+                kind = hit.get("kind")
+                enforcement = hit.get("enforcement")
+                if is_srp and mode == "advisory":
+                    warnings.append(item)
+                elif kind == "deprecated":
+                    warnings.append(item)
+                elif is_srp and mode == "enforce":
+                    if kind == "forbidden" or enforcement == "locked":
+                        errors.append(item)
+                    else:
+                        warnings.append(item)
+                elif kind == "forbidden" or enforcement == "locked":
+                    errors.append(item)
+                else:
+                    warnings.append(item)
+    report = {
+        "schema_version": 2,
+        "ok": not errors,
+        "mode": mode,
+        "errors": errors,
+        "warnings": warnings,
+        "hits": hits,
+    }
     write_json(paths.qa / "terminology.json", report)
     return report
 
@@ -230,6 +265,8 @@ def compiled_ass_qa(paths: TitlePaths) -> dict[str, Any]:
 
 
 def run_all_qa(paths: TitlePaths) -> dict[str, Any]:
+    if research_mode(paths) in {"advisory", "enforce"}:
+        ensure_resolved(paths)
     invalidate_after_qa(paths)
     structural = structural_qa(paths)
     terminology = terminology_qa(paths)

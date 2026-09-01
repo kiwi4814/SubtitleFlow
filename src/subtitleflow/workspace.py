@@ -12,7 +12,7 @@ from .errors import SourceIntegrityError, SubtitleFlowError, ValidationError
 from .io import read_json, write_json
 from .util import sha256_file, slugify, utc_now
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 VALID_ROLES = {"A", "B", "C", "D", "S"}
 
 
@@ -93,8 +93,40 @@ class TitlePaths:
         return self.project / "canon"
 
     @property
+    def project_research(self) -> Path:
+        return self.project / "research"
+
+    @property
+    def project_research_registry(self) -> Path:
+        return self.project_research / "registry.json"
+
+    @property
+    def project_research_packs(self) -> Path:
+        return self.project_research / "packs"
+
+    @property
     def title_canon(self) -> Path:
         return self.title / "canon"
+
+    @property
+    def research_bindings(self) -> Path:
+        return self.research / "bindings.json"
+
+    @property
+    def research_effective(self) -> Path:
+        return self.research / "effective.json"
+
+    @property
+    def research_snapshot(self) -> Path:
+        return self.research / "snapshot.json"
+
+    @property
+    def research_summary(self) -> Path:
+        return self.research / "summary.md"
+
+    @property
+    def research_context(self) -> Path:
+        return self.research / "context"
 
 
 def title_paths(repo: Path, project_id: str, title_id: str) -> TitlePaths:
@@ -108,6 +140,7 @@ def create_project(repo: Path, project_id: str, display_name: str) -> Path:
         raise SubtitleFlowError(f"Project already exists: {project_id}")
     (root / "canon" / "proposals").mkdir(parents=True, exist_ok=False)
     (root / "titles").mkdir()
+    (root / "research" / "packs").mkdir(parents=True)
     write_json(
         root / "project.json",
         {
@@ -126,6 +159,7 @@ def create_project(repo: Path, project_id: str, display_name: str) -> Path:
     write_json(root / "canon" / "glossary.json", {"schema_version": 1, "terms": []})
     write_json(root / "canon" / "characters.json", {"schema_version": 1, "characters": []})
     write_json(root / "canon" / "decisions.json", {"schema_version": 1, "decisions": []})
+    write_json(root / "research" / "registry.json", {"schema_version": 1, "packs": []})
     return root
 
 
@@ -137,6 +171,7 @@ def default_title_config(project_id: str, title_id: str, display_name: str) -> d
         "display_name": display_name,
         "created_at": utc_now(),
         "workflow": {"profile": "auto"},
+        "research": {"mode": "off", "branch_map": {}},
         "sources": {"A": None, "B": None, "C": None, "D": None, "S": None},
         "alignment": {
             "max_group": 3,
@@ -195,7 +230,6 @@ def default_title_config(project_id: str, title_id: str, display_name: str) -> d
             "jp": "简日双语｜日配",
         },
         "quality_gates": {
-            "require_research": True,
             "require_semantic_qa": True,
             "require_visual_qa": True,
             "require_fonts": True,
@@ -223,6 +257,7 @@ def create_title(repo: Path, project_id: str, title_id: str, display_name: str) 
         paths.normalized,
         paths.work,
         paths.research,
+        paths.research_context,
         paths.review_proposals,
         paths.release,
         paths.qa,
@@ -232,6 +267,7 @@ def create_title(repo: Path, project_id: str, title_id: str, display_name: str) 
     write_json(paths.title_config, default_title_config(paths.project_id, paths.title_id, display_name))
     write_json(paths.manifest, {"schema_version": 1, "sources": {}, "history": []})
     write_json(paths.title_canon / "glossary.json", {"schema_version": 1, "terms": []})
+    write_json(paths.research_bindings, {"schema_version": 1, "bindings": []})
     write_json(paths.review / "candidates.json", {"schema_version": 1, "candidates": []})
     write_json(
         paths.state,

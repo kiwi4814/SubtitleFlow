@@ -1,0 +1,37 @@
+{
+  "version": "0.4.0",
+  "date": "2026-09-01",
+  "status": "pass",
+  "srp_protocol_tests": {
+    "passed": 41,
+    "failed": 0,
+    "scope_precedence": ["branch", "series_branch", "title", "series"]
+  },
+  "subtitleflow_tests": {
+    "passed": 85,
+    "failed": 0
+  },
+  "compileall": "pass",
+  "wheel": {
+    "path": "dist/subtitleflow-0.4.0-py3-none-any.whl",
+    "sha256": "683b1484c3fa3d92b37ebf536dd12fdc3628d44e85ebbef96298de9b0da789fc",
+    "srp_schema_count": 9,
+    "installed_smoke": "pass"
+  },
+  "runtime": {
+    "python": "3.13.5",
+    "ffmpeg": true,
+    "ffprobe": true,
+    "ffmpeg_libass": true,
+    "fonttools": true,
+    "mkvmerge": false,
+    "mkvextract": false,
+    "opencc_cli": false,
+    "opencode_cli": false
+  },
+  "lint": {
+    "ruff": "not-run",
+    "reason": "ruff unavailable and package-network access unavailable"
+  },
+  "font_binaries_bundled": false
+}

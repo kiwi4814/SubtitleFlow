@@ -1,4 +1,4 @@
-# START HERE — SubtitleFlow 0.3.0
+# START HERE — SubtitleFlow 0.4.0
 
 SubtitleFlow is a generic subtitle production repository. Pick the evidence you actually have; do not manufacture A/B/C/D just to satisfy a workflow.
 
@@ -17,7 +17,7 @@ subflow doctor
 
 Recommended external tools:
 
-- a current OpenCode release for AI orchestration/research/proposals/semantic QA (the executable name can vary by installed release/channel);
+- a current OpenCode release for optional AI orchestration/proposals/semantic QA (the executable name can vary by installed release/channel);
 - OpenCC for Traditional→Simplified conversion when enabled;
 - FFmpeg/ffprobe with libass for real visual preview;
 - MKVToolNix (`mkvmerge`) for final Remux.
@@ -54,7 +54,7 @@ Hybrid mode keeps risky source typesetting instead of recreating it. Existing No
 
 ## 4. Supply and verify local fonts
 
-`fonts/font-registry.json` freezes the verified SubtitleFlow 0.3.0 identities. The project repository does **not** ship font binaries. Put your own legally available copies into the local store by importing a directory, a single file, or a ZIP:
+`fonts/font-registry.json` freezes the verified SubtitleFlow font identities. The project repository does **not** ship font binaries. Put your own legally available copies into the local store by importing a directory, a single file, or a ZIP:
 
 ```bash
 subflow fonts install /path/to/fonts.zip
@@ -81,7 +81,31 @@ subflow fonts audit movies film-01
 
 A production release blocks when a referenced font cannot be resolved to verified local bytes. See [`docs/fonts.md`](docs/fonts.md) for the exact hashes and MKV attachment policy.
 
-## 5. OpenCode
+## 5. Optional research knowledge
+
+New titles use `research.mode=off`; you do **not** need web research or SRP to use SubtitleFlow.
+
+If you have an SRP/1.0 directory or ZIP from any producer:
+
+```bash
+subflow research validate-pack /path/to/pack.zip
+subflow research import movies /path/to/pack.zip
+subflow research bind movies film-01 PACK_ID@VERSION
+subflow research set-mode movies film-01 advisory
+subflow research resolve movies film-01
+```
+
+Use `enforce` only when you want research canon to become a release gate. In that mode, explicitly approve the current resolved snapshot before `prepare`:
+
+```bash
+subflow research set-mode movies film-01 enforce
+subflow research resolve movies film-01
+subflow research approve movies film-01
+```
+
+See [`docs/research.md`](docs/research.md).
+
+## 6. OpenCode
 
 Start in the repository root:
 
@@ -107,7 +131,7 @@ Daily entry points:
 
 `/subtitle/run` is the OpenCode orchestration entry point: it reads persisted repository state and is instructed to advance only as far as the next mandatory human gate. The Python engine does not yet expose a standalone deterministic `advance` planner; OpenCode must therefore follow the persisted gate/status files rather than treating `/subtitle/run` as permission for autonomous completion.
 
-## 6. Final MKV font attachment
+## 7. Final MKV font attachment
 
 After `subflow release`, the release manifest freezes final ASS and resolved font hashes. `subflow remux` preserves existing MKV attachments by default. A same-name existing font is first extracted with `mkvextract` and SHA-compared; only an identical file is reused. Missing frozen fonts are attached, then the output is checked with `mkvmerge -J`.
 

@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common.schema.json",
+  "title": "Subtitle Research Pack 1.0 Common Definitions",
+  "$defs": {
+    "record_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9][a-z0-9._:-]*$"
+    },
+    "semantic_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "slug": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "language_tag": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+    },
+    "status": {
+      "enum": [
+        "accepted",
+        "provisional",
+        "deprecated"
+      ]
+    },
+    "confidence": {
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "enforcement": {
+      "enum": [
+        "locked",
+        "preferred",
+        "informational"
+      ]
+    },
+    "extensions": {
+      "type": "object",
+      "propertyNames": {
+        "minLength": 1
+      },
+      "additionalProperties": true
+    },
+    "scope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "level",
+            "series_id"
+          ],
+          "properties": {
+            "level": {
+              "const": "series"
+            },
+            "series_id": {
+              "$ref": "#/$defs/slug"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "level",
+            "series_id",
+            "title_id"
+          ],
+          "properties": {
+            "level": {
+              "const": "title"
+            },
+            "series_id": {
+              "$ref": "#/$defs/slug"
+            },
+            "title_id": {
+              "$ref": "#/$defs/slug"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "level",
+            "series_id",
+            "branch_id"
+          ],
+          "properties": {
+            "level": {
+              "const": "series_branch"
+            },
+            "series_id": {
+              "$ref": "#/$defs/slug"
+            },
+            "branch_id": {
+              "$ref": "#/$defs/slug"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "level",
+            "series_id",
+            "title_id",
+            "branch_id"
+          ],
+          "properties": {
+            "level": {
+              "const": "branch"
+            },
+            "series_id": {
+              "$ref": "#/$defs/slug"
+            },
+            "title_id": {
+              "$ref": "#/$defs/slug"
+            },
+            "branch_id": {
+              "$ref": "#/$defs/slug"
+            }
+          }
+        }
+      ]
+    },
+    "pack_scope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "series_id"
+          ],
+          "properties": {
+            "series_id": {
+              "$ref": "#/$defs/slug"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "series_id",
+            "title_id"
+          ],
+          "properties": {
+            "series_id": {
+              "$ref": "#/$defs/slug"
+            },
+            "title_id": {
+              "$ref": "#/$defs/slug"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "series_id",
+            "branch_id"
+          ],
+          "properties": {
+            "series_id": {
+              "$ref": "#/$defs/slug"
+            },
+            "branch_id": {
+              "$ref": "#/$defs/slug"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "series_id",
+            "title_id",
+            "branch_id"
+          ],
+          "properties": {
+            "series_id": {
+              "$ref": "#/$defs/slug"
+            },
+            "title_id": {
+              "$ref": "#/$defs/slug"
+            },
+            "branch_id": {
+              "$ref": "#/$defs/slug"
+            }
+          }
+        }
+      ]
+    },
+    "localized_text": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language",
+        "text"
+      ],
+      "properties": {
+        "language": {
+          "$ref": "#/$defs/language_tag"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "region": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 16
+        }
+      }
+    },
+    "id_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/record_id"
+      }
+    },
+    "string_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

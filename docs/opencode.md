@@ -1,6 +1,6 @@
 # OpenCode integration
 
-SubtitleFlow keeps deterministic state in files; OpenCode supplies research, semantic judgment and independent QA.
+SubtitleFlow keeps deterministic state in files; OpenCode supplies orchestration, semantic judgment and independent QA. Research is an optional producer path, not an OpenCode prerequisite.
 
 Project resources:
 
@@ -9,7 +9,7 @@ Project resources:
 - `.opencode/skills/`: intake, clean polish, alignment, canon, TW/JP branches, human review, release QA.
 - `.opencode/commands/subtitle/`: task-level entry points.
 
-OpenCode must not assume full A/B/C/D. Read `title.json` and imported roles first.
+OpenCode must not assume full A/B/C/D and must not assume research is enabled. Read `title.json`, imported roles, `subflow status`, and `subflow research status` first.
 
 Useful commands:
 
@@ -28,7 +28,7 @@ Useful commands:
 /subtitle/status
 ```
 
-`/subtitle/run` is an orchestration command that reads persisted state and advances only until the next human gate. The Python engine does not yet implement a standalone deterministic `advance-to-next-gate` planner, so the agent must consult `subflow status`/repository evidence instead of inferring progress from chat history.
+`/subtitle/run` is an orchestration command that reads persisted state and advances only until the next human gate. It skips research in `off`, resolves optional packs in `advisory`, and stops on a missing/stale/blocked Research Gate in `enforce`. The Python engine does not yet implement a standalone deterministic `advance-to-next-gate` planner, so the agent must consult `subflow status`/repository evidence instead of inferring progress from chat history.
 
 `opencode.jsonc` deliberately does **not** blanket-allow `subflow *`. Read-only/safe deterministic commands have narrow shell allow rules; human-impacting actions such as `review decide`, source replacement, gate approval, `release`, `remux`, and style mutation fall back to an explicit permission prompt. AI agents may write research/proposal/QA evidence within their scoped permissions but must not edit immutable source files or silently rewrite final subtitles.
 

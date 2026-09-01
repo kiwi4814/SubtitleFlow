@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "term.schema.json",
+  "title": "SRP 1.0 Term Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "key", "scope", "source", "target", "enforcement", "status"],
+  "properties": {
+    "id": {"$ref": "common.schema.json#/$defs/record_id"},
+    "key": {"$ref": "common.schema.json#/$defs/semantic_key"},
+    "scope": {"$ref": "common.schema.json#/$defs/scope"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "forms"],
+      "properties": {
+        "language": {"$ref": "common.schema.json#/$defs/language_tag"},
+        "forms": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "value"],
+      "properties": {
+        "language": {"$ref": "common.schema.json#/$defs/language_tag"},
+        "value": {"type": "string", "minLength": 1},
+        "accepted_aliases": {"$ref": "common.schema.json#/$defs/string_list"},
+        "deprecated": {"$ref": "common.schema.json#/$defs/string_list"},
+        "forbidden": {"$ref": "common.schema.json#/$defs/string_list"}
+      }
+    },
+    "enforcement": {"$ref": "common.schema.json#/$defs/enforcement"},
+    "status": {"$ref": "common.schema.json#/$defs/status"},
+    "entity_id": {"$ref": "common.schema.json#/$defs/record_id"},
+    "rationale": {"type": "string"},
+    "evidence_ids": {"$ref": "common.schema.json#/$defs/id_list"},
+    "extensions": {"$ref": "common.schema.json#/$defs/extensions"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "provisional"}}, "required": ["status"]},
+      "then": {"properties": {"enforcement": {"enum": ["preferred", "informational"]}}}
+    },
+    {
+      "if": {"properties": {"status": {"const": "deprecated"}}, "required": ["status"]},
+      "then": {"properties": {"enforcement": {"const": "informational"}}}
+    }
+  ]
+}

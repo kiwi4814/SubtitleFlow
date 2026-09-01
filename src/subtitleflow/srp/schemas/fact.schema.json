@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fact.schema.json",
+  "title": "SRP 1.0 Fact Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "scope", "category", "statement", "status"],
+  "properties": {
+    "id": {"$ref": "common.schema.json#/$defs/record_id"},
+    "scope": {"$ref": "common.schema.json#/$defs/scope"},
+    "category": {"type": "string", "minLength": 1, "maxLength": 80},
+    "statement": {"type": "string", "minLength": 1},
+    "language": {"$ref": "common.schema.json#/$defs/language_tag"},
+    "status": {"$ref": "common.schema.json#/$defs/status"},
+    "confidence": {"$ref": "common.schema.json#/$defs/confidence"},
+    "related_entities": {"$ref": "common.schema.json#/$defs/id_list"},
+    "evidence_ids": {"$ref": "common.schema.json#/$defs/id_list"},
+    "notes": {"type": "string"},
+    "extensions": {"$ref": "common.schema.json#/$defs/extensions"}
+  }
+}

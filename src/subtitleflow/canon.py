@@ -29,6 +29,8 @@ def add_term(
     context_sensitive: bool,
     branches: list[str],
     notes: str | None,
+    key: str | None = None,
+    enforcement: str = "locked",
 ) -> dict[str, Any]:
     if not term_id.strip() or not canonical.strip():
         raise ValidationError("term id and canonical are required")
@@ -37,19 +39,26 @@ def add_term(
         raise ValidationError(f"Invalid branch names: {', '.join(sorted(invalid_branches))}")
     if auto_replace and context_sensitive:
         raise ValidationError("A context-sensitive term cannot be marked auto_replace")
+    if enforcement not in {"locked", "preferred", "informational"}:
+        raise ValidationError("enforcement must be locked, preferred, or informational")
     path = _glossary_path(paths, scope)
     data = read_json(path)
     terms = data.setdefault("terms", [])
     if any(item.get("id") == term_id for item in terms):
         raise ValidationError(f"Glossary term already exists: {term_id}")
+    semantic_key = (key or term_id).strip()
+    if any((item.get("key") or item.get("id")) == semantic_key for item in terms):
+        raise ValidationError(f"Glossary semantic key already exists in this scope: {semantic_key}")
     item = {
         "id": term_id,
+        "key": semantic_key,
         "canonical": canonical,
         "aliases": aliases,
         "auto_replace": auto_replace,
         "context_sensitive": context_sensitive,
         "branches": branches or ["clean", "tw", "jp"],
         "forbidden_aliases": aliases,
+        "enforcement": enforcement,
         "notes": notes,
         "created_at": utc_now(),
     }
