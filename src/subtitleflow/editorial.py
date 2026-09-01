@@ -32,8 +32,6 @@ PROVENANCE_VALUES = {
 TRUST_VALUES = {"high", "medium", "low", "unknown"}
 POLICY_VALUES = {"preserve", "proofread", "retranslate", "auto"}
 
-# Central policy vocabulary. Callers submit a semantic change type; they do not reproduce
-# policy-specific if/else trees. Human review remains a separate gate after this permission.
 _CHANGE_ALIASES = {
     "semantic": "mistranslation",
     "semantic-correction": "mistranslation",
@@ -129,9 +127,9 @@ class TranslationQualityAssessment:
 class EditorialContext:
     translation_provenance: TranslationProvenance = "unknown"
     translation_trust: TranslationTrust = "unknown"
-    requested_policy: EditingPolicy = "auto"
-    effective_policy: EditingPolicy | None = None
-    policy_source: str = "default"
+    requested_policy: EditingPolicy = "preserve"
+    effective_policy: EditingPolicy | None = "preserve"
+    policy_source: str = "legacy-default"
     assessment: TranslationQualityAssessment | None = None
 
     @property
@@ -151,11 +149,6 @@ class EditorialContext:
 
 
 def recommend_policy(assessment: TranslationQualityAssessment) -> EditingPolicy:
-    """Turn an explicit AI/human assessment into a policy recommendation.
-
-    SubtitleFlow never infers quality from provenance. The assessment metrics are the input;
-    this deterministic reducer only chooses the broad editing envelope.
-    """
     assessment.validate()
     severe_risk = max(
         assessment.omission_risk,
@@ -175,6 +168,8 @@ def recommend_policy(assessment: TranslationQualityAssessment) -> EditingPolicy:
 
 
 def editorial_context(config: dict[str, Any], *, branch: str = "jp") -> EditorialContext:
+    if "editorial" not in config:
+        return EditorialContext()
     root = config.get("editorial", {})
     if not isinstance(root, dict):
         raise ValidationError("editorial must be an object")
@@ -184,7 +179,7 @@ def editorial_context(config: dict[str, Any], *, branch: str = "jp") -> Editoria
     merged = {**root, **branch_cfg}
     provenance = str(merged.get("translation_provenance", "unknown")).lower()
     trust = str(merged.get("translation_trust", "unknown")).lower()
-    requested = str(merged.get("editing_policy", "auto")).lower()
+    requested = str(merged.get("editing_policy", "preserve")).lower()
     if provenance not in PROVENANCE_VALUES:
         raise ValidationError(f"Unknown translation provenance: {provenance}")
     if trust not in TRUST_VALUES:
@@ -225,7 +220,6 @@ def policy_action(context: EditorialContext, change_type: str) -> PolicyAction:
     normalized = normalize_change_type(change_type)
     row = _POLICY_MATRIX.get(normalized)
     if row is None:
-        # Unknown semantic change types never gain broader rights by accident.
         return "review" if context.effective_policy != "preserve" else "block"
     return row[context.effective_policy]
 
