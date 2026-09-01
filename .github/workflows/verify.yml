@@ -23,9 +23,24 @@ jobs:
       - name: Compile
         run: uv run python -m compileall -q src
       - name: Ruff lint
-        run: uv run ruff check .
+        id: lint
+        continue-on-error: true
+        run: uv run ruff check . > ruff-lint.txt 2>&1
       - name: Ruff format
-        run: uv run ruff format --check .
+        id: format
+        continue-on-error: true
+        run: uv run ruff format --check . > ruff-format.txt 2>&1
+      - name: Upload Ruff diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruff-diagnostics
+          path: |
+            ruff-lint.txt
+            ruff-format.txt
+      - name: Enforce Ruff result
+        if: steps.lint.outcome == 'failure' || steps.format.outcome == 'failure'
+        run: exit 1
       - name: Tests
         run: uv run pytest -q
       - name: Build
