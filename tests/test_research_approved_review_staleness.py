@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from conftest import write_ass
+
 from subtitleflow.io import read_json, write_json
 from subtitleflow.normalize import normalize_all
 from subtitleflow.qa import run_all_qa
@@ -80,7 +81,7 @@ def test_approved_review_becomes_qa_error_after_srp_semantics_change(tmp_path: P
             "branch": "clean",
             "unit_id": unit.id,
             "original_text": unit.final_text,
-            "proposed_text": unit.final_text + "！",
+            "proposed_text": unit.final_text + "!",
             "reason": "semantic review",
             "confidence": 0.9,
         },
