@@ -16,16 +16,3 @@ htmlcov/
 fonts/local/*
 !fonts/local/.gitkeep
 fonts/font-map.json
-
-# OS artifacts
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# User projects data (keep placeholder)
-projects/*
-!projects/.gitkeep
