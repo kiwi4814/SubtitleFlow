@@ -9,11 +9,14 @@ from collections import Counter
 from pathlib import Path
 
 from subtitleflow.alignment import editable_cues
+from subtitleflow.compile import compile_all
 from subtitleflow.cue_views import evidence_cues
 from subtitleflow.io import read_json, write_json
 from subtitleflow.jobs import load_portable_job, prepare_portable_job
 from subtitleflow.normalize import load_normalized
 from subtitleflow.pipeline import plan_title
+from subtitleflow.portable_release import build_portable_release_bundle
+from subtitleflow.qa import run_all_qa
 from subtitleflow.review import decide_candidate
 from subtitleflow.semantic_packet import build_semantic_packet
 from subtitleflow.semantic_proposals import import_semantic_proposal_envelope
@@ -283,6 +286,85 @@ def _controlled_human_review_roundtrip(
     }
 
 
+def _portable_bundle_roundtrip(paths, job: dict[str, object], workspace: Path) -> dict[str, object]:
+    compiled = compile_all(paths)
+    plan_after_compile = plan_title(paths).to_dict()
+    qa = run_all_qa(paths)
+    plan_after_qa = plan_title(paths).to_dict()
+
+    capabilities = {
+        "ffmpeg_libass": True,
+        "exact_fonts": True,
+        "full_video": False,
+        "mkvtoolnix": False,
+    }
+    first_dir = workspace / "bundle-first"
+    first_zip = workspace / "SubtitleFlow-M01-JP-ZHCN-first.zip"
+    first = build_portable_release_bundle(
+        paths,
+        branch="clean",
+        source_root=REPO_ROOT,
+        bundle_dir=first_dir,
+        runtime="chatgpt-web",
+        runtime_capabilities=capabilities,
+        job=job,
+        archive_path=first_zip,
+    )
+    second_dir = workspace / "bundle-second"
+    second_zip = workspace / "SubtitleFlow-M01-JP-ZHCN-second.zip"
+    second = build_portable_release_bundle(
+        paths,
+        branch="clean",
+        source_root=REPO_ROOT,
+        bundle_dir=second_dir,
+        runtime="chatgpt-web",
+        runtime_capabilities=capabilities,
+        job=job,
+        archive_path=second_zip,
+    )
+
+    manifest = first.manifest
+    qa_status = {
+        str(item.get("check")): str(item.get("status"))
+        for item in manifest.get("qa", [])
+        if isinstance(item, dict)
+    }
+    outputs = [item for item in manifest.get("outputs", []) if isinstance(item, dict)]
+    ass_outputs = [item for item in outputs if item.get("kind") == "ass"]
+    render_outputs = [item for item in outputs if item.get("kind") == "render"]
+    report_outputs = [item for item in outputs if item.get("kind") == "report"]
+    portable_json = json.dumps(manifest, ensure_ascii=False)
+
+    return {
+        "compiled": compiled,
+        "qa_ok": bool(qa.get("ok")),
+        "renderer_status": qa.get("renderer", {}).get("status"),
+        "renderer_canvas": qa.get("renderer", {}).get("canvas"),
+        "font_audit_ok": qa.get("fonts", {}).get("ok"),
+        "font_attachment_count": len(qa.get("fonts", {}).get("attachments", [])),
+        "plan_after_compile": plan_after_compile,
+        "plan_after_qa": plan_after_qa,
+        "manifest": {
+            "runtime": manifest.get("engine", {}).get("runtime"),
+            "archival_release_frozen": manifest.get("portable", {}).get(
+                "archival_release_frozen"
+            ),
+            "deferred": manifest.get("deferred", []),
+            "qa_status": qa_status,
+            "ass_outputs": len(ass_outputs),
+            "render_outputs": len(render_outputs),
+            "report_outputs": len(report_outputs),
+            "contains_runtime_workspace_path": str(workspace) in portable_json,
+            "contains_source_root_absolute_path": str(REPO_ROOT) in portable_json,
+        },
+        "archive": {
+            "first_sha256": first.archive_sha256,
+            "second_sha256": second.archive_sha256,
+            "reproducible": first.archive_sha256 == second.archive_sha256,
+        },
+    }
+
+
 def run_pilot() -> dict[str, object]:
     job = load_portable_job(JOB_PATH, source_root=REPO_ROOT)
     sources = _input_paths(job)
@@ -316,12 +398,22 @@ def run_pilot() -> dict[str, object]:
             packet_research.get("branch", {}) if isinstance(packet_research, dict) else {}
         )
         review_roundtrip = _controlled_human_review_roundtrip(paths, semantic_packet)
+        portable_bundle = _portable_bundle_roundtrip(paths, job, workspace)
+        title_config = read_json(paths.title_config)
+        font_dirs = title_config.get("fonts", {}).get("directories", [])
+        style_profile = str(title_config.get("style", {}).get("profile", ""))
 
+        bundle_manifest = portable_bundle.get("manifest", {})
+        qa_status = bundle_manifest.get("qa_status", {})
+        deferred = set(bundle_manifest.get("deferred", []))
         checks = {
             "portable_runner_inferred_source_assisted": prepared.workflow_profile
             == "source-assisted",
             "portable_runner_uses_theatrical_series_identity": prepared.series_id
             == "doraemon-theatrical",
+            "portable_runtime_binds_style_to_source_root": style_profile.startswith(str(REPO_ROOT)),
+            "portable_runtime_binds_fonts_to_source_root": bool(font_dirs)
+            and all(str(value).startswith(str(REPO_ROOT)) for value in font_dirs),
             "repository_evidence_is_bound": repository_evidence.get("bound") is True,
             "repository_evidence_uses_expected_pack": repository_evidence.get("pack_id")
             == "doraemon-theatrical-cn-tw-canon",
@@ -382,10 +474,47 @@ def run_pilot() -> dict[str, object]:
                 "human_review_stage", {}
             ).get("status")
             == "passed",
+            "compile_produces_clean_ass": "clean" in portable_bundle.get("compiled", {}),
+            "deterministic_qa_passes": portable_bundle.get("qa_ok") is True,
+            "exact_font_audit_passes": portable_bundle.get("font_audit_ok") is True,
+            "synthetic_libass_render_passes": portable_bundle.get("renderer_status") == "passed"
+            and portable_bundle.get("renderer_canvas") == "synthetic",
+            "planner_advances_to_semantic_qa_after_deterministic_qa": portable_bundle.get(
+                "plan_after_qa", {}
+            ).get("next_action")
+            == "semantic-qa",
+            "portable_bundle_contains_ass": bundle_manifest.get("ass_outputs") == 1,
+            "portable_bundle_contains_render_pngs": int(bundle_manifest.get("render_outputs", 0))
+            > 0,
+            "portable_bundle_marks_deterministic_checks_passed": qa_status.get(
+                "deterministic-qa"
+            )
+            == "passed"
+            and qa_status.get("exact-font-audit") == "passed"
+            and qa_status.get("registered-font-assets") == "passed"
+            and qa_status.get("synthetic-libass-render") == "passed",
+            "portable_bundle_defers_archival_checks_truthfully": {
+                "semantic-qa-signoff",
+                "full-video-visual-qa",
+                "scene-occlusion",
+                "mkv-remux",
+            }.issubset(deferred)
+            and qa_status.get("full-video-visual-qa") == "deferred"
+            and qa_status.get("scene-occlusion") == "deferred"
+            and bundle_manifest.get("archival_release_frozen") is False,
+            "portable_bundle_does_not_leak_runtime_paths": bundle_manifest.get(
+                "contains_runtime_workspace_path"
+            )
+            is False
+            and bundle_manifest.get("contains_source_root_absolute_path") is False,
+            "portable_bundle_zip_is_reproducible": portable_bundle.get("archive", {}).get(
+                "reproducible"
+            )
+            is True,
         }
 
         return {
-            "pilot": "doraemon-m01-portable-job-semantic-review",
+            "pilot": "doraemon-m01-portable-job-through-bundle",
             "status": "passed" if all(checks.values()) else "failed",
             "job": str(JOB_PATH.relative_to(REPO_ROOT)),
             "portable_runner": {
@@ -411,6 +540,7 @@ def run_pilot() -> dict[str, object]:
                 "fact_count": len(packet_branch.get("facts", [])),
             },
             "human_review_roundtrip": review_roundtrip,
+            "portable_bundle": portable_bundle,
             "sources": {
                 "S": {
                     "path": str(sources["S"].relative_to(REPO_ROOT)),
