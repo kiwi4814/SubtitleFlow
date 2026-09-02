@@ -14,9 +14,9 @@ Treat this Skill as the user-facing production interface. Hide internal Subtitle
 3. Resolve the identified title/series against the GitHub evidence index and pin the exact compatible Canon/SRP snapshot when repository evidence is requested.
 4. Materialize the request as a SubtitleFlow Portable Job and use the Core prepare/planner path rather than recreating its state machine in the Skill.
 5. Consume the Core-generated Semantic Packet for model editing; return only material proposals and feed them through existing Human Review.
-6. After approval, continue through deterministic QA and renderer checks that the current environment actually supports.
-7. Inspect rendered samples visually when images are available.
-8. Package the final ASS files, renders, reports, and manifest into one release ZIP.
+6. After approval, continue through deterministic compile, QA, exact-font audit, and renderer checks that the current environment actually supports.
+7. Inspect rendered samples visually when images are available, while preserving the distinction between synthetic typography rendering and real-video scene review.
+8. Build the Core Portable Release Bundle and package its ASS files, renders, reports, and manifest into one ZIP. Keep archival Release Freeze, full-video visual QA, and Remux explicitly deferred unless their actual Core gates passed.
 
 Read `references/workflow.md` for the production sequence and blocker policy.
 Read `references/evidence-policy.md` for evidence authority, Canon gaps, and interaction with subtitle-canon-research.
@@ -47,10 +47,10 @@ Default repository: `kiwi4814/SubtitleFlow` when the user's request concerns the
 ## Rendering and capability truthfulness
 
 - Use actual FFmpeg/libass rendering when the execution environment and required fonts are available.
-- Synthetic-canvas rendering proves typography/layout only; do not claim scene-occlusion review from it.
+- Synthetic-canvas FFmpeg/libass PNGs are real renderer output for typography/layout/font selection, but they do not prove scene occlusion or interaction with the movie image.
 - If the user supplies screenshots or usable video frames, overlay/render against those for visual review when possible.
 - If exact fonts, FFmpeg/libass, full video, or MKVToolNix are unavailable, mark those checks `deferred`; do not convert absence into a false pass.
-- Never claim MKV Remux or attachment verification unless it actually ran.
+- Never claim Archival Release Freeze, full-video visual approval, MKV Remux, or attachment verification unless the corresponding Core evidence actually exists and passed.
 
 ## Canon boundary
 
@@ -58,4 +58,4 @@ Consume existing Canon/SRP. If production exposes a missing or conflicting durab
 
 ## Final response
 
-Give the user the finished release ZIP and, when useful, the primary ASS as a separate file. Summarize only material edits, QA status, deferred checks, and unresolved Canon gaps. Do not make the user read internal stage logs to obtain the result.
+Give the user the finished Portable Release ZIP and, when useful, the primary ASS as a separate file. Summarize only material edits, passed QA/render checks, explicitly deferred archival checks, and unresolved Canon gaps. Do not make the user read internal stage logs to obtain the result.
