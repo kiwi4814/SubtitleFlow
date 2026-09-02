@@ -93,8 +93,7 @@ def _compiled_checks(ass_path: Path, reconciliation: dict[str, object]) -> dict[
         "chinese_above_japanese": order_ok,
         "event_count_matches_reconciliation": len(zh_events) == len(pairs)
         and len(ja_events) == paired_count,
-        "font_size_target_ok": 52 <= physical["SF-ZH"] <= 58
-        and 38 <= physical["SF-JA"] <= 46,
+        "font_size_target_ok": 52 <= physical["SF-ZH"] <= 58 and 38 <= physical["SF-JA"] <= 46,
     }
 
 
@@ -198,9 +197,7 @@ def run_pilot() -> dict[str, object]:
                 "event_count_matches_reconciliation"
             ]
             is True,
-            "compiled_1080p_font_sizes_are_in_target_range": compiled_checks[
-                "font_size_target_ok"
-            ]
+            "compiled_1080p_font_sizes_are_in_target_range": compiled_checks["font_size_target_ok"]
             is True,
             "deterministic_qa_passes": qa.get("ok") is True,
             "synthetic_libass_render_passes": qa.get("renderer", {}).get("status") == "passed"
