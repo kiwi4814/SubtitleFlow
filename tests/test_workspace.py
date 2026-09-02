@@ -1,10 +1,16 @@
 from pathlib import Path
 
 import pytest
-
 from conftest import write_ass
+
 from subtitleflow.errors import SourceIntegrityError
-from subtitleflow.workspace import add_source, create_project, create_title, title_paths, verify_sources
+from subtitleflow.workspace import (
+    add_source,
+    create_project,
+    create_title,
+    title_paths,
+    verify_sources,
+)
 
 
 def test_source_is_hashed_and_mutation_detected(tmp_path: Path, sample_cues) -> None:

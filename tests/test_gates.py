@@ -1,11 +1,15 @@
 from pathlib import Path
 
 import pytest
-
 from conftest import write_ass
+
 from subtitleflow.compile import compile_all
 from subtitleflow.errors import GateError
-from subtitleflow.gates import mark_research_complete, mark_semantic_qa_complete, mark_visual_qa_complete
+from subtitleflow.gates import (
+    mark_research_complete,
+    mark_semantic_qa_complete,
+    mark_visual_qa_complete,
+)
 from subtitleflow.io import read_json, write_json
 from subtitleflow.normalize import normalize_all
 from subtitleflow.qa import run_all_qa
@@ -49,6 +53,7 @@ def _prepared_single(tmp_path: Path, *, video: Path | None = None):
     assert run_all_qa(paths)["ok"] is True
     return paths
 
+
 def _enable_legacy_research(paths) -> None:
     config = read_json(paths.title_config)
     config.pop("research", None)
@@ -73,7 +78,9 @@ def test_semantic_gate_requires_current_qa_and_report_when_research_off(tmp_path
     paths = _prepared_single(tmp_path)
     with pytest.raises(GateError):
         mark_semantic_qa_complete(paths)
-    (paths.qa / "semantic-review.md").write_text("No unresolved semantic findings.\n", encoding="utf-8")
+    (paths.qa / "semantic-review.md").write_text(
+        "No unresolved semantic findings.\n", encoding="utf-8"
+    )
     mark_semantic_qa_complete(paths)
     stage = read_json(paths.state)["stages"]["semantic_qa"]
     assert stage["status"] == "passed"

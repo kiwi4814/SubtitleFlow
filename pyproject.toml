@@ -1,6 +1,6 @@
 [project]
 name = "subtitleflow"
-version = "0.4.1"
+version = "0.5.0"
 description = "Evidence-driven subtitle polishing, bilingual production, font-safe ASS styling, and MKV remux workflow"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -58,4 +58,4 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
-ignore = ["E501"]
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]

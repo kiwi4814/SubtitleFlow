@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import tempfile
@@ -35,10 +36,8 @@ def atomic_write_text(path: Path, text: str) -> None:
             os.fsync(handle.fileno())
         os.replace(temp_name, path)
     finally:
-        try:
+        with contextlib.suppress(FileNotFoundError):
             os.unlink(temp_name)
-        except FileNotFoundError:
-            pass
 
 
 def load_config(path: Path) -> dict[str, Any]:

@@ -129,16 +129,10 @@ def _load_local_terms(paths: TitlePaths, branch: str) -> list[dict[str, Any]]:
             rank, scope = scoped
             aliases = [str(item) for item in record.get("aliases", []) if str(item)]
             forbidden = [
-                str(item)
-                for item in record.get("forbidden_aliases", aliases)
-                if str(item)
+                str(item) for item in record.get("forbidden_aliases", aliases) if str(item)
             ]
-            accepted = [
-                str(item) for item in record.get("accepted_aliases", []) if str(item)
-            ]
-            deprecated = [
-                str(item) for item in record.get("deprecated_aliases", []) if str(item)
-            ]
+            accepted = [str(item) for item in record.get("accepted_aliases", []) if str(item)]
+            deprecated = [str(item) for item in record.get("deprecated_aliases", []) if str(item)]
             result.append(
                 {
                     "key": str(record.get("key") or term_id),
@@ -307,9 +301,7 @@ def _resolve_terms(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     target_language = _target_language(paths)
     candidates: list[dict[str, Any]] = []
-    for item in _applicable_records(
-        packs, "terms.jsonl", paths=paths, branch_id=branch_id
-    ):
+    for item in _applicable_records(packs, "terms.jsonl", paths=paths, branch_id=branch_id):
         if item.get("status") != "accepted":
             continue
         if item.get("target", {}).get("language") != target_language:
@@ -398,19 +390,14 @@ def _resolve_decisions(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     candidates = [
         item
-        for item in _applicable_records(
-            packs, "decisions.jsonl", paths=paths, branch_id=branch_id
-        )
+        for item in _applicable_records(packs, "decisions.jsonl", paths=paths, branch_id=branch_id)
         if item.get("status") == "accepted"
     ]
     candidates = [
         item
         for item in candidates
         if not item.get("applies_to", {}).get("branch_ids")
-        or (
-            branch_id is not None
-            and branch_id in item.get("applies_to", {}).get("branch_ids", [])
-        )
+        or (branch_id is not None and branch_id in item.get("applies_to", {}).get("branch_ids", []))
     ]
     keys = {str(item.get("key")) for item in candidates}
     resolved: list[dict[str, Any]] = []
@@ -513,7 +500,9 @@ def _semantic_copy(effective: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
-def _provenance_payload(packs: list[dict[str, Any]], bindings: list[dict[str, Any]]) -> dict[str, Any]:
+def _provenance_payload(
+    packs: list[dict[str, Any]], bindings: list[dict[str, Any]]
+) -> dict[str, Any]:
     data: dict[str, Any] = {"bindings": bindings, "packs": []}
     for pack in packs:
         data["packs"].append(
@@ -539,7 +528,9 @@ def research_input_digest(paths: TitlePaths) -> str:
         "canon": {},
         "packs": [],
     }
-    for path in sorted(paths.project_canon.glob("*.json")) + sorted(paths.title_canon.glob("*.json")):
+    for path in sorted(paths.project_canon.glob("*.json")) + sorted(
+        paths.title_canon.glob("*.json")
+    ):
         if path.is_file():
             payload["canon"][str(path.relative_to(paths.project))] = sha256_file(path)
     if mode not in {"off", "legacy"}:
@@ -568,9 +559,7 @@ def build_effective(paths: TitlePaths) -> tuple[dict[str, Any], dict[str, Any]]:
 
     for branch in active_branches(paths):
         srp_branch_id = mapping.get(branch)
-        terms, term_conflicts = _resolve_terms(
-            paths, packs, branch=branch, branch_id=srp_branch_id
-        )
+        terms, term_conflicts = _resolve_terms(paths, packs, branch=branch, branch_id=srp_branch_id)
         decisions, decision_conflicts = _resolve_decisions(
             paths, packs, branch=branch, branch_id=srp_branch_id
         )
@@ -616,11 +605,7 @@ def build_effective(paths: TitlePaths) -> tuple[dict[str, Any], dict[str, Any]]:
 
     unique_conflicts = {
         _canonical_sha(
-            {
-                key: value
-                for key, value in item.items()
-                if key not in {"branch", "pack_refs"}
-            }
+            {key: value for key, value in item.items() if key not in {"branch", "pack_refs"}}
         )
         for item in conflicts
         if item.get("blocking")
@@ -658,9 +643,7 @@ def build_effective(paths: TitlePaths) -> tuple[dict[str, Any], dict[str, Any]]:
         "series_id": series_id,
         "mode": mode,
         "bindings_sha256": bindings_digest(paths),
-        "pack_digests": sorted(
-            str(item["pack_digest"]) for item in bound_registry_entries(paths)
-        )
+        "pack_digests": sorted(str(item["pack_digest"]) for item in bound_registry_entries(paths))
         if mode != "off"
         else [],
         "effective_semantic_sha256": semantic_sha,
@@ -682,8 +665,7 @@ def resolve_research(paths: TitlePaths) -> dict[str, Any]:
 
     semantic_changed = (
         old_snapshot is not None
-        and old_snapshot.get("effective_semantic_sha256")
-        != snapshot["effective_semantic_sha256"]
+        and old_snapshot.get("effective_semantic_sha256") != snapshot["effective_semantic_sha256"]
     )
     provenance_changed = (
         old_snapshot is not None

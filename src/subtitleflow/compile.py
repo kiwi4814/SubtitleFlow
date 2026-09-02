@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
+from typing import Any
 
 from .errors import GateError, ValidationError
 from .formats.ass import (
@@ -12,9 +14,12 @@ from .formats.ass import (
     parse_ass,
     render_from_template,
 )
+from .io import read_json
+from .layout import block_geometry, positioned_override
 from .review import pending_count
+from .roles import is_release_dialogue_role
 from .state import invalidate_after_compile, update_stage
-from .style import ass_style_values, event_override_tag, is_special_source_style
+from .style import ass_style_values, event_override_tag, layout_settings, load_style_profile
 from .text import ass_text
 from .workfile import load_workfile
 from .workflow import active_branches
@@ -36,12 +41,41 @@ def _profile_styles(paths: TitlePaths) -> dict[str, dict[str, str]]:
     }
 
 
-def _preserved_style_names(paths: TitlePaths, template: AssDocument) -> set[str]:
-    return {
-        event.fields.get("Style", "").strip()
-        for event in template.events
-        if is_special_source_style(paths, event.fields.get("Style", ""))
-    }
+def _play_resolution(paths: TitlePaths, template: AssDocument) -> tuple[int, int]:
+    x: int | None = None
+    y: int | None = None
+    for line in template.lines:
+        key, sep, raw = line.partition(":")
+        if not sep:
+            continue
+        if key.strip().casefold() == "playresx":
+            with contextlib.suppress(ValueError):
+                x = int(raw.strip())
+        elif key.strip().casefold() == "playresy":
+            with contextlib.suppress(ValueError):
+                y = int(raw.strip())
+    profile_res = load_style_profile(paths).get("play_resolution", {})
+    return int(x or profile_res.get("x", 1920)), int(y or profile_res.get("y", 1080))
+
+
+def _excluded_event_indices(template: AssDocument) -> set[int]:
+    return {cue.index for cue in template.cues if not cue.include_in_release}
+
+
+def _preserved_event_indices(template: AssDocument) -> set[int]:
+    """Preserve authored non-dialogue semantics, not arbitrary source style names.
+
+    A style name is classification evidence only. Generic names such as Style2 do not imply
+    screen text or top placement. Translator notes/credits classified with
+    include_in_release=False are omitted unless a project explicitly reclassifies them.
+    """
+    preserved: set[int] = set()
+    for cue in template.cues:
+        if not cue.include_in_release:
+            continue
+        if cue.protected or not is_release_dialogue_role(cue.semantic_role):
+            preserved.add(cue.index)
+    return preserved
 
 
 def _ensure_compile_gate(paths: TitlePaths, *, preview: bool) -> None:
@@ -57,115 +91,233 @@ def _write_rendered(paths: TitlePaths, filename: str, text: str) -> Path:
     return output
 
 
-def _target_events(template: AssDocument, units: Iterable, *, paths: TitlePaths | None = None, serial_base: int = 1_000_000) -> list[tuple[int, int, str]]:
+def _event(
+    template: AssDocument,
+    *,
+    start_ms: int,
+    end_ms: int,
+    text: str,
+    style: str,
+    override: str | None,
+    margin_v: int | None = None,
+) -> str:
+    rendered_text = ass_text(text)
+    if override:
+        rendered_text = "{" + override + "}" + rendered_text
+    values = make_dialogue_values(
+        template.events_format,
+        start_ms=start_ms,
+        end_ms=end_ms,
+        text=rendered_text,
+        style=style,
+    )
+    if margin_v is not None:
+        values["MarginV"] = str(max(0, margin_v))
+    return build_event_line(template.events_format, values)
+
+
+def _target_events(
+    template: AssDocument,
+    units: Iterable[Any],
+    *,
+    paths: TitlePaths,
+    mode: str,
+    serial_base: int = 1_000_000,
+) -> list[tuple[int, int, str]]:
     events: list[tuple[int, int, str]] = []
+    styles = _profile_styles(paths)
+    layout = layout_settings(paths)
+    play_x, play_y = _play_resolution(paths, template)
     for index, unit in enumerate(units, start=1):
         if not unit.final_text.strip():
             raise ValidationError(f"{unit.id} has empty final_text")
-        target_text = ass_text(unit.final_text)
-        override = event_override_tag(paths, "SF-ZH") if paths is not None else None
-        if override:
-            target_text = "{" + override + "}" + target_text
-        values = make_dialogue_values(
-            template.events_format,
-            start_ms=unit.start_ms,
-            end_ms=unit.end_ms,
-            text=target_text,
-            style="SF-ZH",
+        geometry = block_geometry(
+            play_res_x=play_x,
+            play_res_y=play_y,
+            target_style=styles["SF-ZH"],
+            source_style=None,
+            layout=layout,
+            target_text=unit.final_text,
+            mode=mode,
+            semantic_role=getattr(unit, "semantic_role", "dialogue"),
         )
-        events.append((unit.start_ms, serial_base + index, build_event_line(template.events_format, values)))
+        # Clean/TW have no second language block, so event MarginV is deterministic without
+        # introducing an absolute \pos override. Bilingual events use explicit coordinates to
+        # defeat libass collision reordering.
+        override = event_override_tag(paths, "SF-ZH")
+        margin_v = max(0, play_y - geometry.target_y)
+        events.append(
+            (
+                unit.start_ms,
+                serial_base + index,
+                _event(
+                    template,
+                    start_ms=unit.start_ms,
+                    end_ms=unit.end_ms,
+                    text=unit.final_text,
+                    style="SF-ZH",
+                    override=override,
+                    margin_v=margin_v,
+                ),
+            )
+        )
     return events
 
 
-def compile_clean(paths: TitlePaths, *, preview: bool = False) -> Path:
+def _render_standard(
+    paths: TitlePaths, *, branch: str, template_role: str, filename: str, preview: bool
+) -> Path:
     _ensure_compile_gate(paths, preview=preview)
-    work = load_workfile(paths, "clean")
-    template = _template(paths, "S")
+    work = load_workfile(paths, branch)
+    template = _template(paths, template_role)
     rendered = render_from_template(
         template,
-        _target_events(template, work.units, paths=paths),
+        _target_events(template, work.units, paths=paths, mode="clean"),
         style_values=_profile_styles(paths),
-        preserve_style_names=_preserved_style_names(paths, template),
+        preserve_style_names=set(),
+        preserve_event_indices=_preserved_event_indices(template),
+        exclude_event_indices=_excluded_event_indices(template),
     )
     suffix = ".preview.ass" if preview else ".ass"
-    output = _write_rendered(paths, f"{paths.title_id}.zh-CN{suffix}", rendered)
-    update_stage(paths, "compile_clean", "preview" if preview else "passed", output=str(output.relative_to(paths.title)))
+    output = _write_rendered(paths, filename + suffix, rendered)
+    update_stage(
+        paths,
+        f"compile_{branch}",
+        "preview" if preview else "passed",
+        output=str(output.relative_to(paths.title)),
+    )
     return output
+
+
+def compile_clean(paths: TitlePaths, *, preview: bool = False) -> Path:
+    return _render_standard(
+        paths,
+        branch="clean",
+        template_role="S",
+        filename=f"{paths.title_id}.zh-CN",
+        preview=preview,
+    )
 
 
 def compile_tw(paths: TitlePaths, *, preview: bool = False) -> Path:
-    _ensure_compile_gate(paths, preview=preview)
-    work = load_workfile(paths, "tw")
-    template = _template(paths, "A")
-    rendered = render_from_template(
-        template,
-        _target_events(template, work.units, paths=paths),
-        style_values=_profile_styles(paths),
-        preserve_style_names=_preserved_style_names(paths, template),
+    return _render_standard(
+        paths,
+        branch="tw",
+        template_role="A",
+        filename=f"{paths.title_id}.zh-CN.tw",
+        preview=preview,
     )
-    suffix = ".preview.ass" if preview else ".ass"
-    output = _write_rendered(paths, f"{paths.title_id}.zh-CN.tw{suffix}", rendered)
-    update_stage(paths, "compile_tw", "preview" if preview else "passed", output=str(output.relative_to(paths.title)))
-    return output
 
 
-def _contiguous_source_groups(units: Iterable) -> list[tuple[int, int, str]]:
-    units = list(units)
-    groups: list[tuple[int, int, str]] = []
-    i = 0
-    while i < len(units):
-        unit = units[i]
-        if not unit.source_text or not unit.source_text_cue_ids:
-            i += 1
-            continue
-        ids = tuple(unit.source_text_cue_ids)
-        text = unit.source_text
-        start_ms = unit.start_ms
-        end_ms = unit.end_ms
-        j = i + 1
-        while j < len(units):
-            other = units[j]
-            if tuple(other.source_text_cue_ids) != ids or other.source_text != text:
-                break
-            end_ms = other.end_ms
-            j += 1
-        groups.append((start_ms, end_ms, text))
-        i = j
-    return groups
+def _reconciliation(paths: TitlePaths) -> dict[str, Any]:
+    path = paths.work / "bilingual-reconciliation.json"
+    if not path.is_file():
+        raise GateError(
+            "JP workfile predates bilingual reconciliation; rerun `subflow prepare` before compiling"
+        )
+    data = read_json(path)
+    if not isinstance(data.get("pairs"), list):
+        raise ValidationError("bilingual-reconciliation.json has no pairs array")
+    return data
 
 
 def compile_jp_bilingual(paths: TitlePaths, *, preview: bool = False) -> Path:
     _ensure_compile_gate(paths, preview=preview)
     work = load_workfile(paths, "jp")
     template = _template(paths, "A")
-    events = _target_events(template, work.units, paths=paths)
-    serial = len(events)
-    for start_ms, end_ms, text in _contiguous_source_groups(work.units):
-        if not text.strip():
-            continue
-        serial += 1
-        source_text = ass_text(text)
-        override = event_override_tag(paths, "SF-JA")
-        if override:
-            source_text = "{" + override + "}" + source_text
-        values = make_dialogue_values(
-            template.events_format,
-            start_ms=start_ms,
-            end_ms=end_ms,
-            text=source_text,
-            style="SF-JA",
+    reconciliation = _reconciliation(paths)
+    units = {item.id: item for item in work.units}
+    styles = _profile_styles(paths)
+    layout = layout_settings(paths)
+    play_x, play_y = _play_resolution(paths, template)
+    events: list[tuple[int, int, str]] = []
+    serial = 0
+
+    for pair in reconciliation["pairs"]:
+        unit_id = str(pair.get("target_unit_id", ""))
+        unit = units.get(unit_id)
+        if unit is None:
+            raise GateError(f"Reconciliation references missing target unit: {unit_id}")
+        operation = str(pair.get("operation", "unresolved"))
+        if operation == "unresolved":
+            raise GateError(
+                f"JP compile blocked: unresolved bilingual reconciliation for {unit_id}"
+            )
+        source_text = pair.get("source_text")
+        if operation != "source-gap" and not str(source_text or "").strip():
+            raise GateError(f"JP compile blocked: {operation} pair {unit_id} has no source text")
+
+        # The workfile remains authoritative for target text after Human Review; reconciliation
+        # owns only source relation/provenance. Both events use the target unit's final timing.
+        geometry = block_geometry(
+            play_res_x=play_x,
+            play_res_y=play_y,
+            target_style=styles["SF-ZH"],
+            source_style=styles["SF-JA"],
+            layout=layout,
+            target_text=unit.final_text,
+            source_text=str(source_text) if source_text else None,
+            mode="bilingual",
+            semantic_role=unit.semantic_role,
         )
-        events.append((start_ms, 2_000_000 + serial, build_event_line(template.events_format, values)))
+        zh_override = positioned_override(
+            event_override_tag(paths, "SF-ZH"), geometry.target_x, geometry.target_y
+        )
+        serial += 1
+        events.append(
+            (
+                unit.start_ms,
+                1_000_000 + serial,
+                _event(
+                    template,
+                    start_ms=unit.start_ms,
+                    end_ms=unit.end_ms,
+                    text=unit.final_text,
+                    style="SF-ZH",
+                    override=zh_override,
+                ),
+            )
+        )
+        if source_text:
+            ja_override = positioned_override(
+                event_override_tag(paths, "SF-JA"),
+                int(geometry.source_x or geometry.target_x),
+                int(geometry.source_y or geometry.target_y),
+            )
+            serial += 1
+            events.append(
+                (
+                    unit.start_ms,
+                    2_000_000 + serial,
+                    _event(
+                        template,
+                        start_ms=unit.start_ms,
+                        end_ms=unit.end_ms,
+                        text=str(source_text),
+                        style="SF-JA",
+                        override=ja_override,
+                    ),
+                )
+            )
 
     rendered = render_from_template(
         template,
         events,
-        style_values=_profile_styles(paths),
-        preserve_style_names=_preserved_style_names(paths, template),
+        style_values=styles,
+        preserve_style_names=set(),
+        preserve_event_indices=_preserved_event_indices(template),
+        exclude_event_indices=_excluded_event_indices(template),
     )
     suffix = ".preview.ass" if preview else ".ass"
     output = _write_rendered(paths, f"{paths.title_id}.zh-CN-ja{suffix}", rendered)
-    update_stage(paths, "compile_jp", "preview" if preview else "passed", output=str(output.relative_to(paths.title)))
+    update_stage(
+        paths,
+        "compile_jp",
+        "preview" if preview else "passed",
+        output=str(output.relative_to(paths.title)),
+        paired_events=sum(bool(item.get("source_text")) for item in reconciliation["pairs"]),
+        source_gaps=sum(item.get("operation") == "source-gap" for item in reconciliation["pairs"]),
+    )
     return output
 
 

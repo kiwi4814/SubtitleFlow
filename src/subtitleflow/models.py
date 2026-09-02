@@ -23,6 +23,9 @@ class Cue:
     protected: bool = False
     protected_reason: str | None = None
     raw_line: str | None = None
+    semantic_role: str = "dialogue"
+    position_intent: str = "preserve"
+    include_in_release: bool = True
 
     def validate(self) -> None:
         if self.start_ms < 0:
@@ -36,7 +39,7 @@ class Cue:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Cue":
+    def from_dict(cls, data: dict[str, Any]) -> Cue:
         cue = cls(**data)
         cue.validate()
         return cue
@@ -60,7 +63,7 @@ class NormalizedSubtitle:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "NormalizedSubtitle":
+    def from_dict(cls, data: dict[str, Any]) -> NormalizedSubtitle:
         cues = [Cue.from_dict(item) for item in data.get("cues", [])]
         return cls(
             schema_version=int(data["schema_version"]),
@@ -90,7 +93,7 @@ class AlignmentGroup:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "AlignmentGroup":
+    def from_dict(cls, data: dict[str, Any]) -> AlignmentGroup:
         return cls(**data)
 
 
@@ -101,6 +104,16 @@ class ChangeRecord:
     after: str
     rule_id: str | None = None
     note: str | None = None
+    reason: str | None = None
+    primary_evidence: dict[str, Any] | None = None
+    secondary_evidence: list[dict[str, Any]] = field(default_factory=list)
+    authority_domain: str | None = None
+    evidence_grade: str | None = None
+    source_conflicts: list[str] = field(default_factory=list)
+    confidence: float | None = None
+    proposal_source: str | None = None
+    review_status: str | None = None
+    final_decision: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -121,6 +134,9 @@ class BranchUnit:
     alignment_confidence: float = 1.0
     changes: list[ChangeRecord] = field(default_factory=list)
     flags: list[str] = field(default_factory=list)
+    semantic_role: str = "dialogue"
+    source_operation: str | None = None
+    parent_source_cue_ids: list[str] = field(default_factory=list)
 
     def validate(self) -> None:
         if self.end_ms <= self.start_ms:
@@ -132,7 +148,7 @@ class BranchUnit:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "BranchUnit":
+    def from_dict(cls, data: dict[str, Any]) -> BranchUnit:
         changes = [ChangeRecord(**item) for item in data.get("changes", [])]
         unit = cls(
             id=data["id"],
@@ -148,6 +164,9 @@ class BranchUnit:
             alignment_confidence=float(data.get("alignment_confidence", 1.0)),
             changes=changes,
             flags=list(data.get("flags", [])),
+            semantic_role=str(data.get("semantic_role", "dialogue")),
+            source_operation=data.get("source_operation"),
+            parent_source_cue_ids=list(data.get("parent_source_cue_ids", [])),
         )
         unit.validate()
         return unit
@@ -171,7 +190,7 @@ class BranchWorkfile:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "BranchWorkfile":
+    def from_dict(cls, data: dict[str, Any]) -> BranchWorkfile:
         return cls(
             schema_version=int(data["schema_version"]),
             project_id=data["project_id"],
@@ -200,6 +219,13 @@ class ReviewCandidate:
     confidence: float
     severity: str = "medium"
     evidence: dict[str, str] = field(default_factory=dict)
+    primary_evidence: dict[str, Any] | None = None
+    secondary_evidence: list[dict[str, Any]] = field(default_factory=list)
+    authority_domain: str | None = None
+    evidence_grade: str | None = None
+    source_conflicts: list[str] = field(default_factory=list)
+    editorial_policy: str | None = None
+    policy_action: str | None = None
     unit_fingerprint: str | None = None
     context_fingerprint: str | None = None
     proposal_source: str | None = None
@@ -226,7 +252,7 @@ class ReviewCandidate:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ReviewCandidate":
+    def from_dict(cls, data: dict[str, Any]) -> ReviewCandidate:
         candidate = cls(**data)
         candidate.validate()
         return candidate

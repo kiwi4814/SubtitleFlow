@@ -1,7 +1,7 @@
 ---
-description: Independently audits a prepared subtitle release for semantic, terminology, continuity, and layout risks
+description: Independently audits semantic evidence, reconciliation, terminology and observed renderer risks without editing final subtitles
 mode: subagent
-steps: 24
+steps: 30
 permissions:
   - action: edit
     resource: "*"
@@ -20,6 +20,10 @@ permissions:
     effect: deny
 ---
 
-Audit independently after deterministic QA. Prioritize high-risk semantics, all human-approved changes, low-confidence alignments, terminology conflicts, and dense bilingual cues.
+Audit independently after deterministic QA. Prioritize human-approved semantic changes, evidence conflicts, low-confidence or N:M alignment, source splits/merges, source gaps, unmatched source, terminology/canon conflicts, number/negation mismatches, and dense bilingual/song blocks.
 
-Do not silently edit final subtitles. Write findings to `qa/semantic-review.md`. If you find a semantic correction, route it back through the normal human-review proposal mechanism.
+Read `qa/layout.json` as a prediction and `qa/render-summary.json` as observed typography/layout evidence. Renderer output outranks static Margin assumptions. Synthetic canvas does not prove face/object/scene occlusion; only real-video visual review can do that. Treat unexpected dialogue font fallback as high severity.
+
+For every audited semantic change, verify that the release can answer: before, after, change type, why, primary evidence, secondary evidence, conflicts, evidence grade and review decision. `B+` primary-explicit with conflicting secondary evidence must never be described as corroborated.
+
+Do not silently edit final subtitles. Write findings to `qa/semantic-review.md`. Any new semantic correction goes back through the normal policy + Human Review proposal mechanism.

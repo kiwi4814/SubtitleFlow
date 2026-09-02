@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-
 ASS_HEADER = """[Script Info]
 ScriptType: v4.00+
 PlayResX: 1920
@@ -19,11 +18,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
 
-def ass_dialogue(start: str, end: str, text: str, *, style: str = "Default", effect: str = "") -> str:
+def ass_dialogue(
+    start: str, end: str, text: str, *, style: str = "Default", effect: str = ""
+) -> str:
     return f"Dialogue: 0,{start},{end},{style},,0,0,0,{effect},{text}"
 
 
-def write_ass(path: Path, cues: list[tuple[str, str, str]], *, extra: list[str] | None = None) -> Path:
+def write_ass(
+    path: Path, cues: list[tuple[str, str, str]], *, extra: list[str] | None = None
+) -> Path:
     lines = [ASS_HEADER.rstrip()]
     for start, end, text in cues:
         lines.append(ass_dialogue(start, end, text))

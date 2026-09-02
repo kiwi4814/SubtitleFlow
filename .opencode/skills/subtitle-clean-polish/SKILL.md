@@ -1,12 +1,14 @@
 ---
 name: Subtitle Clean Polish
-description: Polish one already-aligned subtitle minimally, optionally using a source-language track as semantic evidence.
+description: Polish one already-aligned subtitle under the resolved Editorial Policy, optionally using source-language evidence.
 ---
 
-Use the `clean` branch for S.
+Use the `clean` branch for S and preserve S timing. Provenance, trust and editing policy are separate; do not infer preserve rights from `human` or `official` alone.
 
-Preserve S timestamps. Apply approved deterministic terminology and optional OpenCC conversion first. With no C, limit AI work to language-level defects and never claim source-faithful accuracy. With C, align C as evidence while keeping S timing.
+Apply deterministic canon/terminology and optional OpenCC first. Then obey the same Editorial Context as the Python engine: preserve keeps correct/natural text, proofread permits evidence-backed correction and clear language cleanup, retranslate permits substantial rewriting when source evidence exists, and auto requires a structured quality assessment before semantic editing.
 
-Hybrid ASS policy: generated ordinary dialogue receives the configured collector style; authored complex events and recognized special styles such as notes, titles, songs, signs, OP/ED, staff and ruby are preserved from the source by default.
+With no C, do not claim source-faithful accuracy. With C, align C as semantic evidence while S remains the timing coordinate system.
 
-Semantic wording changes still require human review.
+ASS source style names are classification evidence, not layout commands. Generic styles such as `Style2` remain dialogue unless semantic evidence says otherwise. Screen text/title/document/prop roles preserve authored position intent; translator notes, fansub URLs and credits are excluded by default. Simple songs may enter the generated bilingual/song layout; complex authored FX remain protected.
+
+All substantive semantic wording changes still go through durable Human Review and Change Audit.

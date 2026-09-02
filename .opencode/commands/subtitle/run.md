@@ -13,3 +13,5 @@ Research behavior is determined only by persisted `research.mode`:
 - legacy v0.3 titles continue to use their legacy research evidence gate.
 
 Then run prepare/alignment, delegate semantic anomaly detection, import proposals, and STOP on pending human review. Later gates include deterministic QA, font audit, semantic QA, and visual QA as configured. Never bypass a gate merely to finish the command and never initiate web research unless the user explicitly requests that producer path.
+
+Before semantic editing, read the persisted Editorial Context. If `editing_policy=auto` and `assessment_required=true`, STOP semantic editing after producing/recording the structured Translation Quality Assessment; do not silently choose a policy. Alignment anomalies are review signals, while `bilingual-reconciliation.json` is the release-pairing authority. SOURCE_GAP is legal and must never be back-translated into fabricated Japanese.

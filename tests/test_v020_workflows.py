@@ -3,14 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from conftest import ASS_HEADER, ass_dialogue, write_ass
+
 from subtitleflow.compile import compile_all
 from subtitleflow.errors import GateError
 from subtitleflow.fonts import audit_fonts, referenced_font_families, require_font_attachments
 from subtitleflow.formats.ass import parse_ass
 from subtitleflow.io import read_json, write_json
 from subtitleflow.normalize import normalize_all
+from subtitleflow.qa import run_all_qa
 from subtitleflow.release import create_release_manifest
 from subtitleflow.remux import build_remux_command
 from subtitleflow.style import ass_style_values, event_override_tag
@@ -22,7 +23,6 @@ from subtitleflow.workspace import (
     create_title,
     title_paths,
 )
-from subtitleflow.qa import run_all_qa
 
 
 def _repo(tmp_path: Path):
@@ -47,9 +47,9 @@ def _make_test_font(path: Path, family: str = "WenQuanYi Micro Hei") -> Path:
     from fontTools.pens.ttGlyphPen import TTGlyphPen
 
     fb = FontBuilder(1024, isTTF=True)
-    glyph_order = [".notdef", "space", "A"]
+    glyph_order = [".notdef", "space", "A", "uni5B57", "uni5E55"]
     fb.setupGlyphOrder(glyph_order)
-    fb.setupCharacterMap({32: "space", 65: "A"})
+    fb.setupCharacterMap({32: "space", 65: "A", ord("字"): "uni5B57", ord("幕"): "uni5E55"})
     glyphs = {}
     for name in glyph_order:
         pen = TTGlyphPen(None)
@@ -163,7 +163,9 @@ def test_hybrid_preserves_plain_special_style_without_complex_tags(tmp_path: Pat
     assert [unit.final_text for unit in work.units] == ["普通对白"]
     output = Path(compile_all(paths)["clean"])
     doc = parse_ass(output)
-    assert any(event.fields.get("Style") == "Note" and "顶部注释" in event.raw_line for event in doc.events)
+    assert any(
+        event.fields.get("Style") == "Note" and "顶部注释" in event.raw_line for event in doc.events
+    )
 
 
 def test_font_reference_scanner_normalizes_vertical_font_prefix(tmp_path: Path) -> None:
@@ -180,7 +182,9 @@ def test_font_reference_scanner_normalizes_vertical_font_prefix(tmp_path: Path) 
     assert all(not family.startswith("@") for family in refs)
 
 
-def test_font_audit_release_freezes_sha_and_remux_uses_modern_attachment_options(tmp_path: Path) -> None:
+def test_font_audit_release_freezes_sha_and_remux_uses_modern_attachment_options(
+    tmp_path: Path,
+) -> None:
     paths = _repo(tmp_path)
     _set_profile(paths, "single")
     source = write_ass(tmp_path / "single.ass", [("0:00:01.00", "0:00:03.00", "字幕")])
@@ -232,7 +236,9 @@ def test_explicit_single_profile_does_not_silently_use_extra_c_source(tmp_path: 
     paths = _repo(tmp_path)
     _set_profile(paths, "single")
     add_source(paths, "S", write_ass(tmp_path / "s.ass", [("0:00:01.00", "0:00:02.00", "你好")]))
-    add_source(paths, "C", write_ass(tmp_path / "c.ass", [("0:00:01.00", "0:00:02.00", "こんにちは")]))
+    add_source(
+        paths, "C", write_ass(tmp_path / "c.ass", [("0:00:01.00", "0:00:02.00", "こんにちは")])
+    )
     normalize_all(paths)
     build_all_workfiles(paths)
     work = load_workfile(paths, "clean")
@@ -259,13 +265,19 @@ def test_jp_bilingual_hybrid_preserves_plain_special_style(tmp_path: Path) -> No
         encoding="utf-8",
     )
     add_source(paths, "A", a)
-    add_source(paths, "B", write_ass(tmp_path / "B.ass", [("0:00:01.00", "0:00:03.00", "中文字幕")]))
-    add_source(paths, "C", write_ass(tmp_path / "C.ass", [("0:00:01.00", "0:00:03.00", "日本語字幕")]))
+    add_source(
+        paths, "B", write_ass(tmp_path / "B.ass", [("0:00:01.00", "0:00:03.00", "中文字幕")])
+    )
+    add_source(
+        paths, "C", write_ass(tmp_path / "C.ass", [("0:00:01.00", "0:00:03.00", "日本語字幕")])
+    )
     normalize_all(paths)
     build_all_workfiles(paths)
     output = Path(compile_all(paths)["jp"])
     doc = parse_ass(output)
-    assert any(event.fields.get("Style") == "Note" and "作者注释" in event.raw_line for event in doc.events)
+    assert any(
+        event.fields.get("Style") == "Note" and "作者注释" in event.raw_line for event in doc.events
+    )
 
 
 def test_font_audit_blocks_same_attachment_name_with_different_sha(tmp_path: Path) -> None:
@@ -303,7 +315,9 @@ def test_font_audit_blocks_same_attachment_name_with_different_sha(tmp_path: Pat
         require_font_attachments(paths)
 
 
-def test_explicit_font_map_rejects_file_whose_internal_family_does_not_match(tmp_path: Path) -> None:
+def test_explicit_font_map_rejects_file_whose_internal_family_does_not_match(
+    tmp_path: Path,
+) -> None:
     paths = _repo(tmp_path)
     wrong = _make_test_font(tmp_path / "fonts" / "local" / "wrong.ttf", family="Wrong Family")
     write_json(
@@ -319,6 +333,8 @@ def test_explicit_font_map_rejects_file_whose_internal_family_does_not_match(tmp
     report = audit_fonts(paths)
     assert report["ok"] is False
     assert report["invalid_mappings"][0]["reason"] == "family-metadata-mismatch"
-    with pytest.raises(GateError, match="Font resolution does not satisfy the requested ASS family"):
+    with pytest.raises(
+        GateError, match="Font resolution does not satisfy the requested ASS family"
+    ):
         require_font_attachments(paths)
     assert wrong.is_file()

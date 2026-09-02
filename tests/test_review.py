@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from conftest import write_ass
+
 from subtitleflow.canon import add_term
 from subtitleflow.io import read_json, write_json
 from subtitleflow.normalize import normalize_all
@@ -73,6 +74,7 @@ def test_review_approval_rejects_stale_source_evidence_even_when_text_is_unchang
     tmp_path: Path, sample_cues
 ) -> None:
     import pytest
+
     from subtitleflow.errors import GateError
     from subtitleflow.workfile import save_workfile
 
@@ -122,12 +124,15 @@ def test_repo_proposal_is_archived_after_import(tmp_path: Path, sample_cues) -> 
     assert not proposal.exists()
     archived = list((paths.review_proposals / "_imported").glob("*.json"))
     assert len(archived) == 1
-    assert imported[0].proposal_source == str(archived[0].relative_to(paths.title)).replace("\\", "/")
+    assert imported[0].proposal_source == str(archived[0].relative_to(paths.title)).replace(
+        "\\", "/"
+    )
     assert imported[0].proposal_sha256
 
 
 def test_review_approval_rejects_stale_canon_context(tmp_path: Path, sample_cues) -> None:
     import pytest
+
     from subtitleflow.errors import GateError
 
     paths = bootstrap(tmp_path, sample_cues)

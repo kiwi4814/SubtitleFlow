@@ -1,7 +1,13 @@
 from pathlib import Path
 
 from conftest import ass_dialogue, write_ass
-from subtitleflow.formats.ass import build_event_line, make_dialogue_values, parse_ass, render_from_template
+
+from subtitleflow.formats.ass import (
+    build_event_line,
+    make_dialogue_values,
+    parse_ass,
+    render_from_template,
+)
 
 
 def test_parse_ass_and_protect_complex(tmp_path: Path) -> None:
@@ -18,7 +24,9 @@ def test_parse_ass_and_protect_complex(tmp_path: Path) -> None:
 
 def test_render_preserves_protected_event(tmp_path: Path) -> None:
     protected = ass_dialogue("0:00:04.00", "0:00:06.00", r"{\pos(100,100)}屏幕字")
-    path = write_ass(tmp_path / "in.ass", [("0:00:01.00", "0:00:03.00", "旧对白")], extra=[protected])
+    path = write_ass(
+        tmp_path / "in.ass", [("0:00:01.00", "0:00:03.00", "旧对白")], extra=[protected]
+    )
     doc = parse_ass(path)
     values = make_dialogue_values(
         doc.events_format,
@@ -27,7 +35,9 @@ def test_render_preserves_protected_event(tmp_path: Path) -> None:
         text="新对白",
         style="SF-ZH",
     )
-    output = render_from_template(doc, [(1000, 1_000_001, build_event_line(doc.events_format, values))])
+    output = render_from_template(
+        doc, [(1000, 1_000_001, build_event_line(doc.events_format, values))]
+    )
     assert "新对白" in output
     assert "旧对白" not in output
     assert protected in output
@@ -37,7 +47,9 @@ def test_render_preserves_protected_event(tmp_path: Path) -> None:
 
 def test_parse_protects_high_order_drawing_mode(tmp_path: Path) -> None:
     drawing = ass_dialogue("0:00:04.00", "0:00:06.00", r"{\p5}m 0 0 l 10 0 10 10")
-    path = write_ass(tmp_path / "drawing.ass", [("0:00:01.00", "0:00:03.00", "普通对白")], extra=[drawing])
+    path = write_ass(
+        tmp_path / "drawing.ass", [("0:00:01.00", "0:00:03.00", "普通对白")], extra=[drawing]
+    )
     doc = parse_ass(path)
     assert doc.events[-1].protected is True
     assert doc.events[-1].protected_reason == "ASS drawing mode"

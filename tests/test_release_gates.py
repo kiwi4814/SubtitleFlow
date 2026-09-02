@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import pytest
+from conftest import write_ass
 
 import subtitleflow
-from conftest import write_ass
 from subtitleflow.compile import compile_all
 from subtitleflow.errors import GateError
 from subtitleflow.gates import mark_research_complete, mark_semantic_qa_complete
@@ -39,6 +39,7 @@ def _prepared_title(tmp_path: Path, sample_cues):
     compile_all(paths)
     assert run_all_qa(paths)["ok"] is True
     return paths
+
 
 def _enable_legacy_research(paths) -> None:
     config = read_json(paths.title_config)
@@ -114,7 +115,9 @@ def test_release_rejects_stale_qa_after_workfile_change(tmp_path: Path, sample_c
         create_release_manifest(paths)
 
 
-def test_release_rejects_legacy_research_evidence_changed_after_mark(tmp_path: Path, sample_cues) -> None:
+def test_release_rejects_legacy_research_evidence_changed_after_mark(
+    tmp_path: Path, sample_cues
+) -> None:
     paths = _prepared_title(tmp_path, sample_cues)
     _enable_legacy_research(paths)
     config = read_json(paths.title_config)

@@ -10,6 +10,7 @@ def test_expand_media_path(monkeypatch, tmp_path: Path) -> None:
 
 def _prepared_render_title(tmp_path: Path):
     from conftest import write_ass
+
     from subtitleflow.compile import compile_all
     from subtitleflow.io import read_json, write_json
     from subtitleflow.normalize import normalize_all
@@ -37,8 +38,11 @@ def _prepared_render_title(tmp_path: Path):
     return paths
 
 
-def test_failed_rerender_invalidates_old_render_and_removes_old_frames(monkeypatch, tmp_path: Path) -> None:
+def test_failed_rerender_invalidates_old_render_and_removes_old_frames(
+    monkeypatch, tmp_path: Path
+) -> None:
     import pytest
+
     import subtitleflow.media as media_module
     from subtitleflow.errors import SubtitleFlowError
     from subtitleflow.io import read_json
@@ -56,7 +60,9 @@ def test_failed_rerender_invalidates_old_render_and_removes_old_frames(monkeypat
 
     monkeypatch.setattr(media_module, "which", lambda _name: "/usr/bin/fake")
     monkeypatch.setattr(media_module, "require_font_attachments", lambda _paths: [])
-    monkeypatch.setattr(media_module, "probe_media", lambda _video: {"format": {"duration": "10.0"}})
+    monkeypatch.setattr(
+        media_module, "probe_media", lambda _video: {"format": {"duration": "10.0"}}
+    )
 
     def fail_run(*_args, **_kwargs):
         raise SubtitleFlowError("synthetic ffmpeg failure")
@@ -93,7 +99,9 @@ def test_render_stages_audited_fonts_and_records_evidence(monkeypatch, tmp_path:
 
     monkeypatch.setattr(media_module, "which", lambda _name: "/usr/bin/fake")
     monkeypatch.setattr(media_module, "require_font_attachments", lambda _paths: attachments)
-    monkeypatch.setattr(media_module, "probe_media", lambda _video: {"format": {"duration": "10.0"}})
+    monkeypatch.setattr(
+        media_module, "probe_media", lambda _video: {"format": {"duration": "10.0"}}
+    )
 
     def fake_run(args, **_kwargs):
         calls.append(list(args))

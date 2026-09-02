@@ -7,7 +7,6 @@ from .formats import parse_subtitle
 from .io import read_json, write_json
 from .models import NormalizedSubtitle
 from .state import update_stage
-from .style import is_special_source_style
 from .util import sha256_file
 from .workspace import TitlePaths, require_roles, verify_sources
 
@@ -19,11 +18,24 @@ def normalize_role(paths: TitlePaths, role: str) -> Path:
     record = sources[role]
     source_path = paths.title / record["path"]
     cues, metadata = parse_subtitle(source_path)
-    if source_path.suffix.lower() in {".ass", ".ssa"}:
-        for cue in cues:
-            if not cue.protected and is_special_source_style(paths, cue.style):
-                cue.protected = True
-                cue.protected_reason = f"hybrid-preserved source style: {cue.style}"
+    # A source style name is classification evidence only: generic names such as Style2 stay
+    # dialogue. Once an event is semantically classified as authored non-dialogue material,
+    # however, hybrid mode preserves it without inventing a new position. Text-classified
+    # translator/fansub credits remain excluded even if their style looks special.
+    authored_roles = {
+        "annotation",
+        "screen-text",
+        "title",
+        "episode-title",
+        "next-episode-title",
+        "document",
+        "prop",
+    }
+    for cue in cues:
+        if cue.include_in_release and cue.semantic_role in authored_roles and not cue.protected:
+            cue.protected = True
+            cue.protected_reason = f"hybrid-preserved source style ({cue.semantic_role})"
+
     normalized = NormalizedSubtitle(
         schema_version=1,
         role=role,  # type: ignore[arg-type]

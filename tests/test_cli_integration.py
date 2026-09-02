@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from conftest import write_ass
+
 from subtitleflow.cli import main
 from subtitleflow.io import read_json, write_json
 
@@ -36,7 +37,26 @@ def test_cli_end_to_end(tmp_path: Path, sample_cues) -> None:
     }
     cfg["fonts"]["require_for_release"] = False
     write_json(paths / "title.json", cfg)
-    assert main(["--repo", repo, "canon", "add-term", "demo", "movie", "--id", "doraemon", "--canonical", "哆啦A梦", "--alias", "小叮当", "--auto"]) == 0
+    assert (
+        main(
+            [
+                "--repo",
+                repo,
+                "canon",
+                "add-term",
+                "demo",
+                "movie",
+                "--id",
+                "doraemon",
+                "--canonical",
+                "哆啦A梦",
+                "--alias",
+                "小叮当",
+                "--auto",
+            ]
+        )
+        == 0
+    )
     assert main(["--repo", repo, "prepare", "demo", "movie"]) == 0
     assert main(["--repo", repo, "compile", "demo", "movie"]) == 0
     assert main(["--repo", repo, "qa", "demo", "movie"]) == 0

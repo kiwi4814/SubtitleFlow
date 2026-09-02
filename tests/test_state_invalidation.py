@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from conftest import write_ass
+
 from subtitleflow.compile import compile_all
 from subtitleflow.io import read_json, write_json
 from subtitleflow.normalize import normalize_all

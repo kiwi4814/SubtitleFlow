@@ -33,7 +33,9 @@ def style_profile_path(paths: TitlePaths, profile: str) -> Path:
     return (Path(__file__).resolve().parent / "styles" / f"{profile}.json").resolve()
 
 
-def load_style_profile(paths: TitlePaths, *, config: dict[str, Any] | None = None) -> dict[str, Any]:
+def load_style_profile(
+    paths: TitlePaths, *, config: dict[str, Any] | None = None
+) -> dict[str, Any]:
     config = read_json(paths.title_config) if config is None else config
     style_cfg = config.get("style", {})
     profile_name = str(style_cfg.get("profile", DEFAULT_STYLE_PROFILE))
@@ -105,7 +107,10 @@ def is_special_source_style(paths: TitlePaths, style_name: str) -> bool:
     value = " ".join(style_name.strip().casefold().split())
     if not value:
         return False
-    exact = {" ".join(str(item).strip().casefold().split()) for item in policy.get("special_style_names", [])}
+    exact = {
+        " ".join(str(item).strip().casefold().split())
+        for item in policy.get("special_style_names", [])
+    }
     if value in exact:
         return True
     for raw_prefix in policy.get("special_style_prefixes", []):
@@ -114,6 +119,10 @@ def is_special_source_style(paths: TitlePaths, style_name: str) -> bool:
             continue
         if value == prefix:
             return True
-        if value.startswith(prefix + " ") or value.startswith(prefix + "-") or value.startswith(prefix + "_"):
+        if (
+            value.startswith(prefix + " ")
+            or value.startswith(prefix + "-")
+            or value.startswith(prefix + "_")
+        ):
             return True
     return False

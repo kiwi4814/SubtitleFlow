@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import platform
-import subprocess
 import sys
 from typing import Any
 
 from .text import TraditionalToSimplified
-from .util import which
+from .util import ffmpeg_has_libass, which
 
 
 def _fonttools_available() -> bool:
@@ -17,29 +16,11 @@ def _fonttools_available() -> bool:
     return True
 
 
-def _ffmpeg_has_libass() -> bool:
-    executable = which("ffmpeg")
-    if not executable:
-        return False
-    try:
-        proc = subprocess.run(
-            [executable, "-hide_banner", "-filters"],
-            text=True,
-            capture_output=True,
-            timeout=10,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    filters = proc.stdout + "\n" + proc.stderr
-    return " ass " in filters or " subtitles " in filters
-
-
 def doctor_report() -> dict[str, Any]:
     converter = TraditionalToSimplified("t2s")
     ffmpeg = which("ffmpeg")
     ffprobe = which("ffprobe")
-    libass = _ffmpeg_has_libass()
+    libass = ffmpeg_has_libass()
     tools = {
         "git": which("git"),
         "opencode": which("opencode"),

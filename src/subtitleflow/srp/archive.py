@@ -7,9 +7,9 @@ import shutil
 import stat
 import tempfile
 import zipfile
-from contextlib import contextmanager
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from pathlib import Path, PurePosixPath
-from typing import Iterator
 
 from ..errors import ValidationError
 from ..io import read_json, write_json
@@ -115,10 +115,8 @@ def _make_tree_read_only(root: Path) -> None:
     for path in sorted(root.rglob("*"), reverse=True):
         if not path.is_file():
             continue
-        try:
+        with suppress(OSError):
             path.chmod(path.stat().st_mode & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH)
-        except OSError:
-            pass
 
 
 def _ensure_project_research(paths: TitlePaths) -> None:
@@ -209,7 +207,9 @@ def import_pack(paths: TitlePaths, input_path: Path, *, dry_run: bool = False) -
             )
             write_json(temp_root / "import.json", import_record)
             if destination_root.exists():
-                raise ValidationError(f"SRP immutable destination already exists: {destination_root}")
+                raise ValidationError(
+                    f"SRP immutable destination already exists: {destination_root}"
+                )
             os.replace(temp_root, destination_root)
 
         _make_tree_read_only(destination_root)

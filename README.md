@@ -1,4 +1,4 @@
-# SubtitleFlow 0.4.1
+# SubtitleFlow 0.5.0
 
 **Evidence-driven subtitle polishing, ASS collector styling, font-safe release, and MKV remux workflow for OpenCode.**
 
@@ -61,7 +61,7 @@ SubtitleFlow does **not** regenerate risky authored typesetting by default. Exis
 
 ## Font registry and MKV attachments
 
-SubtitleFlow 0.4.1 keeps `fonts/font-registry.json` the authoritative registry for the five verified Kiwi Collector font roles. The registry freezes canonical ASS family names, aliases, canonical attachment filenames, exact SHA-256 identities, versions and intended roles. **For out-of-the-box personal use, the five pre-verified font binaries are included in `fonts/local/`.**
+SubtitleFlow 0.5.0 keeps `fonts/font-registry.json` the authoritative registry for the five verified Kiwi Collector font roles. The registry freezes canonical ASS family names, aliases, canonical attachment filenames, exact SHA-256 identities, versions and intended roles. **For out-of-the-box personal use, the five pre-verified font binaries are included in `fonts/local/`.**
 
 | Role | Canonical ASS family | Canonical local/attachment file |
 |---|---|---|
@@ -130,7 +130,7 @@ subflow prepare doraemon movie-01
 
 ## Optional research knowledge — SRP/1.0
 
-Research is **not required** in SubtitleFlow 0.4.1. New titles default to:
+Research is **not required** in SubtitleFlow 0.5.0. New titles default to:
 
 ```json
 {"research":{"mode":"off","branch_map":{}}}
@@ -190,3 +190,7 @@ Useful commands include `/subtitle/run`, `/subtitle/review`, `/subtitle/style`, 
 - frozen release, gate evidence, selected visual-QA media identity and font hashes are rechecked before Remux.
 
 Start with [`START_HERE.md`](START_HERE.md). See [`docs/research.md`](docs/research.md), [`docs/fonts.md`](docs/fonts.md), [`docs/workflow.md`](docs/workflow.md), [`docs/configuration.md`](docs/configuration.md), [`docs/testing.md`](docs/testing.md), and the prioritized [`docs/roadmap.md`](docs/roadmap.md).
+
+## Evidence-driven release policies (v0.5)
+
+SubtitleFlow now separates **translation provenance**, **translation trust**, and **editing policy**. A human/official source is never automatically treated as high-trust. The JP branch supports `preserve`, `proofread`, `retranslate`, and assessment-first `auto`; alignment is separated from bilingual reconciliation (`exact-pair`, `source-split`, `source-merge`, `SOURCE_GAP`), and generated bilingual blocks use deterministic ZH-above-JA layout verified by FFmpeg/libass when available. Semantic releases generate first-class change/provenance/alignment/coverage/QA audit artifacts. See [`docs/evidence-driven-release.md`](docs/evidence-driven-release.md).

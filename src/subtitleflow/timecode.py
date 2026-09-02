@@ -23,7 +23,7 @@ def parse_ass_time(value: str) -> int:
 def format_ass_time(milliseconds: int) -> str:
     if milliseconds < 0:
         raise ValidationError("Negative ASS timestamp")
-    total_cs = int(round(milliseconds / 10))
+    total_cs = round(milliseconds / 10)
     hours, rem = divmod(total_cs, 360_000)
     minutes, rem = divmod(rem, 6_000)
     seconds, centiseconds = divmod(rem, 100)

@@ -193,3 +193,19 @@ Font attachments are controlled separately by `fonts.attach_to_mkv`. Existing at
 Research gating is controlled by `research.mode`, not by `quality_gates.require_research` for v0.4-native titles. The old `require_research` flag is read only as a compatibility shim when a v0.3 title has no `research` object.
 
 Relax a gate only as an explicit project decision. Research remains optional by default; semantic, visual, and font release gates remain strict.
+
+## Editorial policy
+
+```json
+{
+  "editorial": {
+    "translation_provenance": "human-fansub",
+    "translation_trust": "unknown",
+    "editing_policy": "proofread"
+  }
+}
+```
+
+`translation_provenance` records origin only. `translation_trust` records the current project's quality judgment. `editing_policy` controls the edit envelope: `preserve`, `proofread`, `retranslate`, or `auto`. Branch-specific objects such as `editorial.jp` may override the top-level values. Explicit policies always outrank any quality-assessment recommendation. `auto` requires `quality_assessment` before semantic proposals are imported. Existing v0.4 titles without `editorial` retain legacy preserve-like Minimal Editorial Intervention.
+
+For 1-source-to-N-target Japanese reconciliation, `jp_branch.source_split_decisions` may persist explicit target-unit-to-source-fragment decisions. This field records editorial split decisions; SubtitleFlow never invents them with a language model inside the deterministic engine.

@@ -5,8 +5,8 @@ import zipfile
 from pathlib import Path
 
 import pytest
-
 from conftest import write_ass
+
 from subtitleflow.canon import add_term
 from subtitleflow.compile import compile_all
 from subtitleflow.errors import GateError, ValidationError
@@ -245,7 +245,9 @@ def test_cross_pack_conflict_blocks_enforce_approval(tmp_path: Path) -> None:
     paths = _repo(tmp_path)
     _set_profile(paths, "full")
     _import_and_bind(paths, _pack(tmp_path / "a", pack_id="a", terms=[_term(value="甲")]))
-    _import_and_bind(paths, _pack(tmp_path / "b", pack_id="b", terms=[_term(rec_id="term:y", value="乙")]))
+    _import_and_bind(
+        paths, _pack(tmp_path / "b", pack_id="b", terms=[_term(rec_id="term:y", value="乙")])
+    )
     set_mode(paths, "enforce")
     snapshot = resolve_research(paths)
     assert snapshot["blocking_conflicts"] == 1
@@ -322,7 +324,9 @@ def test_provenance_only_rebind_does_not_stale_qa_after_resolve(tmp_path: Path) 
 def test_semantic_rebind_stales_qa_after_resolve(tmp_path: Path) -> None:
     paths = _repo(tmp_path)
     _single_source(paths, tmp_path, "任意门")
-    _import_and_bind(paths, _pack(tmp_path / "p1", pack_id="canon-a", terms=[_term(value="任意门")]))
+    _import_and_bind(
+        paths, _pack(tmp_path / "p1", pack_id="canon-a", terms=[_term(value="任意门")])
+    )
     import_pack(paths, _pack(tmp_path / "p2", pack_id="canon-b", terms=[_term(value="任意门2")]))
     set_mode(paths, "advisory")
     resolve_research(paths)
@@ -339,7 +343,9 @@ def test_semantic_rebind_stales_qa_after_resolve(tmp_path: Path) -> None:
 def test_enforce_release_freezes_srp_identity(tmp_path: Path) -> None:
     paths = _repo(tmp_path)
     _single_source(paths, tmp_path, "任意门")
-    imported = _import_and_bind(paths, _pack(tmp_path / "release-pack", pack_id="release-pack", terms=[_term()]))
+    imported = _import_and_bind(
+        paths, _pack(tmp_path / "release-pack", pack_id="release-pack", terms=[_term()])
+    )
     set_mode(paths, "enforce")
     resolve_research(paths)
     approve_research(paths, note="accepted")
@@ -365,7 +371,6 @@ def test_legacy_v030_research_gate_remains_supported(tmp_path: Path) -> None:
     assert read_json(paths.state)["stages"]["research"]["status"] == "passed"
 
 
-
 def test_cross_pack_alias_policy_conflict_is_blocking(tmp_path: Path) -> None:
     paths = _repo(tmp_path)
     _set_profile(paths, "full")
@@ -389,13 +394,14 @@ def test_invalid_utf8_jsonl_is_reported_cleanly(tmp_path: Path) -> None:
     with pytest.raises(ValidationError, match="invalid UTF-8"):
         validate_pack_dir(pack)
 
+
 def test_zip_path_traversal_is_rejected(tmp_path: Path) -> None:
     archive = tmp_path / "evil.zip"
     with zipfile.ZipFile(archive, "w") as handle:
         handle.writestr("../manifest.json", "{}")
-    with pytest.raises(ValidationError, match="Unsafe SRP ZIP"):
-        with materialize_pack_input(archive):
-            pass
+    with pytest.raises(ValidationError, match="Unsafe SRP ZIP"), materialize_pack_input(archive):
+        pass
+
 
 def test_diff_detects_noncanonical_semantic_term_change(tmp_path: Path) -> None:
     paths = _repo(tmp_path)
@@ -461,4 +467,3 @@ def test_inactive_series_branch_conflict_does_not_block_single_profile(tmp_path:
     assert snapshot["blocking_conflicts"] == 0
     approve_research(paths)
     assert read_json(paths.state)["stages"]["research"]["status"] == "passed"
-

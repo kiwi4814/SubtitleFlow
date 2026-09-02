@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import stat
@@ -179,6 +180,11 @@ def default_title_config(
         "created_at": utc_now(),
         "workflow": {"profile": "auto"},
         "research": {"mode": "off", "branch_map": {}},
+        "editorial": {
+            "translation_provenance": "unknown",
+            "translation_trust": "unknown",
+            "editing_policy": "preserve",
+        },
         "sources": {"A": None, "B": None, "C": None, "D": None, "S": None},
         "alignment": {
             "max_group": 3,
@@ -248,7 +254,9 @@ def configure_workflow_profile(config: dict[str, Any], profile: str) -> dict[str
     profile = profile.strip().lower()
     allowed = {"auto", "full", "single", "source-assisted", "dub", "bilingual"}
     if profile not in allowed:
-        raise ValidationError(f"Unknown workflow profile {profile}; expected one of {', '.join(sorted(allowed))}")
+        raise ValidationError(
+            f"Unknown workflow profile {profile}; expected one of {', '.join(sorted(allowed))}"
+        )
     config.setdefault("workflow", {})["profile"] = profile
     return config
 
@@ -349,19 +357,14 @@ def set_title_series_id(paths: TitlePaths, series_id: str) -> dict[str, Any]:
 
 
 def _make_read_only(path: Path) -> None:
-    try:
+    with contextlib.suppress(OSError):
         mode = path.stat().st_mode
         path.chmod(mode & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH)
-    except OSError:
-        # Hash verification remains authoritative; chmod is best-effort cross-platform defense.
-        pass
 
 
 def _make_writable(path: Path) -> None:
-    try:
+    with contextlib.suppress(OSError):
         path.chmod(path.stat().st_mode | stat.S_IWUSR)
-    except OSError:
-        pass
 
 
 def add_source(
@@ -392,8 +395,8 @@ def add_source(
         verify_sources(paths, {role})
         old_path = paths.title / existing["path"]
         _make_writable(old_path)
-        archive = paths.source / "_archive" / (
-            utc_now().replace(":", "-") + "-" + uuid.uuid4().hex[:8]
+        archive = (
+            paths.source / "_archive" / (utc_now().replace(":", "-") + "-" + uuid.uuid4().hex[:8])
         )
         archive.mkdir(parents=True, exist_ok=False)
         archived_path = archive / old_path.name
@@ -433,7 +436,9 @@ def add_source(
     _make_read_only(dest)
     from .state import invalidate_after_source_or_canon_change
 
-    invalidate_after_source_or_canon_change(paths, reason=f"source role {role} imported or replaced")
+    invalidate_after_source_or_canon_change(
+        paths, reason=f"source role {role} imported or replaced"
+    )
     return record
 
 
@@ -464,7 +469,9 @@ def verify_sources(paths: TitlePaths, roles: set[str] | None = None) -> dict[str
             failed = True
     report = {"ok": not failed, "results": results, "checked_at": utc_now()}
     if failed:
-        raise SourceIntegrityError("One or more immutable source files changed; see source manifest")
+        raise SourceIntegrityError(
+            "One or more immutable source files changed; see source manifest"
+        )
     return report
 
 

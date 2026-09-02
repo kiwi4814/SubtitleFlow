@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from .alignment import align_cues, editable_cues
+from .editorial import editorial_context
 from .errors import GateError, ValidationError
 from .glossary import apply_glossary, load_glossary
 from .io import read_json, write_json
 from .models import BranchUnit, BranchWorkfile, Cue
 from .normalize import load_normalized
+from .reconciliation import reconcile_groups
 from .srp.resolver import require_research_ready_for_edit
 from .state import invalidate_after_prepare, update_stage
 from .text import TraditionalToSimplified, normalize_dialogue_text
@@ -21,7 +24,9 @@ def _cue_map(cues: Iterable[Cue]) -> dict[str, Cue]:
 
 
 def _join_text(cues: list[Cue]) -> str:
-    return normalize_dialogue_text("\n".join(cue.plain_text for cue in cues if cue.plain_text.strip()))
+    return normalize_dialogue_text(
+        "\n".join(cue.plain_text for cue in cues if cue.plain_text.strip())
+    )
 
 
 def _alignment_report(result: Any, left_role: str, right_role: str) -> dict[str, Any]:
@@ -40,6 +45,7 @@ def _make_proxy_cues(units: list[BranchUnit]) -> list[Cue]:
             end_ms=unit.end_ms,
             text=unit.raw_text,
             plain_text=unit.raw_text,
+            semantic_role=unit.semantic_role,
         )
         for index, unit in enumerate(units)
     ]
@@ -71,13 +77,7 @@ def _apply_language_normalization(
     return result, changes, review_hits, converter_backend
 
 
-
 def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Path:
-    """Build a self-contained polish branch from role S.
-
-    S owns both timing and editable target text. If C is available and source-assisted mode is
-    enabled (or auto), C is aligned only as semantic evidence; S timing is never replaced.
-    """
     config = read_json(paths.title_config)
     branch_cfg = config.get("clean_branch", {})
     if not branch_cfg.get("enabled", True):
@@ -105,7 +105,7 @@ def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) ->
             flags.append("context-terminology-review")
         units.append(
             BranchUnit(
-                id=f"clean-{len(units)+1:06d}",
+                id=f"clean-{len(units) + 1:06d}",
                 start_ms=cue.start_ms,
                 end_ms=cue.end_ms,
                 timing_cue_ids=[cue.id],
@@ -116,6 +116,7 @@ def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) ->
                 alignment_confidence=1.0,
                 changes=changes,
                 flags=flags,
+                semantic_role=cue.semantic_role,
             )
         )
 
@@ -126,14 +127,11 @@ def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) ->
     if workflow_profile == "source-assisted":
         assisted = True
     elif assisted_setting == "auto":
-        # `single` is an explicit product choice: extra source files must not silently
-        # change the branch semantics. Only auto discovery upgrades S+C to assisted mode.
         assisted = has_c if workflow_profile == "auto" else False
     elif isinstance(assisted_setting, bool):
         assisted = assisted_setting
     else:
         raise ValidationError("clean_branch.source_assisted must be true, false, or 'auto'")
-    evidence_report: dict[str, Any] | None = None
     if assisted:
         if not has_c:
             raise GateError("Clean source-assisted mode requires role C, but C is missing")
@@ -166,8 +164,9 @@ def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) ->
                     unit.flags.append("shared-source-evidence-continuation")
                 if not source_cues:
                     unit.flags.append("missing-source-evidence")
-        evidence_report = _alignment_report(result, "clean-work", "C")
-        write_json(paths.work / "alignment-CLEAN-C.json", evidence_report)
+        write_json(
+            paths.work / "alignment-CLEAN-C.json", _alignment_report(result, "clean-work", "C")
+        )
 
     work = BranchWorkfile(
         schema_version=1,
@@ -183,11 +182,13 @@ def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) ->
             "source_assisted": assisted,
             "opencc_backends": sorted(converter_backends),
             "minimal_editorial_intervention": True,
+            "editorial": editorial_context(config, branch="clean").to_dict(),
         },
     )
     output = paths.work / "clean.json"
     write_json(output, work.to_dict())
     return output
+
 
 def build_tw_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Path:
     config = read_json(paths.title_config)
@@ -234,20 +235,22 @@ def build_tw_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
             flags.append("low-alignment-confidence")
         if review_hits:
             flags.append("context-terminology-review")
-        unit = BranchUnit(
-            id=f"tw-{len(units)+1:06d}",
-            start_ms=left[0].start_ms,
-            end_ms=left[-1].end_ms,
-            timing_cue_ids=group.left_ids,
-            source_cue_ids=group.right_ids,
-            raw_text=raw,
-            normalized_text=normalized,
-            final_text=normalized,
-            alignment_confidence=group.confidence,
-            changes=changes,
-            flags=flags,
+        units.append(
+            BranchUnit(
+                id=f"tw-{len(units) + 1:06d}",
+                start_ms=left[0].start_ms,
+                end_ms=left[-1].end_ms,
+                timing_cue_ids=group.left_ids,
+                source_cue_ids=group.right_ids,
+                raw_text=raw,
+                normalized_text=normalized,
+                final_text=normalized,
+                alignment_confidence=group.confidence,
+                changes=changes,
+                flags=flags,
+                semantic_role=(right[0].semantic_role if right else left[0].semantic_role),
+            )
         )
-        units.append(unit)
     work = BranchWorkfile(
         schema_version=1,
         project_id=paths.project_id,
@@ -261,6 +264,7 @@ def build_tw_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
             "alignment_offset_ms": result.estimated_offset_ms,
             "opencc_backends": sorted(converter_backends),
             "minimal_editorial_intervention": True,
+            "editorial": editorial_context(config, branch="tw").to_dict(),
         },
     )
     output = paths.work / "tw.json"
@@ -286,12 +290,7 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
     unmatched_penalty = float(alignment_cfg.get("unmatched_penalty", 3.0))
     threshold = float(alignment_cfg.get("review_confidence_below", 0.72))
 
-    ab = align_cues(
-        a_cues,
-        b_cues,
-        max_group=max_group,
-        unmatched_penalty=unmatched_penalty,
-    )
+    ab = align_cues(a_cues, b_cues, max_group=max_group, unmatched_penalty=unmatched_penalty)
     amap, bmap = _cue_map(a_cues), _cue_map(b_cues)
     rules = load_glossary(paths)
     units: list[BranchUnit] = []
@@ -318,7 +317,7 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
             flags.append("context-terminology-review")
         units.append(
             BranchUnit(
-                id=f"jp-{len(units)+1:06d}",
+                id=f"jp-{len(units) + 1:06d}",
                 start_ms=left[0].start_ms,
                 end_ms=left[-1].end_ms,
                 timing_cue_ids=group.left_ids,
@@ -329,37 +328,37 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
                 alignment_confidence=group.confidence,
                 changes=changes,
                 flags=flags,
+                semantic_role=(right[0].semantic_role if right else left[0].semantic_role),
             )
         )
 
     proxy = _make_proxy_cues(units)
-    pc = align_cues(
-        proxy,
+    pc = align_cues(proxy, c_cues, max_group=max_group, unmatched_penalty=unmatched_penalty)
+    split_raw = branch_cfg.get("source_split_decisions", {})
+    if split_raw and not isinstance(split_raw, dict):
+        raise ValidationError("jp_branch.source_split_decisions must be an object")
+    split_decisions = {str(key): str(value) for key, value in dict(split_raw).items()}
+    reconciliation = reconcile_groups(
+        units,
         c_cues,
-        max_group=max_group,
-        unmatched_penalty=unmatched_penalty,
+        pc.groups,
+        split_decisions=split_decisions,
     )
-    pmap, cmap = _cue_map(proxy), _cue_map(c_cues)
     units_by_id = {unit.id: unit for unit in units}
-    # Attach Japanese evidence to every left unit in a grouped match. Duplication is explicit
-    # evidence only; compilation uses the first unit of a multi-left group and suppresses
-    # duplicated source rows on continuations.
-    for group in pc.groups:
-        if not group.left_ids:
-            continue
-        source_cues = [cmap[item] for item in group.right_ids]
-        source_text = _join_text(source_cues)
-        for index, unit_id in enumerate(group.left_ids):
-            unit = units_by_id[unit_id]
-            unit.source_text = source_text if source_text else None
-            unit.source_text_cue_ids = list(group.right_ids)
-            unit.alignment_confidence = min(unit.alignment_confidence, group.confidence)
-            if group.confidence < threshold and source_cues:
-                unit.flags.append("low-japanese-alignment-confidence")
-            if len(group.left_ids) > 1 and index > 0 and source_text:
-                unit.flags.append("shared-japanese-evidence-continuation")
-            if not source_cues:
-                unit.flags.append("missing-japanese-source")
+    for pair in reconciliation.pairs:
+        unit = units_by_id[pair.target_unit_id]
+        unit.source_text = pair.source_text
+        unit.source_text_cue_ids = list(pair.source_text_cue_ids)
+        unit.parent_source_cue_ids = list(pair.parent_source_cue_ids)
+        unit.source_operation = pair.operation
+        unit.alignment_confidence = min(unit.alignment_confidence, pair.confidence)
+        for flag in pair.flags:
+            if flag not in unit.flags:
+                unit.flags.append(flag)
+        if pair.confidence < threshold and pair.source_text:
+            unit.flags.append("low-japanese-alignment-confidence")
+        if pair.operation == "source-gap":
+            unit.flags.append("SOURCE_GAP")
 
     work = BranchWorkfile(
         schema_version=1,
@@ -374,12 +373,16 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
             "alignment_ab_offset_ms": ab.estimated_offset_ms,
             "alignment_japanese_offset_ms": pc.estimated_offset_ms,
             "minimal_editorial_intervention": True,
+            "editorial": editorial_context(config, branch="jp").to_dict(),
+            "reconciliation_schema": 1,
         },
     )
     output = paths.work / "jp.json"
     write_json(output, work.to_dict())
     write_json(paths.work / "alignment-A-B.json", _alignment_report(ab, "A", "B"))
     write_json(paths.work / "alignment-JP-C.json", _alignment_report(pc, "JP-work", "C"))
+    write_json(paths.work / "bilingual-reconciliation.json", reconciliation.to_dict())
+    write_json(paths.work / "bilingual-coverage.json", reconciliation.coverage())
     return output
 
 
@@ -401,7 +404,7 @@ def build_all_workfiles(paths: TitlePaths, *, allow_no_opencc: bool = False) -> 
             path = build_tw_workfile(paths, allow_no_opencc=allow_no_opencc)
         elif branch == "jp":
             path = build_jp_workfile(paths, allow_no_opencc=allow_no_opencc)
-        else:  # pragma: no cover - active_branches owns the vocabulary
+        else:  # pragma: no cover
             raise GateError(f"Unknown active branch: {branch}")
         outputs[branch] = str(path.relative_to(paths.title))
     update_stage(paths, "alignment_and_seed", "passed", outputs=outputs, branches=branches)

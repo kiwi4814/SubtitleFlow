@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "scenes": {
+    "A": {"contract": "bilingual-1+1", "expected_order": ["ZH", "JA"]},
+    "B": {"contract": "bilingual-1+2", "expected_order": ["ZH", "JA", "JA"], "regression": "libass-collision-inversion"},
+    "C": {"contract": "screen-text-plus-dialogue", "expected_roles": ["screen-text", "dialogue"]},
+    "D": {"contract": "op-bilingual", "expected_order": ["ZH", "JA"]},
+    "E": {"contract": "source-gap", "source_event_expected": false, "fabricated": 0},
+    "F": {
+      "contract": "human-proofread-semantic-correction",
+      "translation_provenance": "human-fansub",
+      "translation_trust": "unknown",
+      "editing_policy": "proofread",
+      "before": "旧译有明确语义错误",
+      "after": "按原文修正后的译文",
+      "review_required": true
+    },
+    "G": {
+      "contract": "evidence-conflict",
+      "primary": {"role": "C", "language": "ja", "supports": "X"},
+      "secondary": [
+        {"role": "A", "language": "en", "supports": "Y", "status": "conflict"},
+        {"role": "B", "language": "zh", "supports": "Y", "status": "conflict"}
+      ],
+      "expected_grade": "B+",
+      "must_not_claim": "corroborated"
+    }
+  }
+}
