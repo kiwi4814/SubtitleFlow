@@ -1,7 +1,11 @@
 import json
 from pathlib import Path
 
-from subtitleflow.jobs import infer_workflow_profile, prepare_portable_job
+from subtitleflow.jobs import (
+    infer_workflow_profile,
+    prepare_portable_job,
+    select_srp_branch_id,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -43,6 +47,23 @@ def test_infer_workflow_profile_from_classified_roles():
             }
         )
         == "bilingual"
+    )
+
+
+def test_select_srp_branch_id_prefers_release_intent_not_candidate():
+    branches = [
+        "jp-audio-zh-cn-modern",
+        "jp-audio-zh-tw-modern",
+        "tw-dub-faithful-zh-hans",
+        "tw-dub-2026-modern-zh-hans-candidate",
+    ]
+    assert (
+        select_srp_branch_id(branches, intent="jp-audio-zh-cn", internal_branch="clean")
+        == "jp-audio-zh-cn-modern"
+    )
+    assert (
+        select_srp_branch_id(branches, intent="tw-dub-zh-cn", internal_branch="tw")
+        == "tw-dub-faithful-zh-hans"
     )
 
 
