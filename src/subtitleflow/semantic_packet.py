@@ -132,7 +132,7 @@ def build_semantic_packet(paths: TitlePaths, branch: str) -> dict[str, Any]:
 
     The packet is read-only production context. It does not mutate workfiles, create review
     candidates, or bypass Human Review. Adapters return only proposed changes through the
-    existing proposal importer.
+    packet-bound proposal envelope and existing proposal importer.
     """
     require_research_ready_for_edit(paths)
     state = state_summary(paths)
@@ -183,9 +183,22 @@ def build_semantic_packet(paths: TitlePaths, branch: str) -> dict[str, Any]:
         },
         "units": units,
         "proposal_contract": {
+            "schema": "contracts/semantic-proposals.schema.json",
+            "kind": "subtitleflow-semantic-proposals",
+            "packet_input_sha256": packet_input_sha256,
             "behavior": "return-only-material-changes",
             "human_review_required": True,
-            "required_fields": [
+            "strict_importer": "subtitleflow.semantic_proposals",
+            "required_envelope_fields": [
+                "schema_version",
+                "kind",
+                "project_id",
+                "title_id",
+                "branch",
+                "packet_input_sha256",
+                "candidates",
+            ],
+            "required_candidate_fields": [
                 "branch",
                 "unit_id",
                 "original_text",
