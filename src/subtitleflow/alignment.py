@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import re
-import statistics
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -49,19 +48,118 @@ def editable_cues(cues: Sequence[Cue]) -> list[Cue]:
     ]
 
 
+def _activity_intervals(cues: Sequence[Cue]) -> list[tuple[int, int]]:
+    """Collapse subtitle events into density-independent active time spans."""
+    spans = sorted((cue.start_ms, cue.end_ms) for cue in cues if cue.end_ms > cue.start_ms)
+    if not spans:
+        return []
+    merged: list[tuple[int, int]] = []
+    start, end = spans[0]
+    for next_start, next_end in spans[1:]:
+        if next_start <= end:
+            end = max(end, next_end)
+            continue
+        merged.append((start, end))
+        start, end = next_start, next_end
+    merged.append((start, end))
+    return merged
+
+
+def _activity_overlap_ms(
+    left: Sequence[tuple[int, int]],
+    right: Sequence[tuple[int, int]],
+    offset_ms: int,
+) -> int:
+    """Return active-time intersection after shifting right by ``-offset_ms``."""
+    i = 0
+    j = 0
+    overlap = 0
+    while i < len(left) and j < len(right):
+        left_start, left_end = left[i]
+        right_start = right[j][0] - offset_ms
+        right_end = right[j][1] - offset_ms
+        overlap += max(0, min(left_end, right_end) - max(left_start, right_start))
+        if left_end <= right_end:
+            i += 1
+        else:
+            j += 1
+    return overlap
+
+
+def _activity_similarity(
+    left: Sequence[tuple[int, int]],
+    right: Sequence[tuple[int, int]],
+    offset_ms: int,
+) -> float:
+    left_total = sum(end - start for start, end in left)
+    right_total = sum(end - start for start, end in right)
+    if left_total <= 0 or right_total <= 0:
+        return 0.0
+    overlap = _activity_overlap_ms(left, right, offset_ms)
+    return (2.0 * overlap) / (left_total + right_total)
+
+
+def _best_activity_offset(
+    left: Sequence[tuple[int, int]],
+    right: Sequence[tuple[int, int]],
+    *,
+    start_ms: int,
+    end_ms: int,
+    step_ms: int,
+) -> tuple[int, float]:
+    best_offset = 0
+    best_score = -1.0
+    for offset in range(start_ms, end_ms + 1, step_ms):
+        score = _activity_similarity(left, right, offset)
+        if score > best_score + 1e-12 or (
+            abs(score - best_score) <= 1e-12 and abs(offset) < abs(best_offset)
+        ):
+            best_offset = offset
+            best_score = score
+    return best_offset, best_score
+
+
 def estimate_offset_ms(left: Sequence[Cue], right: Sequence[Cue]) -> int:
+    """Estimate a coarse global timing shift without depending on cue density.
+
+    Subtitle sources can describe the same timeline at very different granularities. A TV
+    accessibility track may emit two or three positioned Dialogue events for one translated
+    subtitle cue, so pairing equal cue-list quantiles can invent a large false offset. Instead,
+    collapse each side to a binary subtitle-activity timeline, find the strongest coarse overlap,
+    then refine around that peak.
+    """
     if not left or not right:
         return 0
-    samples = min(31, len(left), len(right))
-    diffs: list[int] = []
-    if samples == 1:
-        return right[0].start_ms - left[0].start_ms
-    for k in range(samples):
-        li = round(k * (len(left) - 1) / (samples - 1))
-        ri = round(k * (len(right) - 1) / (samples - 1))
-        diffs.append(right[ri].start_ms - left[li].start_ms)
-    median = int(statistics.median(diffs))
-    return median if abs(median) <= 120_000 else 0
+    left_activity = _activity_intervals(left)
+    right_activity = _activity_intervals(right)
+    if not left_activity or not right_activity:
+        return 0
+
+    coarse_offset, coarse_score = _best_activity_offset(
+        left_activity,
+        right_activity,
+        start_ms=-120_000,
+        end_ms=120_000,
+        step_ms=1_000,
+    )
+    refine_start = max(-120_000, coarse_offset - 1_000)
+    refine_end = min(120_000, coarse_offset + 1_000)
+    refined_offset, refined_score = _best_activity_offset(
+        left_activity,
+        right_activity,
+        start_ms=refine_start,
+        end_ms=refine_end,
+        step_ms=100,
+    )
+
+    zero_score = _activity_similarity(left_activity, right_activity, 0)
+    best_score = max(coarse_score, refined_score)
+    if best_score <= 0.0:
+        return 0
+    # Prefer no global shift when a tiny score difference cannot justify moving the whole track.
+    if refined_offset != 0 and best_score - zero_score < 0.01:
+        return 0
+    return refined_offset
 
 
 def _span(cues: Sequence[Cue], start: int, count: int, offset_ms: int = 0) -> tuple[int, int]:
