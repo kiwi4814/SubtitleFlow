@@ -1,6 +1,7 @@
 from subtitleflow.alignment import editable_cues
 from subtitleflow.cue_views import evidence_cues
 from subtitleflow.models import Cue
+from subtitleflow.roles import classify_event_role
 
 
 def test_protected_positioned_dialogue_is_evidence_but_not_editable():
@@ -20,7 +21,7 @@ def test_protected_positioned_dialogue_is_evidence_but_not_editable():
     assert evidence_cues([cue]) == [cue]
 
 
-def test_drawing_and_credit_are_not_semantic_evidence():
+def test_drawing_credit_and_accessibility_sfx_are_not_semantic_evidence():
     drawing = Cue(
         id="ass-000001",
         index=0,
@@ -43,5 +44,27 @@ def test_drawing_and_credit_are_not_semantic_evidence():
         semantic_role="staff-credit",
         include_in_release=False,
     )
+    sfx = Cue(
+        id="ass-000003",
+        index=2,
+        start_ms=3000,
+        end_ms=4000,
+        text="(雷鳴)",
+        plain_text="(雷鳴)",
+        protected=True,
+        protected_reason=r"complex ASS tag \pos(",
+        semantic_role="accessibility-sfx",
+    )
 
-    assert evidence_cues([drawing, credit]) == []
+    assert evidence_cues([drawing, credit, sfx]) == []
+
+
+def test_accessibility_sfx_classifier_is_conservative():
+    assert classify_event_role(style="Default", text="♬～").role == "accessibility-sfx"
+    assert classify_event_role(style="Default", text="(鳴き声)").role == "accessibility-sfx"
+    assert classify_event_role(style="Default", text="(雷鳴)").role == "accessibility-sfx"
+    assert classify_event_role(style="Default", text="(ｻｲﾚﾝ)").role == "accessibility-sfx"
+
+    assert classify_event_role(style="Default", text="(スネ夫)").role == "dialogue"
+    assert classify_event_role(style="Default", text="(一同)えっ？").role == "dialogue"
+    assert classify_event_role(style="Default", text="ピー助！").role == "dialogue"
