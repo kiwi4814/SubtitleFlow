@@ -12,7 +12,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from subtitleflow.alignment import align_cues, editable_cues
+from subtitleflow.alignment import editable_cues
 from subtitleflow.cli import main as cli_main
 from subtitleflow.cue_views import evidence_cues
 from subtitleflow.io import read_json
@@ -89,15 +89,6 @@ def _alignment_metrics(alignment: dict[str, object]) -> dict[str, object]:
     }
 
 
-def _alignment_snapshot(alignment: dict[str, object]) -> dict[str, object]:
-    return {
-        "estimated_offset_ms": alignment.get("estimated_offset_ms"),
-        "total_cost": alignment.get("total_cost"),
-        "summary": dict(alignment.get("summary", {})),
-        "coverage": _alignment_metrics(alignment),
-    }
-
-
 def _cue_diagnostics(cues) -> dict[str, object]:
     style_counts = Counter(cue.style or "<empty>" for cue in cues)
     role_counts = Counter(cue.semantic_role for cue in cues)
@@ -126,6 +117,63 @@ def _matched_right_ids(alignment: dict[str, object]) -> set[str]:
         if left_ids and right_ids:
             result.update(str(cue_id) for cue_id in right_ids)
     return result
+
+
+def _cue_view(cue) -> dict[str, object]:
+    return {
+        "id": cue.id,
+        "start_ms": cue.start_ms,
+        "end_ms": cue.end_ms,
+        "style": cue.style,
+        "semantic_role": cue.semantic_role,
+        "text": cue.plain_text,
+    }
+
+
+def _diagnostic_samples(alignment: dict[str, object], left_cues, right_cues) -> dict[str, object]:
+    left_map = {cue.id: cue for cue in left_cues}
+    right_map = {cue.id: cue for cue in right_cues}
+    groups = alignment.get("groups", [])
+    if not isinstance(groups, list):
+        raise RuntimeError("alignment report groups must be a list")
+
+    unmatched_right: list[dict[str, object]] = []
+    low_confidence: list[dict[str, object]] = []
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        left_ids = group.get("left_ids", [])
+        right_ids = group.get("right_ids", [])
+        if not isinstance(left_ids, list) or not isinstance(right_ids, list):
+            continue
+        if not left_ids and right_ids and len(unmatched_right) < 24:
+            for cue_id in right_ids:
+                cue = right_map.get(str(cue_id))
+                if cue is not None and len(unmatched_right) < 24:
+                    unmatched_right.append(_cue_view(cue))
+        confidence = float(group.get("confidence", 0.0))
+        if left_ids and right_ids and confidence < 0.72 and len(low_confidence) < 16:
+            low_confidence.append(
+                {
+                    "id": group.get("id"),
+                    "kind": group.get("kind"),
+                    "confidence": confidence,
+                    "left": [
+                        _cue_view(left_map[str(cue_id)])
+                        for cue_id in left_ids
+                        if str(cue_id) in left_map
+                    ],
+                    "right": [
+                        _cue_view(right_map[str(cue_id)])
+                        for cue_id in right_ids
+                        if str(cue_id) in right_map
+                    ],
+                }
+            )
+    return {
+        "unmatched_right_first_24": unmatched_right,
+        "low_confidence_first_16": low_confidence,
+    }
 
 
 def run_pilot() -> dict[str, object]:
@@ -189,18 +237,20 @@ def run_pilot() -> dict[str, object]:
         alignment = read_json(paths.work / "alignment-CLEAN-C.json")
         matched_protected_ids = protected_evidence_ids & _matched_right_ids(alignment)
         summary = dict(alignment.get("summary", {}))
-
-        zero_offset_result = align_cues(s_editable, c_evidence, offset_ms=0)
-        zero_offset_alignment = zero_offset_result.to_dict()
+        coverage = _alignment_metrics(alignment)
+        estimated_offset_ms = int(alignment.get("estimated_offset_ms", 0))
 
         checks = {
             "target_has_editable_dialogue": bool(s_editable),
             "japanese_has_semantic_evidence": bool(c_evidence),
             "protected_japanese_dialogue_survives_as_evidence": bool(protected_evidence_ids),
-            "alignment_has_matches": int(summary.get("matched", 0)) > 0,
-            "alignment_is_not_all_unmatched_left": int(summary.get("unmatched_left", 0))
-            < int(summary.get("group_count", 0)),
             "protected_japanese_evidence_is_actually_matched": bool(matched_protected_ids),
+            "global_offset_is_plausible": abs(estimated_offset_ms) <= 5_000,
+            "target_alignment_coverage_at_least_99_percent": float(coverage["left_coverage"])
+            >= 0.99,
+            "source_evidence_coverage_at_least_80_percent": float(coverage["right_coverage"])
+            >= 0.80,
+            "no_unmatched_target_cues": int(summary.get("unmatched_left", 0)) == 0,
         }
 
         return {
@@ -233,8 +283,11 @@ def run_pilot() -> dict[str, object]:
                 "C_evidence": _cue_diagnostics(c_evidence),
             },
             "alignment": {
-                "estimated": _alignment_snapshot(alignment),
-                "zero_offset_control": _alignment_snapshot(zero_offset_alignment),
+                "estimated_offset_ms": estimated_offset_ms,
+                "total_cost": alignment.get("total_cost"),
+                "summary": summary,
+                "coverage": coverage,
+                "samples": _diagnostic_samples(alignment, s_editable, c_evidence),
             },
             "checks": checks,
         }
