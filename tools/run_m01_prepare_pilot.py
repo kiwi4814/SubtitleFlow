@@ -199,7 +199,9 @@ def run_pilot() -> dict[str, object]:
         repository_evidence = prepared.repository_evidence
         research_snapshot = repository_evidence.get("snapshot", {})
         packet_research = semantic_packet.get("research", {})
-        packet_branch = packet_research.get("branch", {}) if isinstance(packet_research, dict) else {}
+        packet_branch = (
+            packet_research.get("branch", {}) if isinstance(packet_research, dict) else {}
+        )
 
         checks = {
             "portable_runner_inferred_source_assisted": prepared.workflow_profile
