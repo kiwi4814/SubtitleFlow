@@ -46,6 +46,17 @@ def test_plan_starts_with_prepare(monkeypatch):
     assert "full-video-timing-qa" in plan.deferred
 
 
+def test_plan_requires_semantic_scan_before_compile(monkeypatch):
+    _patch_common(
+        monkeypatch,
+        {"normalize": {"status": "passed"}, "alignment_and_seed": {"status": "passed"}},
+    )
+    plan = pipeline.plan_title(_paths(), capabilities=_caps())
+    assert plan.next_action == "semantic-edit"
+    assert plan.requires_human is False
+    assert plan.can_auto_advance is True
+
+
 def test_plan_stops_on_human_review(monkeypatch):
     _patch_common(
         monkeypatch,
@@ -64,6 +75,7 @@ def test_plan_reaches_release_after_configured_gates(monkeypatch):
         {
             "normalize": {"status": "passed"},
             "alignment_and_seed": {"status": "passed"},
+            "human_review": {"status": "passed"},
             "compile_clean": {"status": "passed"},
             "qa": {"status": "passed"},
             "semantic_qa": {"status": "passed"},
@@ -82,6 +94,7 @@ def test_complete_without_local_media_does_not_claim_remux(monkeypatch):
         {
             "normalize": {"status": "passed"},
             "alignment_and_seed": {"status": "passed"},
+            "human_review": {"status": "passed"},
             "compile_clean": {"status": "passed"},
             "qa": {"status": "passed"},
             "semantic_qa": {"status": "passed"},
