@@ -13,8 +13,13 @@ from .errors import ValidationError
 from .io import read_json, write_json
 from .normalize import normalize_all
 from .pipeline import plan_title
+from .srp.archive import import_pack
+from .srp.registry import bind_pack, map_branch, set_mode
+from .srp.resolver import approve_research, resolve_research
+from .srp.validate import validate_pack_dir
 from .state import state_summary
 from .workfile import build_all_workfiles
+from .workflow import active_branches
 from .workspace import (
     add_source,
     configure_workflow_profile,
@@ -127,6 +132,162 @@ def _configure_title_from_job(paths, job: dict[str, Any], profile: str) -> None:
     write_json(paths.title_config, config)
 
 
+def _repository_config(job: dict[str, Any]) -> dict[str, Any]:
+    raw = job.get("repository", {})
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+def _requirements(job: dict[str, Any]) -> dict[str, Any]:
+    raw = job.get("requirements", {})
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+def _repository_evidence_requested(job: dict[str, Any]) -> bool:
+    return bool(_requirements(job).get("use_repository_evidence", True))
+
+
+def _resolve_research_pack_path(job: dict[str, Any], *, source_root: Path) -> Path:
+    repository = _repository_config(job)
+    configured = repository.get("research_pack_path")
+    if not isinstance(configured, str) or not configured.strip():
+        raise ValidationError(
+            "use_repository_evidence=true requires repository.research_pack_path after the "
+            "runtime adapter selects a compatible immutable Canon/SRP snapshot"
+        )
+    path = Path(configured).expanduser()
+    if not path.is_absolute():
+        path = source_root / path
+    path = path.resolve()
+    if not path.is_dir():
+        raise ValidationError(f"Pinned repository research pack does not exist: {path}")
+    return path
+
+
+def _branch_score(branch_id: str, *, intent: str, internal_branch: str) -> int:
+    value = branch_id.casefold().replace("_", "-")
+    tw_intent = internal_branch == "tw" or intent == "tw-dub-zh-cn"
+    if tw_intent:
+        score = 0
+        score += 8 if "tw-dub" in value else -8
+        score += 5 if "faithful" in value else 0
+        score += 4 if "zh-hans" in value or "zh-cn" in value else 0
+        score -= 4 if "candidate" in value else 0
+        return score
+
+    jp_intent = internal_branch in {"clean", "jp"} or intent in {
+        "jp-audio-zh-cn",
+        "jp-audio-zh-cn-ja",
+        "polish-existing",
+    }
+    if jp_intent:
+        score = 0
+        score += 8 if "jp-audio" in value else -8
+        score += 6 if "zh-cn" in value else 0
+        score += 4 if "zh-hans" in value else 0
+        score -= 7 if "zh-tw" in value else 0
+        score += 1 if "modern" in value else 0
+        score -= 4 if "candidate" in value else 0
+        return score
+    return 0
+
+
+def select_srp_branch_id(
+    branch_ids: list[str],
+    *,
+    intent: str,
+    internal_branch: str,
+) -> str:
+    if not branch_ids:
+        raise ValidationError("Pinned SRP does not declare any branch ids")
+    scored = sorted(
+        ((_branch_score(item, intent=intent, internal_branch=internal_branch), item) for item in branch_ids),
+        key=lambda item: (-item[0], item[1]),
+    )
+    best_score, best = scored[0]
+    if best_score <= 0:
+        raise ValidationError(
+            f"No SRP branch is compatible with portable intent {intent!r} / {internal_branch!r}"
+        )
+    ties = [item for score, item in scored if score == best_score]
+    if len(ties) != 1:
+        raise ValidationError(
+            "Pinned SRP branch selection is ambiguous for "
+            f"{intent!r} / {internal_branch!r}: {', '.join(ties)}"
+        )
+    return best
+
+
+def _bind_repository_research(
+    paths,
+    job: dict[str, Any],
+    *,
+    source_root: Path,
+) -> dict[str, Any]:
+    if not _repository_evidence_requested(job):
+        return {
+            "requested": False,
+            "bound": False,
+            "reason": "Repository evidence was disabled by the job.",
+        }
+
+    pack_path = _resolve_research_pack_path(job, source_root=source_root)
+    validated = validate_pack_dir(pack_path)
+    manifest = validated.manifest
+    scope = manifest.get("scope", {})
+    pack_series_id = scope.get("series_id") if isinstance(scope, dict) else None
+    config = read_json(paths.title_config)
+    title_series_id = str(config.get("series_id") or paths.project_id)
+    if pack_series_id != title_series_id:
+        raise ValidationError(
+            "Pinned SRP series_id is incompatible with the portable title: "
+            f"title uses {title_series_id}, pack uses {pack_series_id}"
+        )
+
+    imported = import_pack(paths, pack_path)
+    pack_ref = (
+        f"{imported['pack_id']}@{imported['pack_version']}#{imported['pack_digest']}"
+    )
+    set_mode(paths, "enforce")
+
+    languages = manifest.get("languages", {})
+    declared_branches = (
+        [str(item) for item in languages.get("branches", [])]
+        if isinstance(languages, dict)
+        else []
+    )
+    mapping: dict[str, str] = {}
+    intent = str(job.get("intent", "auto"))
+    for internal_branch in active_branches(paths):
+        srp_branch_id = select_srp_branch_id(
+            declared_branches,
+            intent=intent,
+            internal_branch=internal_branch,
+        )
+        map_branch(paths, internal_branch, srp_branch_id)
+        mapping[internal_branch] = srp_branch_id
+
+    binding = bind_pack(paths, pack_ref)
+    snapshot = resolve_research(paths)
+    approval = approve_research(paths, note="portable job pinned repository SRP")
+    repository = _repository_config(job)
+    return {
+        "requested": True,
+        "bound": True,
+        "repository": repository.get("full_name", "kiwi4814/SubtitleFlow"),
+        "ref": repository.get("ref"),
+        "commit_sha": repository.get("commit_sha"),
+        "source_pack_path": str(pack_path),
+        "pack_id": imported["pack_id"],
+        "pack_version": imported["pack_version"],
+        "pack_digest": imported["pack_digest"],
+        "series_id": pack_series_id,
+        "branch_map": mapping,
+        "binding": binding,
+        "snapshot": snapshot,
+        "approval": approval,
+    }
+
+
 def prepare_portable_job(
     job_path: Path,
     *,
@@ -136,10 +297,9 @@ def prepare_portable_job(
 ) -> PreparedPortableJob:
     """Materialize a portable job through deterministic SubtitleFlow prepare.
 
-    This intentionally stops after prepare. Semantic editing, Human Review, QA, rendering,
-    release, and Remux remain owned by the existing state machine and ``plan_title``.
-    Runtime adapters should call this function, inspect ``next_plan``, and continue through
-    existing gates rather than reimplementing stage transitions.
+    A pinned repository SRP is imported, bound, resolved, and approved before prepare when the
+    job requires repository evidence. Semantic editing, Human Review, QA, rendering, release,
+    and Remux remain owned by the existing state machine and ``plan_title``.
     """
     source_root = source_root.expanduser().resolve()
     workspace = workspace.expanduser().resolve()
@@ -177,15 +337,10 @@ def prepare_portable_job(
     for role, source in sorted(role_inputs.items()):
         imported[role] = add_source(paths, role, source)
 
+    repository_evidence = _bind_repository_research(paths, job, source_root=source_root)
     normalized = normalize_all(paths)
     workfiles = build_all_workfiles(paths, allow_no_opencc=allow_no_opencc)
     plan = plan_title(paths).to_dict()
-    requirements = job.get("requirements", {})
-    use_repository_evidence = bool(
-        requirements.get("use_repository_evidence", True)
-        if isinstance(requirements, dict)
-        else True
-    )
 
     return PreparedPortableJob(
         job_id=job_id,
@@ -200,16 +355,7 @@ def prepare_portable_job(
         normalized=normalized,
         workfiles=workfiles,
         next_plan=plan,
-        repository_evidence={
-            "requested": use_repository_evidence,
-            "bound": False,
-            "reason": (
-                "Portable prepare materializes subtitle inputs only. Canon/SRP resolution is an "
-                "adapter step and must be bound explicitly before semantic decisions."
-                if use_repository_evidence
-                else "Repository evidence was disabled by the job."
-            ),
-        },
+        repository_evidence=repository_evidence,
         state=state_summary(paths),
     )
 
