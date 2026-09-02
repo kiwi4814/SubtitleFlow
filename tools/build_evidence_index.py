@@ -1,22 +1,11 @@
 #!/usr/bin/env python3
 """Build a compact AI-friendly index for one SubtitleFlow evidence series directory."""
 
-from __future__ import annotations
-
 import argparse
 import json
 from pathlib import Path
 
-
 TITLE_PREFIXES = ("M", "SBM")
-
-
-def _subtitle_files(root: Path) -> list[str]:
-    result: list[str] = []
-    for path in sorted(root.rglob("*")):
-        if path.is_file() and path.suffix.lower() in {".ass", ".ssa", ".srt", ".vtt"}:
-            result.append(path.relative_to(root).as_posix())
-    return result
 
 
 def _title_entry(series_root: Path, title_dir: Path) -> dict[str, object]:
@@ -47,7 +36,11 @@ def build_index(series_root: Path) -> dict[str, object]:
             titles[title_id] = _title_entry(series_root, child)
 
     packs_root = series_root / "research_packs"
-    packs = [path.name for path in sorted(packs_root.iterdir()) if path.is_dir()] if packs_root.is_dir() else []
+    packs = (
+        [path.name for path in sorted(packs_root.iterdir()) if path.is_dir()]
+        if packs_root.is_dir()
+        else []
+    )
     return {
         "schema_version": 1,
         "series_id": series_root.name,
@@ -56,7 +49,12 @@ def build_index(series_root: Path) -> dict[str, object]:
         "research_packs": packs,
         "catalog_files": [
             name
-            for name in ("MOVIE_CATALOG.json", "COLLECTION_STATUS.md", "AI_README.md", "VERIFICATION_SUMMARY.md")
+            for name in (
+                "MOVIE_CATALOG.json",
+                "COLLECTION_STATUS.md",
+                "AI_README.md",
+                "VERIFICATION_SUMMARY.md",
+            )
             if (series_root / name).is_file()
         ],
     }
