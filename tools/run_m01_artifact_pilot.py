@@ -23,6 +23,21 @@ def _load_pilot() -> ModuleType:
     return module
 
 
+def _assert_portable_text_files_do_not_leak_paths(bundle_dir: Path) -> None:
+    forbidden = (str(REPO_ROOT), str(bundle_dir.parent))
+    text_suffixes = {".ass", ".json", ".jsonl", ".md", ".txt"}
+    leaks: list[str] = []
+    for path in sorted(bundle_dir.rglob("*")):
+        if not path.is_file() or path.suffix.lower() not in text_suffixes:
+            continue
+        text = path.read_text(encoding="utf-8")
+        for prefix in forbidden:
+            if prefix in text:
+                leaks.append(f"{path.relative_to(bundle_dir)} -> {prefix}")
+    if leaks:
+        raise RuntimeError("Portable M01 bundle leaked runtime absolute paths: " + "; ".join(leaks))
+
+
 def main() -> int:
     output_value = os.environ.get("SUBTITLEFLOW_M01_ARTIFACT_DIR", "").strip()
     if not output_value:
@@ -43,6 +58,7 @@ def main() -> int:
             bundle_dir = Path(result.bundle_dir)
             if not archive_path.is_file():
                 raise RuntimeError(f"M01 portable archive was not created: {archive_path}")
+            _assert_portable_text_files_do_not_leak_paths(bundle_dir)
             shutil.copy2(archive_path, output_dir / "SubtitleFlow-M01-JP-ZHCN.zip")
             shutil.copy2(bundle_dir / "manifest.json", output_dir / "manifest.json")
             captured = True
