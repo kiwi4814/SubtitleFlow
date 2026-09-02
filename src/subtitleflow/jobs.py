@@ -118,7 +118,23 @@ def infer_workflow_profile(job: dict[str, Any]) -> str:
     return "auto"
 
 
-def _configure_title_from_job(paths, job: dict[str, Any], profile: str) -> None:
+def _portable_style_profile(style_profile: str, *, source_root: Path) -> str:
+    candidate = Path(style_profile).expanduser()
+    if candidate.suffix.lower() == ".json" or "/" in style_profile or "\\" in style_profile:
+        if not candidate.is_absolute():
+            candidate = source_root / candidate
+    else:
+        candidate = source_root / "styles" / f"{style_profile}.json"
+    return str(candidate.resolve()) if candidate.is_file() else style_profile
+
+
+def _configure_title_from_job(
+    paths,
+    job: dict[str, Any],
+    profile: str,
+    *,
+    source_root: Path,
+) -> None:
     config = read_json(paths.title_config)
     configure_workflow_profile(config, profile)
     requirements = job.get("requirements", {})
@@ -128,7 +144,23 @@ def _configure_title_from_job(paths, job: dict[str, Any], profile: str) -> None:
             config.setdefault("editorial", {})["editing_policy"] = str(editing_policy)
         style_profile = requirements.get("style_profile")
         if style_profile:
-            config.setdefault("style", {})["profile"] = str(style_profile)
+            config.setdefault("style", {})["profile"] = _portable_style_profile(
+                str(style_profile), source_root=source_root
+            )
+
+    # A materialized Portable Job may live in a temporary workspace that intentionally does not
+    # contain the Git checkout. Bind reusable runtime assets to the immutable source_root rather
+    # than copying large fonts/styles into every job or relying on platform-specific symlinks.
+    fonts_cfg = config.setdefault("fonts", {})
+    local_fonts = (source_root / "fonts" / "local").resolve()
+    font_registry = (source_root / "fonts" / "font-registry.json").resolve()
+    font_map = (source_root / "fonts" / "font-map.json").resolve()
+    if local_fonts.is_dir():
+        fonts_cfg["directories"] = [str(local_fonts)]
+    if font_registry.is_file():
+        fonts_cfg["registry_file"] = str(font_registry)
+    if font_map.is_file():
+        fonts_cfg["map_file"] = str(font_map)
     write_json(paths.title_config, config)
 
 
@@ -328,7 +360,7 @@ def prepare_portable_job(
         display_name,
         series_id=requested_series_id,
     )
-    _configure_title_from_job(paths, job, profile)
+    _configure_title_from_job(paths, job, profile, source_root=source_root)
     persisted_config = read_json(paths.title_config)
     persisted_series_id = str(persisted_config.get("series_id") or paths.project_id)
 
