@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the existing M01 pilot while persisting its first portable bundle for CI inspection."""
+"""Run the existing M01 pilot while persisting inspectable Web-development artifacts."""
 
 from __future__ import annotations
 
@@ -47,13 +47,27 @@ def main() -> int:
 
     pilot = _load_pilot()
     original_builder = pilot.build_portable_release_bundle
-    captured = False
+    original_packet_builder = pilot.build_semantic_packet
+    captured_bundle = False
+    captured_packet = False
+
+    def capturing_packet_builder(*args, **kwargs):
+        nonlocal captured_packet
+        packet = original_packet_builder(*args, **kwargs)
+        if not captured_packet:
+            (output_dir / "semantic-packet.json").write_text(
+                json.dumps(packet, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+                newline="",
+            )
+            captured_packet = True
+        return packet
 
     def capturing_builder(*args, **kwargs):
-        nonlocal captured
+        nonlocal captured_bundle
         result = original_builder(*args, **kwargs)
         archive = kwargs.get("archive_path")
-        if not captured and archive is not None:
+        if not captured_bundle and archive is not None:
             archive_path = Path(archive)
             bundle_dir = Path(result.bundle_dir)
             if not archive_path.is_file():
@@ -61,9 +75,10 @@ def main() -> int:
             _assert_portable_text_files_do_not_leak_paths(bundle_dir)
             shutil.copy2(archive_path, output_dir / "SubtitleFlow-M01-JP-ZHCN.zip")
             shutil.copy2(bundle_dir / "manifest.json", output_dir / "manifest.json")
-            captured = True
+            captured_bundle = True
         return result
 
+    pilot.build_semantic_packet = capturing_packet_builder
     pilot.build_portable_release_bundle = capturing_builder
     result = pilot.run_pilot()
     (output_dir / "pilot-result.json").write_text(
@@ -73,7 +88,9 @@ def main() -> int:
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
-    if not captured:
+    if not captured_packet:
+        raise RuntimeError("M01 pilot passed without exporting the Semantic Packet")
+    if not captured_bundle:
         raise RuntimeError("M01 pilot passed without producing a portable bundle artifact")
     return 0 if result.get("status") == "passed" else 1
 
