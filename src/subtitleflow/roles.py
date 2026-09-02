@@ -69,6 +69,12 @@ def classify_event_role(
     if protected_reason and "drawing" in protected_reason.casefold():
         return RoleClassification("protected-fx", confidence=0.98, basis="ass-drawing")
 
+    # Ruby/furigana events are reading annotations layered over the real text. Preserve the
+    # original ASS event, but do not let fragments such as "すけ" or "のび" become independent
+    # source-language evidence.
+    if value in {"rubi", "ruby", "furigana"}:
+        return RoleClassification("annotation", confidence=0.98, basis="ruby-style")
+
     # Accessibility/SDH sources often interleave non-verbal descriptions with spoken dialogue.
     # Keep these events in the normalized source so an ASS template can preserve them, but mark
     # them separately so they do not distort source-language semantic alignment.
