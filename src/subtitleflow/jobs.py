@@ -252,9 +252,7 @@ def _bind_repository_research(
 
     languages = manifest.get("languages", {})
     declared_branches = (
-        [str(item) for item in languages.get("branches", [])]
-        if isinstance(languages, dict)
-        else []
+        [str(item) for item in languages.get("branches", [])] if isinstance(languages, dict) else []
     )
     mapping: dict[str, str] = {}
     intent = str(job.get("intent", "auto"))
