@@ -12,7 +12,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from subtitleflow.alignment import editable_cues
+from subtitleflow.alignment import align_cues, editable_cues
 from subtitleflow.cli import main as cli_main
 from subtitleflow.cue_views import evidence_cues
 from subtitleflow.io import read_json
@@ -89,6 +89,15 @@ def _alignment_metrics(alignment: dict[str, object]) -> dict[str, object]:
     }
 
 
+def _alignment_snapshot(alignment: dict[str, object]) -> dict[str, object]:
+    return {
+        "estimated_offset_ms": alignment.get("estimated_offset_ms"),
+        "total_cost": alignment.get("total_cost"),
+        "summary": dict(alignment.get("summary", {})),
+        "coverage": _alignment_metrics(alignment),
+    }
+
+
 def _cue_diagnostics(cues) -> dict[str, object]:
     style_counts = Counter(cue.style or "<empty>" for cue in cues)
     role_counts = Counter(cue.semantic_role for cue in cues)
@@ -100,6 +109,23 @@ def _cue_diagnostics(cues) -> dict[str, object]:
         "multi_event_timing_spans": sum(count > 1 for count in timing_counts.values()),
         "max_events_same_timing_span": max(timing_counts.values(), default=0),
     }
+
+
+def _matched_right_ids(alignment: dict[str, object]) -> set[str]:
+    groups = alignment.get("groups", [])
+    if not isinstance(groups, list):
+        raise RuntimeError("alignment report groups must be a list")
+    result: set[str] = set()
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        left_ids = group.get("left_ids", [])
+        right_ids = group.get("right_ids", [])
+        if not isinstance(left_ids, list) or not isinstance(right_ids, list):
+            continue
+        if left_ids and right_ids:
+            result.update(str(cue_id) for cue_id in right_ids)
+    return result
 
 
 def run_pilot() -> dict[str, object]:
@@ -161,19 +187,11 @@ def run_pilot() -> dict[str, object]:
         protected_evidence_ids = {cue.id for cue in c_evidence if cue.protected}
 
         alignment = read_json(paths.work / "alignment-CLEAN-C.json")
-        groups = alignment.get("groups", [])
-        used_right_ids: set[str] = set()
-        if not isinstance(groups, list):
-            raise RuntimeError("alignment report groups must be a list")
-        for group in groups:
-            if not isinstance(group, dict):
-                continue
-            right_ids = group.get("right_ids", [])
-            if isinstance(right_ids, list):
-                used_right_ids.update(str(cue_id) for cue_id in right_ids)
-        matched_protected_ids = protected_evidence_ids & used_right_ids
+        matched_protected_ids = protected_evidence_ids & _matched_right_ids(alignment)
         summary = dict(alignment.get("summary", {}))
-        coverage = _alignment_metrics(alignment)
+
+        zero_offset_result = align_cues(s_editable, c_evidence, offset_ms=0)
+        zero_offset_alignment = zero_offset_result.to_dict()
 
         checks = {
             "target_has_editable_dialogue": bool(s_editable),
@@ -215,10 +233,8 @@ def run_pilot() -> dict[str, object]:
                 "C_evidence": _cue_diagnostics(c_evidence),
             },
             "alignment": {
-                "estimated_offset_ms": alignment.get("estimated_offset_ms"),
-                "total_cost": alignment.get("total_cost"),
-                "summary": summary,
-                "coverage": coverage,
+                "estimated": _alignment_snapshot(alignment),
+                "zero_offset_control": _alignment_snapshot(zero_offset_alignment),
             },
             "checks": checks,
         }
