@@ -34,8 +34,13 @@ ASS override tags such as `\\pos`, `\\move`, `\\clip`, karaoke tags, or styling 
 4. Review every packet unit, while prioritizing critical/high-risk units rather than skipping normal units.
 5. Return only material changes as structured proposals. KEEP is implicit; do not emit cosmetic no-op proposals.
 6. Preserve `unit_id`, `original_text`, evidence rationale, confidence, and any Canon/source conflicts.
-7. Import proposals through SubtitleFlow's existing proposal importer.
-8. Stop at Human Review. Never approve model proposals on the user's behalf unless the user explicitly performs that review decision through the supported workflow.
+7. Import proposals through SubtitleFlow's packet-bound proposal importer. The importer must reject a stale Semantic Packet identity before candidates enter Human Review.
+8. Stop at Human Review whenever material candidates are pending. Never approve model proposals silently.
+9. Present a concise review summary that makes the proposed material changes and evidence visible. A user response such as “按推荐处理” after that summary is an explicit Human Review decision for the displayed recommended set; a generic earlier preference for automation is not.
+10. Apply approved/custom decisions through SubtitleFlow's existing Human Review API so the workfile receives durable `ChangeRecord` provenance. Rejected candidates must leave subtitle text unchanged.
+11. After all pending candidates are decided, ask the planner for the next safe action. The old Semantic Packet is stale after an approved/custom text mutation and must not be reused for later proposals.
+
+CI/regression fixtures may make controlled review decisions inside an isolated temporary workspace to prove this roundtrip. Such fixture decisions are test evidence only and must never be represented as production user approval.
 
 Editing rules:
 
