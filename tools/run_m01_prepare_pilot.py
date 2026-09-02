@@ -173,7 +173,9 @@ def _diagnostic_samples(alignment: dict[str, object], left_units, right_cues) ->
     }
 
 
-def _controlled_human_review_roundtrip(paths, semantic_packet: dict[str, object]) -> dict[str, object]:
+def _controlled_human_review_roundtrip(
+    paths, semantic_packet: dict[str, object]
+) -> dict[str, object]:
     """Exercise one known M01 correction in the temporary CI workspace only."""
     units = semantic_packet.get("units", [])
     if not isinstance(units, list):
@@ -369,13 +371,11 @@ def run_pilot() -> dict[str, object]:
             "controlled_review_materializes_known_m01_fix": "犹他州"
             in str(review_roundtrip.get("approved_text", ""))
             and "犹太洲" not in str(review_roundtrip.get("approved_text", "")),
-            "controlled_review_records_change_provenance": review_roundtrip.get(
-                "change_recorded"
-            )
+            "controlled_review_records_change_provenance": review_roundtrip.get("change_recorded")
             is True,
-            "controlled_review_advances_to_compile": review_roundtrip.get(
-                "after_decision", {}
-            ).get("next_action")
+            "controlled_review_advances_to_compile": review_roundtrip.get("after_decision", {}).get(
+                "next_action"
+            )
             == "compile"
             and review_roundtrip.get("after_decision", {}).get("requires_human") is False,
             "controlled_review_gate_passes_after_decision": review_roundtrip.get(
