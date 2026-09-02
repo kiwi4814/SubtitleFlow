@@ -19,7 +19,10 @@ def _input(role: str, path: Path) -> dict[str, object]:
 
 
 def test_infer_workflow_profile_from_classified_roles():
-    assert infer_workflow_profile({"intent": "jp-audio-zh-cn", "inputs": [{"role_hint": "S"}]}) == "single"
+    assert (
+        infer_workflow_profile({"intent": "jp-audio-zh-cn", "inputs": [{"role_hint": "S"}]})
+        == "single"
+    )
     assert (
         infer_workflow_profile(
             {"intent": "jp-audio-zh-cn", "inputs": [{"role_hint": "S"}, {"role_hint": "C"}]}
@@ -83,6 +86,9 @@ def test_prepare_portable_source_assisted_job_stops_at_planner(tmp_path):
         source_root=REPO_ROOT,
     ).to_dict()
 
+    assert result["project_id"] == "test-project"
+    assert result["title_id"] == "m01"
+    assert result["series_id"] == "test-series"
     assert result["workflow_profile"] == "source-assisted"
     assert sorted(result["imported_sources"]) == ["C", "S"]
     assert result["state"]["stages"]["normalize"]["status"] == "passed"
