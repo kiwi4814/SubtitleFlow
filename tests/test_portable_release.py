@@ -8,11 +8,13 @@ def test_portableize_paths_removes_runtime_specific_absolute_roots(tmp_path):
     title.mkdir(parents=True)
     (source_root / "fonts" / "local").mkdir(parents=True)
 
+    absolute_key = str(source_root / "fonts" / "font-registry.json")
     payload = {
         "title_file": str(title / "qa" / "summary.json"),
         "workspace_file": str(workspace / "projects" / "demo" / "project.json"),
         "font_file": str(source_root / "fonts" / "local" / "demo.ttf"),
         "nested": [str(source_root / "styles" / "collector.json")],
+        "asset_sha256": {absolute_key: "deadbeef"},
         "relative": "qa/summary.json",
     }
 
@@ -27,6 +29,7 @@ def test_portableize_paths_removes_runtime_specific_absolute_roots(tmp_path):
     assert portable["workspace_file"] == "workspace://projects/demo/project.json"
     assert portable["font_file"] == "source-root://fonts/local/demo.ttf"
     assert portable["nested"] == ["source-root://styles/collector.json"]
+    assert portable["asset_sha256"] == {"source-root://fonts/font-registry.json": "deadbeef"}
     assert portable["relative"] == "qa/summary.json"
     assert str(tmp_path) not in repr(portable)
 
