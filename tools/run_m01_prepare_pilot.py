@@ -93,7 +93,7 @@ def _compiled_checks(ass_path: Path, reconciliation: dict[str, object]) -> dict[
         "chinese_above_japanese": order_ok,
         "event_count_matches_reconciliation": len(zh_events) == len(pairs)
         and len(ja_events) == paired_count,
-        "font_size_target_ok": 52 <= physical["SF-ZH"] <= 58 and 38 <= physical["SF-JA"] <= 46,
+        "font_size_target_ok": 58 <= physical["SF-ZH"] <= 62 and 48 <= physical["SF-JA"] <= 52,
     }
 
 

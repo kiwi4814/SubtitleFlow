@@ -124,8 +124,8 @@ def test_compile_scales_generated_font_size_to_authored_playres(
     assert "PlayResX: 640" in text
     assert "PlayResY: 480" in text
     script_size = _style_font_size(text, "SF-ZH")
-    assert abs(script_size - (56 * 480 / 1080)) < 0.001
-    assert abs(script_size * 1080 / 480 - 56) < 0.01
+    assert abs(script_size - (60 * 480 / 1080)) < 0.001
+    assert abs(script_size * 1080 / 480 - 60) < 0.01
 
 
 def test_jp_source_gap_never_fabricates_japanese(tmp_path: Path, sample_cues) -> None:
