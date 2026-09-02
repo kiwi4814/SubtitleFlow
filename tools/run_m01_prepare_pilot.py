@@ -1,38 +1,23 @@
 #!/usr/bin/env python3
-"""Run a reproducible M01 source-assisted prepare pilot from repository evidence."""
+"""Run a reproducible M01 portable-job prepare pilot from repository evidence."""
 
 from __future__ import annotations
 
-import contextlib
-import io
 import json
 import tempfile
 from collections import Counter
 from pathlib import Path
 
-from jsonschema import Draft202012Validator
-
 from subtitleflow.alignment import editable_cues
-from subtitleflow.cli import main as cli_main
 from subtitleflow.cue_views import evidence_cues
 from subtitleflow.io import read_json
+from subtitleflow.jobs import load_portable_job, prepare_portable_job
 from subtitleflow.normalize import load_normalized
 from subtitleflow.workfile import load_workfile
 from subtitleflow.workspace import title_paths
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 JOB_PATH = REPO_ROOT / "examples" / "jobs" / "doraemon-m01.jp-audio-zh-cn.json"
-JOB_SCHEMA_PATH = REPO_ROOT / "contracts" / "subtitle-job.schema.json"
-
-
-def _run_cli(argv: list[str]) -> None:
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-        code = cli_main(argv)
-    if code != 0:
-        detail = stderr.getvalue().strip() or stdout.getvalue().strip() or "no diagnostic output"
-        raise RuntimeError(f"subflow command failed ({code}): {' '.join(argv)}\n{detail}")
 
 
 def _input_paths(job: dict[str, object]) -> dict[str, Path]:
@@ -47,10 +32,7 @@ def _input_paths(job: dict[str, object]) -> dict[str, Path]:
         relative = item.get("path")
         if role not in {"S", "C"} or not isinstance(relative, str):
             continue
-        path = (REPO_ROOT / relative).resolve()
-        if not path.is_file():
-            raise RuntimeError(f"M01 evidence file is missing: {relative}")
-        result[str(role)] = path
+        result[str(role)] = (REPO_ROOT / relative).resolve()
     missing = {"S", "C"} - set(result)
     if missing:
         raise RuntimeError("M01 pilot job is missing role hints: " + ", ".join(sorted(missing)))
@@ -188,56 +170,17 @@ def _diagnostic_samples(alignment: dict[str, object], left_units, right_cues) ->
 
 
 def run_pilot() -> dict[str, object]:
-    job = read_json(JOB_PATH)
-    schema = read_json(JOB_SCHEMA_PATH)
-    Draft202012Validator(schema).validate(job)
+    job = load_portable_job(JOB_PATH, source_root=REPO_ROOT)
     sources = _input_paths(job)
-
-    project_id = str(job.get("project_id") or "doraemon")
-    title_id = str(job.get("title_id") or "m01")
-    series_id = str(job.get("series_id") or project_id)
-    display_name = str(job.get("display_name") or title_id)
 
     with tempfile.TemporaryDirectory(prefix="subtitleflow-m01-pilot-") as temp_dir:
         workspace = Path(temp_dir)
-        (workspace / "projects").mkdir()
-        (workspace / "pyproject.toml").write_text(
-            "[project]\nname='subtitleflow-m01-pilot'\nversion='0'\n", encoding="utf-8"
+        prepared = prepare_portable_job(
+            JOB_PATH,
+            workspace=workspace,
+            source_root=REPO_ROOT,
         )
-        repo_arg = str(workspace)
-        _run_cli(["--repo", repo_arg, "project", "init", project_id, "--name", "Doraemon"])
-        _run_cli(
-            [
-                "--repo",
-                repo_arg,
-                "title",
-                "init",
-                project_id,
-                title_id,
-                "--name",
-                display_name,
-                "--profile",
-                "source-assisted",
-                "--series-id",
-                series_id,
-            ]
-        )
-        for role in ("S", "C"):
-            _run_cli(
-                [
-                    "--repo",
-                    repo_arg,
-                    "source",
-                    "add",
-                    project_id,
-                    title_id,
-                    role,
-                    str(sources[role]),
-                ]
-            )
-        _run_cli(["--repo", repo_arg, "prepare", project_id, title_id])
-
-        paths = title_paths(workspace, project_id, title_id)
+        paths = title_paths(workspace, prepared.project_id, prepared.title_id)
         normalized_s = load_normalized(paths, "S")
         normalized_c = load_normalized(paths, "C")
         clean_work = load_workfile(paths, "clean")
@@ -253,6 +196,14 @@ def run_pilot() -> dict[str, object]:
         estimated_offset_ms = int(alignment.get("estimated_offset_ms", 0))
 
         checks = {
+            "portable_runner_inferred_source_assisted": prepared.workflow_profile
+            == "source-assisted",
+            "portable_runner_stops_at_semantic_edit": prepared.next_plan.get("next_action")
+            == "semantic-edit",
+            "repository_evidence_is_not_falsely_claimed_bound": prepared.repository_evidence.get(
+                "bound"
+            )
+            is False,
             "target_has_editable_dialogue": bool(s_editable),
             "japanese_has_semantic_evidence": bool(c_evidence),
             "protected_japanese_dialogue_survives_as_evidence": bool(protected_evidence_ids),
@@ -266,9 +217,17 @@ def run_pilot() -> dict[str, object]:
         }
 
         return {
-            "pilot": "doraemon-m01-source-assisted-prepare",
+            "pilot": "doraemon-m01-portable-job-prepare",
             "status": "passed" if all(checks.values()) else "failed",
             "job": str(JOB_PATH.relative_to(REPO_ROOT)),
+            "portable_runner": {
+                "project_id": prepared.project_id,
+                "title_id": prepared.title_id,
+                "series_id": prepared.series_id,
+                "workflow_profile": prepared.workflow_profile,
+                "next_action": prepared.next_plan.get("next_action"),
+                "repository_evidence": prepared.repository_evidence,
+            },
             "sources": {
                 "S": {
                     "path": str(sources["S"].relative_to(REPO_ROOT)),
