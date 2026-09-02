@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the existing M01 pilot while persisting inspectable Web-development artifacts."""
+"""Run the M01 bilingual pilot while persisting inspectable Web-development artifacts."""
 
 from __future__ import annotations
 
@@ -38,6 +38,21 @@ def _assert_portable_text_files_do_not_leak_paths(bundle_dir: Path) -> None:
         raise RuntimeError("Portable M01 bundle leaked runtime absolute paths: " + "; ".join(leaks))
 
 
+def _copy_demo_outputs(bundle_dir: Path, output_dir: Path) -> None:
+    subtitles = sorted((bundle_dir / "subtitles").glob("*.ass"))
+    if len(subtitles) != 1:
+        raise RuntimeError(f"Expected exactly one M01 bilingual ASS, got {len(subtitles)}")
+    shutil.copy2(subtitles[0], output_dir / "M01.jp-zh-bilingual.ass")
+
+    renders = sorted((bundle_dir / "renders").glob("*.png"))
+    if not renders:
+        raise RuntimeError("M01 bilingual portable bundle contains no renderer PNGs")
+    render_dir = output_dir / "renders"
+    render_dir.mkdir(parents=True, exist_ok=True)
+    for path in renders:
+        shutil.copy2(path, render_dir / path.name)
+
+
 def main() -> int:
     output_value = os.environ.get("SUBTITLEFLOW_M01_ARTIFACT_DIR", "").strip()
     if not output_value:
@@ -73,8 +88,12 @@ def main() -> int:
             if not archive_path.is_file():
                 raise RuntimeError(f"M01 portable archive was not created: {archive_path}")
             _assert_portable_text_files_do_not_leak_paths(bundle_dir)
-            shutil.copy2(archive_path, output_dir / "SubtitleFlow-M01-JP-ZHCN.zip")
+            shutil.copy2(
+                archive_path,
+                output_dir / "SubtitleFlow-M01-JP-ZHCN-Bilingual-Demo.zip",
+            )
             shutil.copy2(bundle_dir / "manifest.json", output_dir / "manifest.json")
+            _copy_demo_outputs(bundle_dir, output_dir)
             captured_bundle = True
         return result
 

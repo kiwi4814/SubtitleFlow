@@ -54,3 +54,34 @@ def test_offset_estimation_ignores_duplicate_event_density_and_leading_captions(
         )
 
     assert estimate_offset_ms(left, right) == 5_000
+
+
+def test_alignment_can_keep_left_units_atomic_for_bilingual_reconciliation() -> None:
+    left = [
+        cue(1, 1000, 1900),
+        cue(2, 1950, 3000),
+        cue(3, 3100, 4100),
+    ]
+    right = [
+        cue(101, 1000, 1500),
+        cue(102, 1500, 2300),
+        cue(103, 2300, 3000),
+        cue(104, 3100, 3600),
+        cue(105, 3600, 4100),
+    ]
+
+    symmetric = align_cues(left, right, max_group=3)
+    assert any(len(group.left_ids) > 1 for group in symmetric.groups if group.right_ids)
+
+    atomic = align_cues(
+        left,
+        right,
+        max_group=3,
+        max_left_group=1,
+        max_right_group=3,
+    )
+    matched = [group for group in atomic.groups if group.left_ids and group.right_ids]
+    assert matched
+    assert all(len(group.left_ids) == 1 for group in matched)
+    represented_left = [cue_id for group in atomic.groups for cue_id in group.left_ids]
+    assert represented_left == ["c1", "c2", "c3"]

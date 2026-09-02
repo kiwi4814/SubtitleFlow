@@ -50,6 +50,15 @@ def test_infer_workflow_profile_from_classified_roles():
         )
         == "bilingual"
     )
+    assert (
+        infer_workflow_profile(
+            {
+                "intent": "jp-zh-bilingual",
+                "inputs": [{"role_hint": "A"}, {"role_hint": "B"}, {"role_hint": "C"}],
+            }
+        )
+        == "bilingual"
+    )
 
 
 def test_select_srp_branch_id_prefers_release_intent_not_candidate():

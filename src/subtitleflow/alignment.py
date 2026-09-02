@@ -120,14 +120,7 @@ def _best_activity_offset(
 
 
 def estimate_offset_ms(left: Sequence[Cue], right: Sequence[Cue]) -> int:
-    """Estimate a coarse global timing shift without depending on cue density.
-
-    Subtitle sources can describe the same timeline at very different granularities. A TV
-    accessibility track may emit two or three positioned Dialogue events for one translated
-    subtitle cue, so pairing equal cue-list quantiles can invent a large false offset. Instead,
-    collapse each side to a binary subtitle-activity timeline, find the strongest coarse overlap,
-    then refine around that peak.
-    """
+    """Estimate a coarse global timing shift without depending on cue density."""
     if not left or not right:
         return 0
     left_activity = _activity_intervals(left)
@@ -156,7 +149,6 @@ def estimate_offset_ms(left: Sequence[Cue], right: Sequence[Cue]) -> int:
     best_score = max(coarse_score, refined_score)
     if best_score <= 0.0:
         return 0
-    # Prefer no global shift when a tiny score difference cannot justify moving the whole track.
     if refined_offset != 0 and best_score - zero_score < 0.01:
         return 0
     return refined_offset
@@ -220,7 +212,8 @@ def _risk_signals(
     risks: list[dict[str, object]] = []
     number_re = re.compile(r"\d+(?:[.,]\d+)?")
     negation_re = re.compile(
-        r"(?:ない|ません|なかった|じゃない|ではない|不|没|无|未|别|不要|not|n't|never)", re.I
+        r"(?:\u306a\u3044|\u307e\u305b\u3093|\u306a\u304b\u3063\u305f|\u3058\u3083\u306a\u3044|\u3067\u306f\u306a\u3044|\u4e0d|\u6ca1|\u65e0|\u672a|\u522b|\u4e0d\u8981|not|n't|never)",
+        re.I,
     )
     for group in groups:
         base = {"alignment_group": group.id, "kind": group.kind, "confidence": group.confidence}
@@ -262,7 +255,6 @@ def _risk_signals(
             item.style for item in right if item.id in set(group.right_ids) and item.style
         }
         if len(left_styles) == 1 and len(right_styles) == 1 and left_styles != right_styles:
-            # Style is weak evidence only. This is a review signal, never a translation verdict.
             risks.append(
                 {
                     **base,
@@ -279,6 +271,8 @@ def align_cues(
     right: Sequence[Cue],
     *,
     max_group: int = 3,
+    max_left_group: int | None = None,
+    max_right_group: int | None = None,
     unmatched_penalty: float = 3.0,
     offset_ms: int | None = None,
 ) -> AlignmentResult:
@@ -287,6 +281,12 @@ def align_cues(
     n, m = len(left), len(right)
     if n == 0 and m == 0:
         return AlignmentResult(groups=[], total_cost=0.0, estimated_offset_ms=0, semantic_risks=[])
+    if max_group < 1:
+        raise ValueError("max_group must be at least 1")
+    left_group_limit = max_group if max_left_group is None else max_left_group
+    right_group_limit = max_group if max_right_group is None else max_right_group
+    if left_group_limit < 1 or right_group_limit < 1:
+        raise ValueError("max_left_group and max_right_group must be at least 1")
     offset = estimate_offset_ms(left, right) if offset_ms is None else offset_ms
 
     inf = float("inf")
@@ -311,10 +311,10 @@ def align_cues(
                 if base + cost < dp[i][j + 1]:
                     dp[i][j + 1] = base + cost
                     back[i][j + 1] = (i, j, 0, 1, cost)
-            for gl in range(1, max_group + 1):
+            for gl in range(1, left_group_limit + 1):
                 if i + gl > n:
                     break
-                for gr in range(1, max_group + 1):
+                for gr in range(1, right_group_limit + 1):
                     if j + gr > m:
                         break
                     cost = _match_cost(left, right, i, j, gl, gr, offset)

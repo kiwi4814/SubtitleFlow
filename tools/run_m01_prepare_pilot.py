@@ -1,577 +1,246 @@
 #!/usr/bin/env python3
-"""Run a reproducible M01 portable-job pilot from repository evidence."""
+"""Run the real M01 bilingual Portable Job through the existing JP branch."""
 
 from __future__ import annotations
 
 import json
+import re
 import tempfile
-from collections import Counter
 from pathlib import Path
 
-from subtitleflow.alignment import editable_cues
 from subtitleflow.compile import compile_all
-from subtitleflow.cue_views import evidence_cues
-from subtitleflow.io import read_json, write_json
+from subtitleflow.formats.ass import parse_ass
+from subtitleflow.io import read_json
 from subtitleflow.jobs import load_portable_job, prepare_portable_job
-from subtitleflow.normalize import load_normalized
-from subtitleflow.pipeline import plan_title
 from subtitleflow.portable_release import build_portable_release_bundle
 from subtitleflow.qa import run_all_qa
-from subtitleflow.review import decide_candidate
 from subtitleflow.semantic_packet import build_semantic_packet
-from subtitleflow.semantic_proposals import import_semantic_proposal_envelope
 from subtitleflow.workfile import load_workfile
 from subtitleflow.workspace import title_paths
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-JOB_PATH = REPO_ROOT / "examples" / "jobs" / "doraemon-m01.jp-audio-zh-cn.json"
+JOB_PATH = REPO_ROOT / "examples" / "jobs" / "doraemon-m01.jp-zh-bilingual.json"
+_POS_Y_RE = re.compile(r"\\pos\([^,]+,\s*([-+]?\d+(?:\.\d+)?)\)")
 
 
-def _input_paths(job: dict[str, object]) -> dict[str, Path]:
-    inputs = job.get("inputs")
-    if not isinstance(inputs, list):
-        raise RuntimeError("job inputs must be a list")
-    result: dict[str, Path] = {}
-    for item in inputs:
-        if not isinstance(item, dict):
-            raise RuntimeError("job input must be an object")
-        role = item.get("role_hint")
-        relative = item.get("path")
-        if role not in {"S", "C"} or not isinstance(relative, str):
-            continue
-        result[str(role)] = (REPO_ROOT / relative).resolve()
-    missing = {"S", "C"} - set(result)
-    if missing:
-        raise RuntimeError("M01 pilot job is missing role hints: " + ", ".join(sorted(missing)))
-    return result
+def _event_y(text: str) -> float | None:
+    match = _POS_Y_RE.search(text)
+    return float(match.group(1)) if match else None
 
 
-def _alignment_metrics(alignment: dict[str, object]) -> dict[str, object]:
-    groups = alignment.get("groups", [])
-    if not isinstance(groups, list):
-        raise RuntimeError("alignment report groups must be a list")
-    kind_counts: Counter[str] = Counter()
-    left_total = 0
-    left_matched = 0
-    right_total = 0
-    right_matched = 0
-    for group in groups:
-        if not isinstance(group, dict):
-            continue
-        kind_counts[str(group.get("kind", "unknown"))] += 1
-        left_ids = group.get("left_ids", [])
-        right_ids = group.get("right_ids", [])
-        if not isinstance(left_ids, list) or not isinstance(right_ids, list):
-            continue
-        left_total += len(left_ids)
-        right_total += len(right_ids)
-        if left_ids and right_ids:
-            left_matched += len(left_ids)
-            right_matched += len(right_ids)
-    return {
-        "kind_counts": dict(sorted(kind_counts.items())),
-        "left_cues": left_total,
-        "left_matched_cues": left_matched,
-        "left_coverage": round(left_matched / left_total, 6) if left_total else 0.0,
-        "right_cues": right_total,
-        "right_matched_cues": right_matched,
-        "right_coverage": round(right_matched / right_total, 6) if right_total else 0.0,
-    }
+def _style_sizes(ass_path: Path) -> tuple[int, dict[str, float]]:
+    play_y = 0
+    style_format: list[str] = []
+    result: dict[str, float] = {}
+    for line in ass_path.read_text(encoding="utf-8").splitlines():
+        key, sep, raw = line.partition(":")
+        if sep and key.strip().casefold() == "playresy":
+            play_y = int(raw.strip())
+        if (
+            line.lstrip().casefold().startswith("format:")
+            and "Fontname" in line
+            and "Fontsize" in line
+        ):
+            style_format = [item.strip() for item in raw.split(",")]
+        elif line.lstrip().casefold().startswith("style:") and style_format:
+            values = [item.strip() for item in raw.split(",")]
+            if len(values) != len(style_format):
+                continue
+            fields = dict(zip(style_format, values, strict=True))
+            if fields.get("Name") in {"SF-ZH", "SF-JA"}:
+                result[fields["Name"]] = float(fields["Fontsize"])
+    if play_y <= 0 or set(result) != {"SF-ZH", "SF-JA"}:
+        raise RuntimeError("Could not inspect generated M01 PlayRes/font sizes")
+    return play_y, result
 
 
-def _cue_diagnostics(cues) -> dict[str, object]:
-    style_counts = Counter(cue.style or "<empty>" for cue in cues)
-    role_counts = Counter(cue.semantic_role for cue in cues)
-    timing_counts = Counter((cue.start_ms, cue.end_ms) for cue in cues)
-    return {
-        "style_counts": dict(sorted(style_counts.items())),
-        "semantic_role_counts": dict(sorted(role_counts.items())),
-        "unique_timing_spans": len(timing_counts),
-        "multi_event_timing_spans": sum(count > 1 for count in timing_counts.values()),
-        "max_events_same_timing_span": max(timing_counts.values(), default=0),
-    }
-
-
-def _matched_right_ids(alignment: dict[str, object]) -> set[str]:
-    groups = alignment.get("groups", [])
-    if not isinstance(groups, list):
-        raise RuntimeError("alignment report groups must be a list")
-    result: set[str] = set()
-    for group in groups:
-        if not isinstance(group, dict):
-            continue
-        left_ids = group.get("left_ids", [])
-        right_ids = group.get("right_ids", [])
-        if not isinstance(left_ids, list) or not isinstance(right_ids, list):
-            continue
-        if left_ids and right_ids:
-            result.update(str(cue_id) for cue_id in right_ids)
-    return result
-
-
-def _cue_view(cue) -> dict[str, object]:
-    return {
-        "id": cue.id,
-        "start_ms": cue.start_ms,
-        "end_ms": cue.end_ms,
-        "style": cue.style,
-        "semantic_role": cue.semantic_role,
-        "text": cue.plain_text,
-    }
-
-
-def _unit_view(unit) -> dict[str, object]:
-    return {
-        "id": unit.id,
-        "start_ms": unit.start_ms,
-        "end_ms": unit.end_ms,
-        "semantic_role": unit.semantic_role,
-        "text": unit.final_text,
-    }
-
-
-def _diagnostic_samples(alignment: dict[str, object], left_units, right_cues) -> dict[str, object]:
-    left_map = {unit.id: unit for unit in left_units}
-    right_map = {cue.id: cue for cue in right_cues}
-    groups = alignment.get("groups", [])
-    if not isinstance(groups, list):
-        raise RuntimeError("alignment report groups must be a list")
-
-    unmatched_right: list[dict[str, object]] = []
-    low_confidence: list[dict[str, object]] = []
-    for group in groups:
-        if not isinstance(group, dict):
-            continue
-        left_ids = group.get("left_ids", [])
-        right_ids = group.get("right_ids", [])
-        if not isinstance(left_ids, list) or not isinstance(right_ids, list):
-            continue
-        if not left_ids and right_ids and len(unmatched_right) < 24:
-            for cue_id in right_ids:
-                cue = right_map.get(str(cue_id))
-                if cue is not None and len(unmatched_right) < 24:
-                    unmatched_right.append(_cue_view(cue))
-        confidence = float(group.get("confidence", 0.0))
-        if left_ids and right_ids and confidence < 0.72 and len(low_confidence) < 16:
-            low_confidence.append(
-                {
-                    "id": group.get("id"),
-                    "kind": group.get("kind"),
-                    "confidence": confidence,
-                    "left": [
-                        _unit_view(left_map[str(unit_id)])
-                        for unit_id in left_ids
-                        if str(unit_id) in left_map
-                    ],
-                    "right": [
-                        _cue_view(right_map[str(cue_id)])
-                        for cue_id in right_ids
-                        if str(cue_id) in right_map
-                    ],
-                }
-            )
-    return {
-        "unmatched_right_first_24": unmatched_right,
-        "low_confidence_first_16": low_confidence,
-    }
-
-
-def _controlled_human_review_roundtrip(
-    paths, semantic_packet: dict[str, object]
-) -> dict[str, object]:
-    """Exercise one known M01 correction in the temporary CI workspace only."""
-    units = semantic_packet.get("units", [])
-    if not isinstance(units, list):
-        raise RuntimeError("semantic packet units must be a list")
-    target = next(
-        (
-            item
-            for item in units
-            if isinstance(item, dict)
-            and "犹太洲" in str(item.get("current_text", ""))
-            and "ユタ州" in str(item.get("source_text", ""))
-        ),
-        None,
-    )
-    if target is None:
-        raise RuntimeError("M01 controlled review fixture could not find the 犹太洲 / ユタ州 unit")
-
-    original_text = str(target["current_text"])
-    corrected_text = original_text.replace("犹太洲", "犹他州")
-    source_text = str(target.get("source_text", ""))
-    candidate_id = "m01-pilot-utah-state-fix"
-    proposal_path = paths.review_proposals / "m01-ci-semantic-proposals.json"
-    proposal_path.parent.mkdir(parents=True, exist_ok=True)
-    write_json(
-        proposal_path,
-        {
-            "schema_version": 1,
-            "kind": "subtitleflow-semantic-proposals",
-            "project_id": semantic_packet["project_id"],
-            "title_id": semantic_packet["title_id"],
-            "branch": semantic_packet["branch"],
-            "packet_input_sha256": semantic_packet["packet_input_sha256"],
-            "producer": "m01-ci-controlled-fixture",
-            "notes": "Regression fixture only; this is not production auto-approval.",
-            "candidates": [
-                {
-                    "candidate_id": candidate_id,
-                    "branch": semantic_packet["branch"],
-                    "unit_id": target["unit_id"],
-                    "original_text": original_text,
-                    "proposed_text": corrected_text,
-                    "change_type": "language-quality",
-                    "reason": (
-                        "Japanese source evidence explicitly says ユタ州; the Chinese seed "
-                        "uses 犹太洲, so the place name should be corrected to 犹他州."
-                    ),
-                    "confidence": 1.0,
-                    "severity": "medium",
-                    "evidence": {"source_text": source_text},
-                    "primary_evidence": {
-                        "role": "C",
-                        "text": source_text,
-                        "cue_ids": list(target.get("source_text_cue_ids", [])),
-                    },
-                    "authority_domain": "source-language",
-                }
-            ],
-        },
+def _compiled_checks(ass_path: Path, reconciliation: dict[str, object]) -> dict[str, object]:
+    doc = parse_ass(ass_path)
+    zh_events = [event for event in doc.events if event.fields.get("Style") == "SF-ZH"]
+    ja_events = [event for event in doc.events if event.fields.get("Style") == "SF-JA"]
+    pairs = reconciliation.get("pairs", [])
+    if not isinstance(pairs, list):
+        raise RuntimeError("bilingual reconciliation pairs must be a list")
+    paired_count = sum(
+        isinstance(item, dict) and bool(str(item.get("source_text") or "").strip())
+        for item in pairs
     )
 
-    imported = import_semantic_proposal_envelope(paths, proposal_path)
-    before_decision = plan_title(paths).to_dict()
-    if len(imported) != 1 or imported[0].candidate_id != candidate_id:
-        raise RuntimeError("M01 controlled review fixture did not import exactly one candidate")
-
-    decided = decide_candidate(
-        paths,
-        candidate_id,
-        "approve",
-        note="CI controlled fixture approval; validates the Human Review materialization path.",
+    ja_by_span: dict[tuple[int, int], list[float]] = {}
+    for event in ja_events:
+        y = _event_y(event.fields.get("Text", ""))
+        if y is not None:
+            ja_by_span.setdefault((event.start_ms, event.end_ms), []).append(y)
+    paired_zh: list[tuple[object, list[float]]] = []
+    for event in zh_events:
+        ys = ja_by_span.get((event.start_ms, event.end_ms))
+        if ys:
+            paired_zh.append((event, ys))
+    order_ok = bool(paired_zh) and all(
+        (y := _event_y(event.fields.get("Text", ""))) is not None and y < min(ja_ys)
+        for event, ja_ys in paired_zh
     )
-    reviewed_work = load_workfile(paths, "clean")
-    reviewed_unit = next(unit for unit in reviewed_work.units if unit.id == target["unit_id"])
-    recorded_change = next(
-        (
-            change
-            for change in reviewed_unit.changes
-            if change.rule_id == candidate_id and change.kind == "human-approved-semantic"
-        ),
-        None,
-    )
-    after_decision = plan_title(paths).to_dict()
-    review_stage = read_json(paths.state).get("stages", {}).get("human_review", {})
 
+    play_y, sizes = _style_sizes(ass_path)
+    physical = {name: round(size * 1080 / play_y, 3) for name, size in sizes.items()}
     return {
-        "controlled_fixture": True,
-        "candidate_id": candidate_id,
-        "unit_id": target["unit_id"],
-        "source_text": source_text,
-        "original_text": original_text,
-        "approved_text": reviewed_unit.final_text,
-        "decision_status": decided.status,
-        "change_recorded": recorded_change is not None,
-        "before_decision": {
-            "next_action": before_decision.get("next_action"),
-            "requires_human": before_decision.get("requires_human"),
-            "can_auto_advance": before_decision.get("can_auto_advance"),
-        },
-        "after_decision": {
-            "next_action": after_decision.get("next_action"),
-            "requires_human": after_decision.get("requires_human"),
-            "can_auto_advance": after_decision.get("can_auto_advance"),
-        },
-        "human_review_stage": review_stage,
+        "play_res_y": play_y,
+        "script_font_sizes": sizes,
+        "physical_1080p_font_sizes": physical,
+        "zh_events": len(zh_events),
+        "ja_events": len(ja_events),
+        "paired_reconciliation_rows": paired_count,
+        "chinese_above_japanese": order_ok,
+        "event_count_matches_reconciliation": len(zh_events) == len(pairs)
+        and len(ja_events) == paired_count,
+        "font_size_target_ok": 52 <= physical["SF-ZH"] <= 58
+        and 38 <= physical["SF-JA"] <= 46,
     }
 
 
-def _portable_bundle_roundtrip(paths, job: dict[str, object], workspace: Path) -> dict[str, object]:
-    compiled = compile_all(paths)
-    plan_after_compile = plan_title(paths).to_dict()
-    qa = run_all_qa(paths)
-    plan_after_qa = plan_title(paths).to_dict()
-
+def _bundle_roundtrip(paths, job: dict[str, object], workspace: Path) -> dict[str, object]:
     capabilities = {
         "ffmpeg_libass": True,
         "exact_fonts": True,
         "full_video": False,
         "mkvtoolnix": False,
     }
-    first_dir = workspace / "bundle-first"
-    first_zip = workspace / "SubtitleFlow-M01-JP-ZHCN-first.zip"
     first = build_portable_release_bundle(
         paths,
-        branch="clean",
+        branch="jp",
         source_root=REPO_ROOT,
-        bundle_dir=first_dir,
+        bundle_dir=workspace / "bundle-first",
         runtime="chatgpt-web",
         runtime_capabilities=capabilities,
         job=job,
-        archive_path=first_zip,
+        archive_path=workspace / "SubtitleFlow-M01-JP-ZHCN-Bilingual-Demo-first.zip",
     )
-    second_dir = workspace / "bundle-second"
-    second_zip = workspace / "SubtitleFlow-M01-JP-ZHCN-second.zip"
     second = build_portable_release_bundle(
         paths,
-        branch="clean",
+        branch="jp",
         source_root=REPO_ROOT,
-        bundle_dir=second_dir,
+        bundle_dir=workspace / "bundle-second",
         runtime="chatgpt-web",
         runtime_capabilities=capabilities,
         job=job,
-        archive_path=second_zip,
+        archive_path=workspace / "SubtitleFlow-M01-JP-ZHCN-Bilingual-Demo-second.zip",
     )
-
-    manifest = first.manifest
+    outputs = [item for item in first.manifest.get("outputs", []) if isinstance(item, dict)]
     qa_status = {
         str(item.get("check")): str(item.get("status"))
-        for item in manifest.get("qa", [])
+        for item in first.manifest.get("qa", [])
         if isinstance(item, dict)
     }
-    outputs = [item for item in manifest.get("outputs", []) if isinstance(item, dict)]
-    ass_outputs = [item for item in outputs if item.get("kind") == "ass"]
-    render_outputs = [item for item in outputs if item.get("kind") == "render"]
-    report_outputs = [item for item in outputs if item.get("kind") == "report"]
-    portable_json = json.dumps(manifest, ensure_ascii=False)
-
     return {
-        "compiled": compiled,
-        "qa_ok": bool(qa.get("ok")),
-        "renderer_status": qa.get("renderer", {}).get("status"),
-        "renderer_canvas": qa.get("renderer", {}).get("canvas"),
-        "font_audit_ok": qa.get("fonts", {}).get("ok"),
-        "font_attachment_count": len(qa.get("fonts", {}).get("attachments", [])),
-        "plan_after_compile": plan_after_compile,
-        "plan_after_qa": plan_after_qa,
-        "manifest": {
-            "runtime": manifest.get("engine", {}).get("runtime"),
-            "archival_release_frozen": manifest.get("portable", {}).get("archival_release_frozen"),
-            "deferred": manifest.get("deferred", []),
-            "qa_status": qa_status,
-            "ass_outputs": len(ass_outputs),
-            "render_outputs": len(render_outputs),
-            "report_outputs": len(report_outputs),
-            "contains_runtime_workspace_path": str(workspace) in portable_json,
-            "contains_source_root_absolute_path": str(REPO_ROOT) in portable_json,
-        },
-        "archive": {
-            "first_sha256": first.archive_sha256,
-            "second_sha256": second.archive_sha256,
-            "reproducible": first.archive_sha256 == second.archive_sha256,
-        },
+        "first_sha256": first.archive_sha256,
+        "second_sha256": second.archive_sha256,
+        "reproducible": first.archive_sha256 == second.archive_sha256,
+        "ass_outputs": sum(item.get("kind") == "ass" for item in outputs),
+        "render_outputs": sum(item.get("kind") == "render" for item in outputs),
+        "qa_status": qa_status,
+        "deferred": first.manifest.get("deferred", []),
+        "archival_release_frozen": first.manifest.get("portable", {}).get(
+            "archival_release_frozen"
+        ),
     }
 
 
 def run_pilot() -> dict[str, object]:
     job = load_portable_job(JOB_PATH, source_root=REPO_ROOT)
-    sources = _input_paths(job)
-
-    with tempfile.TemporaryDirectory(prefix="subtitleflow-m01-pilot-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="subtitleflow-m01-bilingual-pilot-") as temp_dir:
         workspace = Path(temp_dir)
-        prepared = prepare_portable_job(
-            JOB_PATH,
-            workspace=workspace,
-            source_root=REPO_ROOT,
-        )
+        prepared = prepare_portable_job(JOB_PATH, workspace=workspace, source_root=REPO_ROOT)
         paths = title_paths(workspace, prepared.project_id, prepared.title_id)
-        normalized_s = load_normalized(paths, "S")
-        normalized_c = load_normalized(paths, "C")
-        clean_work = load_workfile(paths, "clean")
-        semantic_packet = build_semantic_packet(paths, "clean")
-        s_editable = editable_cues(normalized_s.cues)
-        c_editable = editable_cues(normalized_c.cues)
-        c_evidence = evidence_cues(normalized_c.cues)
-        protected_evidence_ids = {cue.id for cue in c_evidence if cue.protected}
+        work = load_workfile(paths, "jp")
+        packet = build_semantic_packet(paths, "jp")
+        alignment = read_json(paths.work / "alignment-JP-C.json")
+        reconciliation = read_json(paths.work / "bilingual-reconciliation.json")
+        coverage = read_json(paths.work / "bilingual-coverage.json")
 
-        alignment = read_json(paths.work / "alignment-CLEAN-C.json")
-        matched_protected_ids = protected_evidence_ids & _matched_right_ids(alignment)
-        summary = dict(alignment.get("summary", {}))
-        coverage = _alignment_metrics(alignment)
-        estimated_offset_ms = int(alignment.get("estimated_offset_ms", 0))
-        repository_evidence = prepared.repository_evidence
-        research_snapshot = repository_evidence.get("snapshot", {})
-        packet_research = semantic_packet.get("research", {})
-        packet_branch = (
-            packet_research.get("branch", {}) if isinstance(packet_research, dict) else {}
+        compiled = compile_all(paths)
+        ass_path = Path(compiled["jp"])
+        compiled_checks = _compiled_checks(ass_path, reconciliation)
+        qa = run_all_qa(paths)
+        bundle = _bundle_roundtrip(paths, job, workspace)
+
+        groups = alignment.get("groups", [])
+        atomic_target = isinstance(groups, list) and all(
+            not isinstance(group, dict)
+            or not group.get("left_ids")
+            or len(group.get("left_ids", [])) <= 1
+            for group in groups
         )
-        review_roundtrip = _controlled_human_review_roundtrip(paths, semantic_packet)
-        portable_bundle = _portable_bundle_roundtrip(paths, job, workspace)
-        title_config = read_json(paths.title_config)
-        font_dirs = title_config.get("fonts", {}).get("directories", [])
-        style_profile = str(title_config.get("style", {}).get("profile", ""))
-
-        bundle_manifest = portable_bundle.get("manifest", {})
-        qa_status = bundle_manifest.get("qa_status", {})
-        deferred = set(bundle_manifest.get("deferred", []))
+        pairs = reconciliation.get("pairs", [])
+        source_provenance = isinstance(pairs, list) and all(
+            not isinstance(pair, dict)
+            or not str(pair.get("source_text") or "").strip()
+            or bool(pair.get("source_text_cue_ids"))
+            for pair in pairs
+        )
+        qa_status = bundle["qa_status"]
         checks = {
-            "portable_runner_inferred_source_assisted": prepared.workflow_profile
-            == "source-assisted",
-            "portable_runner_uses_theatrical_series_identity": prepared.series_id
-            == "doraemon-theatrical",
-            "portable_runtime_binds_style_to_source_root": style_profile.startswith(str(REPO_ROOT)),
-            "portable_runtime_binds_fonts_to_source_root": bool(font_dirs)
-            and all(str(value).startswith(str(REPO_ROOT)) for value in font_dirs),
-            "repository_evidence_is_bound": repository_evidence.get("bound") is True,
-            "repository_evidence_uses_expected_pack": repository_evidence.get("pack_id")
-            == "doraemon-theatrical-cn-tw-canon",
-            "repository_evidence_maps_clean_branch": repository_evidence.get("branch_map", {}).get(
-                "clean"
-            )
-            == "jp-audio-zh-cn-modern",
-            "research_gate_has_no_blockers": research_snapshot.get("blocking_conflicts") == 0
-            and research_snapshot.get("blocking_unresolved") == 0,
-            "portable_runner_stops_at_semantic_edit": prepared.next_plan.get("next_action")
-            == "semantic-edit",
-            "semantic_packet_covers_all_target_units": semantic_packet.get("workfile", {}).get(
-                "unit_count"
-            )
-            == 824,
-            "semantic_packet_uses_proofread_policy": semantic_packet.get("editorial", {}).get(
-                "effective_policy"
-            )
-            == "proofread",
-            "semantic_packet_uses_enforced_research": packet_research.get("mode") == "enforce",
-            "semantic_packet_matches_research_digest": packet_research.get(
-                "effective_semantic_sha256"
-            )
-            == research_snapshot.get("effective_semantic_sha256"),
-            "semantic_packet_contains_canon_terms": bool(packet_branch.get("terms")),
-            "semantic_packet_requires_human_review": semantic_packet.get(
-                "proposal_contract", {}
-            ).get("human_review_required")
+            "portable_runner_inferred_bilingual": prepared.workflow_profile == "bilingual",
+            "semantic_packet_is_existing_jp_branch": packet.get("branch") == "jp"
+            and packet.get("workfile", {}).get("unit_count") == 824,
+            "existing_jp_roles_are_reused": work.timing_role == "A"
+            and work.language_source_role == "B"
+            and work.source_language_role == "C",
+            "jp_reconciliation_keeps_target_atomic": atomic_target
+            and alignment.get("group_limits", {}).get("max_left_group") == 1,
+            "jp_reconciliation_has_no_unresolved_rows": int(coverage.get("unresolved", -1)) == 0,
+            "jp_reconciliation_never_fabricates_source": int(coverage.get("fabricated", -1)) == 0,
+            "jp_source_text_has_c_provenance": source_provenance,
+            "compiled_contains_both_languages": compiled_checks["zh_events"] == 824
+            and int(compiled_checks["ja_events"]) > 0,
+            "compiled_keeps_chinese_above_japanese": compiled_checks["chinese_above_japanese"]
             is True,
-            "target_has_editable_dialogue": bool(s_editable),
-            "japanese_has_semantic_evidence": bool(c_evidence),
-            "protected_japanese_dialogue_survives_as_evidence": bool(protected_evidence_ids),
-            "protected_japanese_evidence_is_actually_matched": bool(matched_protected_ids),
-            "global_offset_is_plausible": abs(estimated_offset_ms) <= 5_000,
-            "target_alignment_coverage_at_least_99_percent": float(coverage["left_coverage"])
-            >= 0.99,
-            "source_evidence_coverage_at_least_80_percent": float(coverage["right_coverage"])
-            >= 0.80,
-            "no_unmatched_target_cues": int(summary.get("unmatched_left", 0)) == 0,
-            "controlled_review_uses_direct_japanese_evidence": "ユタ州"
-            in str(review_roundtrip.get("source_text", "")),
-            "controlled_review_blocks_for_human_before_decision": review_roundtrip.get(
-                "before_decision", {}
-            ).get("next_action")
-            == "human-review"
-            and review_roundtrip.get("before_decision", {}).get("requires_human") is True,
-            "controlled_review_materializes_known_m01_fix": "犹他州"
-            in str(review_roundtrip.get("approved_text", ""))
-            and "犹太洲" not in str(review_roundtrip.get("approved_text", "")),
-            "controlled_review_records_change_provenance": review_roundtrip.get("change_recorded")
+            "compiled_source_gap_does_not_create_fake_japanese": compiled_checks[
+                "event_count_matches_reconciliation"
+            ]
             is True,
-            "controlled_review_advances_to_compile": review_roundtrip.get("after_decision", {}).get(
-                "next_action"
-            )
-            == "compile"
-            and review_roundtrip.get("after_decision", {}).get("requires_human") is False,
-            "controlled_review_gate_passes_after_decision": review_roundtrip.get(
-                "human_review_stage", {}
-            ).get("status")
-            == "passed",
-            "compile_produces_clean_ass": "clean" in portable_bundle.get("compiled", {}),
-            "deterministic_qa_passes": portable_bundle.get("qa_ok") is True,
-            "exact_font_audit_passes": portable_bundle.get("font_audit_ok") is True,
-            "synthetic_libass_render_passes": portable_bundle.get("renderer_status") == "passed"
-            and portable_bundle.get("renderer_canvas") == "synthetic",
-            "planner_advances_to_semantic_qa_after_deterministic_qa": portable_bundle.get(
-                "plan_after_qa", {}
-            ).get("next_action")
-            == "semantic-qa",
-            "portable_bundle_contains_ass": bundle_manifest.get("ass_outputs") == 1,
-            "portable_bundle_contains_render_pngs": int(bundle_manifest.get("render_outputs", 0))
-            > 0,
-            "portable_bundle_marks_deterministic_checks_passed": qa_status.get("deterministic-qa")
+            "compiled_1080p_font_sizes_are_in_target_range": compiled_checks[
+                "font_size_target_ok"
+            ]
+            is True,
+            "deterministic_qa_passes": qa.get("ok") is True,
+            "synthetic_libass_render_passes": qa.get("renderer", {}).get("status") == "passed"
+            and qa.get("renderer", {}).get("canvas") == "synthetic",
+            "exact_font_audit_passes": qa.get("fonts", {}).get("ok") is True,
+            "portable_bundle_contains_ass_and_renders": bundle["ass_outputs"] == 1
+            and int(bundle["render_outputs"]) > 0,
+            "portable_bundle_marks_renderer_and_fonts_passed": qa_status.get("exact-font-audit")
             == "passed"
-            and qa_status.get("exact-font-audit") == "passed"
             and qa_status.get("registered-font-assets") == "passed"
             and qa_status.get("synthetic-libass-render") == "passed",
-            "portable_bundle_defers_archival_checks_truthfully": {
-                "semantic-qa-signoff",
-                "full-video-visual-qa",
-                "scene-occlusion",
-                "mkv-remux",
-            }.issubset(deferred)
-            and qa_status.get("full-video-visual-qa") == "deferred"
-            and qa_status.get("scene-occlusion") == "deferred"
-            and bundle_manifest.get("archival_release_frozen") is False,
-            "portable_bundle_does_not_leak_runtime_paths": bundle_manifest.get(
-                "contains_runtime_workspace_path"
-            )
-            is False
-            and bundle_manifest.get("contains_source_root_absolute_path") is False,
-            "portable_bundle_zip_is_reproducible": portable_bundle.get("archive", {}).get(
-                "reproducible"
-            )
-            is True,
+            "portable_bundle_zip_is_reproducible": bundle["reproducible"] is True,
         }
-
         return {
-            "pilot": "doraemon-m01-portable-job-through-bundle",
+            "pilot": "doraemon-m01-jp-zh-bilingual-portable-demo",
             "status": "passed" if all(checks.values()) else "failed",
             "job": str(JOB_PATH.relative_to(REPO_ROOT)),
-            "portable_runner": {
-                "project_id": prepared.project_id,
-                "title_id": prepared.title_id,
-                "series_id": prepared.series_id,
-                "workflow_profile": prepared.workflow_profile,
-                "next_action": prepared.next_plan.get("next_action"),
-                "repository_evidence": repository_evidence,
-            },
+            "portable_runner": prepared.to_dict(),
             "semantic_packet": {
-                "packet_input_sha256": semantic_packet.get("packet_input_sha256"),
-                "packet_sha256": semantic_packet.get("packet_sha256"),
-                "unit_count": semantic_packet.get("workfile", {}).get("unit_count"),
-                "priority_counts": semantic_packet.get("workfile", {}).get("priority_counts"),
-                "editorial_policy": semantic_packet.get("editorial", {}).get("effective_policy"),
-                "research_mode": packet_research.get("mode"),
-                "effective_semantic_sha256": packet_research.get("effective_semantic_sha256"),
-                "srp_branch_id": packet_branch.get("srp_branch_id"),
-                "term_count": len(packet_branch.get("terms", [])),
-                "decision_count": len(packet_branch.get("decisions", [])),
-                "entity_count": len(packet_branch.get("entities", [])),
-                "fact_count": len(packet_branch.get("facts", [])),
-            },
-            "human_review_roundtrip": review_roundtrip,
-            "portable_bundle": portable_bundle,
-            "sources": {
-                "S": {
-                    "path": str(sources["S"].relative_to(REPO_ROOT)),
-                    "sha256": normalized_s.source_sha256,
-                },
-                "C": {
-                    "path": str(sources["C"].relative_to(REPO_ROOT)),
-                    "sha256": normalized_c.source_sha256,
-                },
-            },
-            "normalized": {
-                "S_total_cues": len(normalized_s.cues),
-                "S_editable_cues": len(s_editable),
-                "C_total_cues": len(normalized_c.cues),
-                "C_protected_cues": normalized_c.protected_count,
-                "C_editable_cues": len(c_editable),
-                "C_evidence_cues": len(c_evidence),
-                "C_accessibility_sfx_cues": sum(
-                    cue.semantic_role == "accessibility-sfx" for cue in normalized_c.cues
-                ),
-                "C_protected_evidence_cues": len(protected_evidence_ids),
-                "C_matched_protected_evidence_cues": len(matched_protected_ids),
-            },
-            "source_diagnostics": {
-                "S": _cue_diagnostics(s_editable),
-                "C_all": _cue_diagnostics(normalized_c.cues),
-                "C_evidence": _cue_diagnostics(c_evidence),
+                "branch": packet.get("branch"),
+                "unit_count": packet.get("workfile", {}).get("unit_count"),
+                "packet_input_sha256": packet.get("packet_input_sha256"),
             },
             "alignment": {
-                "estimated_offset_ms": estimated_offset_ms,
-                "total_cost": alignment.get("total_cost"),
-                "summary": summary,
-                "coverage": coverage,
-                "samples": _diagnostic_samples(alignment, clean_work.units, c_evidence),
+                "estimated_offset_ms": alignment.get("estimated_offset_ms"),
+                "summary": alignment.get("summary"),
+                "group_limits": alignment.get("group_limits"),
             },
+            "reconciliation": {
+                "coverage": coverage,
+                "unmatched_source_count": len(reconciliation.get("unmatched_source_cue_ids", [])),
+            },
+            "compiled": compiled_checks,
+            "qa": {
+                "ok": qa.get("ok"),
+                "renderer_status": qa.get("renderer", {}).get("status"),
+                "renderer_canvas": qa.get("renderer", {}).get("canvas"),
+                "font_audit_ok": qa.get("fonts", {}).get("ok"),
+            },
+            "bundle": bundle,
             "checks": checks,
         }
 

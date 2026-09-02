@@ -334,7 +334,14 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
         )
 
     proxy = _make_proxy_cues(units)
-    pc = align_cues(proxy, c_cues, max_group=max_group, unmatched_penalty=unmatched_penalty)
+    pc = align_cues(
+        proxy,
+        c_cues,
+        max_group=max_group,
+        max_left_group=1,
+        max_right_group=max_group,
+        unmatched_penalty=unmatched_penalty,
+    )
     split_raw = branch_cfg.get("source_split_decisions", {})
     if split_raw and not isinstance(split_raw, dict):
         raise ValidationError("jp_branch.source_split_decisions must be an object")
@@ -373,6 +380,7 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
         metadata={
             "alignment_ab_offset_ms": ab.estimated_offset_ms,
             "alignment_japanese_offset_ms": pc.estimated_offset_ms,
+            "japanese_alignment_policy": "atomic-target-1:n",
             "minimal_editorial_intervention": True,
             "editorial": editorial_context(config, branch="jp").to_dict(),
             "reconciliation_schema": 1,
@@ -381,7 +389,13 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
     output = paths.work / "jp.json"
     write_json(output, work.to_dict())
     write_json(paths.work / "alignment-A-B.json", _alignment_report(ab, "A", "B"))
-    write_json(paths.work / "alignment-JP-C.json", _alignment_report(pc, "JP-work", "C"))
+    jp_alignment = _alignment_report(pc, "JP-work", "C")
+    jp_alignment["group_limits"] = {
+        "max_left_group": 1,
+        "max_right_group": max_group,
+        "reason": "keep target subtitle units atomic during bilingual source reconciliation",
+    }
+    write_json(paths.work / "alignment-JP-C.json", jp_alignment)
     write_json(paths.work / "bilingual-reconciliation.json", reconciliation.to_dict())
     write_json(paths.work / "bilingual-coverage.json", reconciliation.coverage())
     return output
