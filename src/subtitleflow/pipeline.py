@@ -60,7 +60,9 @@ def detect_runtime_capabilities(
     config = read_json(paths.title_config)
     configured_video = config.get("media", {}).get("video")
     if full_video is None:
-        video_available = bool(configured_video and Path(str(configured_video)).expanduser().is_file())
+        video_available = bool(
+            configured_video and Path(str(configured_video)).expanduser().is_file()
+        )
     else:
         video_available = bool(full_video)
 
@@ -299,7 +301,9 @@ def plan_title(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Plan the next safe SubtitleFlow production action")
+    parser = argparse.ArgumentParser(
+        description="Plan the next safe SubtitleFlow production action"
+    )
     parser.add_argument("project")
     parser.add_argument("title")
     parser.add_argument("--repo", type=Path)
