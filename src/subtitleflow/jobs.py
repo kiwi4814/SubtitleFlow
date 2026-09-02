@@ -35,7 +35,7 @@ class PreparedPortableJob:
     workspace: str
     title_path: str
     imported_sources: dict[str, dict[str, Any]]
-    normalized: dict[str, str]
+    normalized: dict[str, Any]
     workfiles: dict[str, str]
     next_plan: dict[str, Any]
     repository_evidence: dict[str, Any]
@@ -147,18 +147,16 @@ def prepare_portable_job(
     job = load_portable_job(job_path, source_root=source_root)
     role_inputs = _role_inputs(job, source_root=source_root)
 
-    project_id = str(job.get("project_id") or "portable")
-    title_id = str(job.get("title_id") or job.get("job_id") or "title")
-    series_id = str(job.get("series_id") or project_id)
-    display_name = str(job.get("display_name") or title_id)
-    job_id = str(job.get("job_id") or f"{project_id}-{title_id}")
+    requested_project_id = str(job.get("project_id") or "portable")
+    requested_title_id = str(job.get("title_id") or job.get("job_id") or "title")
+    requested_series_id = str(job.get("series_id") or requested_project_id)
+    display_name = str(job.get("display_name") or requested_title_id)
+    job_id = str(job.get("job_id") or f"{requested_project_id}-{requested_title_id}")
     profile = infer_workflow_profile(job)
 
-    project_path = workspace / "projects" / project_id
-    if not project_path.exists():
-        create_project(workspace, project_id, project_id)
-
-    paths = title_paths(workspace, project_id, title_id)
+    paths = title_paths(workspace, requested_project_id, requested_title_id)
+    if not paths.project.exists():
+        create_project(workspace, requested_project_id, requested_project_id)
     if paths.title.exists():
         raise ValidationError(
             "Portable job target title already exists in workspace: "
@@ -166,12 +164,14 @@ def prepare_portable_job(
         )
     create_title(
         workspace,
-        project_id,
-        title_id,
+        requested_project_id,
+        requested_title_id,
         display_name,
-        series_id=series_id,
+        series_id=requested_series_id,
     )
     _configure_title_from_job(paths, job, profile)
+    persisted_config = read_json(paths.title_config)
+    persisted_series_id = str(persisted_config.get("series_id") or paths.project_id)
 
     imported: dict[str, dict[str, Any]] = {}
     for role, source in sorted(role_inputs.items()):
@@ -191,7 +191,7 @@ def prepare_portable_job(
         job_id=job_id,
         project_id=paths.project_id,
         title_id=paths.title_id,
-        series_id=series_id,
+        series_id=persisted_series_id,
         display_name=display_name,
         workflow_profile=profile,
         workspace=str(workspace),
