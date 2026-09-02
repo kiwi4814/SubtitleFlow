@@ -1,4 +1,4 @@
-from subtitleflow.alignment import align_cues
+from subtitleflow.alignment import align_cues, estimate_offset_ms
 from subtitleflow.models import Cue
 
 
@@ -29,3 +29,28 @@ def test_alignment_estimates_global_offset() -> None:
     result = align_cues(left, right)
     assert abs(result.estimated_offset_ms - 5000) <= 1
     assert sum(g.kind == "1:1" for g in result.groups) == 7
+
+
+def test_offset_estimation_ignores_duplicate_event_density_and_leading_captions() -> None:
+    left = [
+        cue(1, 10_000, 11_500),
+        cue(2, 20_000, 21_500),
+        cue(3, 30_000, 31_500),
+        cue(4, 40_000, 41_500),
+        cue(5, 50_000, 51_500),
+    ]
+    right = [
+        cue(101, 1_000, 2_000, "sfx"),
+        cue(102, 2_500, 3_000, "sfx"),
+    ]
+    for index, item in enumerate(left, start=1):
+        start = item.start_ms + 5_000
+        end = item.end_ms + 5_000
+        right.extend(
+            [
+                cue(200 + index * 2, start, end, "upper"),
+                cue(201 + index * 2, start, end, "lower"),
+            ]
+        )
+
+    assert estimate_offset_ms(left, right) == 5_000
