@@ -73,7 +73,8 @@
         "full_name": {"type": "string", "default": "kiwi4814/SubtitleFlow"},
         "ref": {"type": ["string", "null"]},
         "commit_sha": {"type": ["string", "null"]},
-        "evidence_root": {"type": "string", "default": "evidence"}
+        "evidence_root": {"type": "string", "default": "evidence"},
+        "research_pack_path": {"type": ["string", "null"]}
       }
     },
     "capabilities": {
