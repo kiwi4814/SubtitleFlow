@@ -6,9 +6,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from .errors import GateError
 from .io import read_json
 from .review import pending_count, unimported_proposal_files
-from .state import state_summary
+from .state import state_summary, update_stage
 from .util import ffmpeg_has_libass, which
 from .workflow import active_branches
 from .workspace import TitlePaths, find_repo_root, title_paths
@@ -58,7 +59,10 @@ def detect_runtime_capabilities(
     mkvtoolnix = bool(which("mkvmerge"))
     config = read_json(paths.title_config)
     configured_video = config.get("media", {}).get("video")
-    video_available = bool(full_video) if full_video is not None else bool(configured_video)
+    if full_video is None:
+        video_available = bool(configured_video and Path(str(configured_video)).expanduser().is_file())
+    else:
+        video_available = bool(full_video)
 
     if exact_fonts is None:
         fonts_stage = read_json(paths.state).get("stages", {}).get("fonts", {})
@@ -90,6 +94,24 @@ def _deferred_checks(capabilities: RuntimeCapabilities) -> tuple[str, ...]:
     if not capabilities.mkvtoolnix:
         deferred.append("mkv-remux-verification")
     return tuple(deferred)
+
+
+def mark_semantic_scan_complete(paths: TitlePaths, *, note: str | None = None) -> None:
+    unimported = unimported_proposal_files(paths)
+    if unimported:
+        names = ", ".join(path.name for path in unimported)
+        raise GateError(
+            "Cannot mark semantic scan complete while proposal files are unimported: " + names
+        )
+    pending = pending_count(paths)
+    if pending:
+        raise GateError(
+            f"Cannot mark semantic scan complete while {pending} review candidate(s) are pending"
+        )
+    details: dict[str, Any] = {"pending": 0, "semantic_scan_completed": True}
+    if note:
+        details["note"] = note
+    update_stage(paths, "human_review", "passed", **details)
 
 
 def plan_title(
@@ -146,6 +168,21 @@ def plan_title(
             requires_human=True,
             can_auto_advance=False,
             command_hint=f"subflow review list {paths.project_id} {paths.title_id}",
+            branches=branches,
+            deferred=deferred,
+            capabilities=capabilities,
+        )
+
+    if not _passed(stages, "human_review"):
+        return ProductionPlan(
+            project_id=paths.project_id,
+            title_id=paths.title_id,
+            current=summary,
+            next_action="semantic-edit",
+            reason="semantic scan has not been completed for the current prepared workfiles",
+            requires_human=False,
+            can_auto_advance=True,
+            command_hint=None,
             branches=branches,
             deferred=deferred,
             capabilities=capabilities,
