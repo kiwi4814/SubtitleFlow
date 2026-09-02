@@ -9,6 +9,7 @@ SemanticRole = Literal[
     "song-op",
     "song-ed",
     "song-insert",
+    "accessibility-sfx",
     "screen-text",
     "title",
     "episode-title",
@@ -24,6 +25,17 @@ PositionIntent = Literal["preserve", "top", "center", "bottom", "manual"]
 _URL_RE = re.compile(r"(?:https?://|www\.|(?:discord|telegram|twitter|weibo)\s*[:\uFF1A])", re.I)
 _CREDIT_RE = re.compile(
     r"(?:字幕(?:组|制作|翻译|校对)|translator|translation|subbed\s+by|timing\s+by|fansub|译制|听写)",
+    re.I,
+)
+_MUSIC_ONLY_RE = re.compile(r"^[\s♪♫♬♩♭♯～〜ー…・]+$")
+_SFX_PAREN_RE = re.compile(
+    r"^[（(]\s*[^）)]*(?:"
+    r"鳴き声|雷鳴|くしゃみ|ｸｼｬﾐ|サイレン|ｻｲﾚﾝ|拍手|足音|物音|ノック|ﾉｯｸ|"
+    r"爆発(?:音)?|銃声|風(?:の)?音|雨(?:の)?音|波(?:の)?音|咳|せき|ため息|"
+    r"呼吸(?:音)?|エンジン(?:音)?|ｴﾝｼﾞﾝ(?:音)?|ベル|ﾍﾞﾙ|チャイム|ﾁｬｲﾑ|"
+    r"電話(?:音)?|アラーム|ｱﾗｰﾑ|ブザー|ﾌﾞｻﾞｰ|歓声|ざわめき|いびき|"
+    r"うなり声|叫び声|悲鳴|笑い声|泣き声"
+    r")[^）)]*\s*[）)]$",
     re.I,
 )
 
@@ -57,6 +69,16 @@ def classify_event_role(
     if protected_reason and "drawing" in protected_reason.casefold():
         return RoleClassification("protected-fx", confidence=0.98, basis="ass-drawing")
 
+    # Accessibility/SDH sources often interleave non-verbal descriptions with spoken dialogue.
+    # Keep these events in the normalized source so an ASS template can preserve them, but mark
+    # them separately so they do not distort source-language semantic alignment.
+    if plain and (_MUSIC_ONLY_RE.fullmatch(plain) or _SFX_PAREN_RE.fullmatch(plain)):
+        return RoleClassification(
+            "accessibility-sfx",
+            confidence=0.97,
+            basis="nonverbal-accessibility-caption",
+        )
+
     if value in {"op", "opening", "op lyrics", "opening lyrics"} or value.startswith("op "):
         return RoleClassification("song-op", confidence=0.9, basis="style-evidence")
     if value in {"ed", "ending", "ed lyrics", "ending lyrics"} or value.startswith("ed "):
@@ -85,4 +107,9 @@ def classify_event_role(
 
 
 def is_release_dialogue_role(role: str) -> bool:
+    return role in {"dialogue", "song-op", "song-ed", "song-insert"}
+
+
+def is_semantic_evidence_role(role: str) -> bool:
+    """Return whether a normalized event carries language meaning useful for alignment/editing."""
     return role in {"dialogue", "song-op", "song-ed", "song-insert"}
