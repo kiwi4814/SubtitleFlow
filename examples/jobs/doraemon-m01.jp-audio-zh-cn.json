@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "job_id": "doraemon-m01-jp-audio-zh-cn",
+  "project_id": "doraemon",
+  "title_id": "m01",
+  "series_id": "doraemon",
+  "display_name": "哆啦A梦：大雄的恐龙 (1980)",
+  "intent": "jp-audio-zh-cn",
+  "inputs": [
+    {
+      "path": "evidence/doraemon/M01_1980_大雄的恐龙/02_ZH_JP_AUDIO/M01.1980.zh-CN.jp-audio.WOWOWCN.漫游字幕组.ass",
+      "format": "ass",
+      "language": "zh-CN",
+      "audio_relation": "jp-audio",
+      "evidence_kind": "target-subtitle",
+      "role_hint": "S",
+      "notes": "WOWOW-aligned Simplified-Chinese editing/timing seed"
+    },
+    {
+      "path": "evidence/doraemon/M01_1980_大雄的恐龙/01_JA_SOURCE/M01.1980.ja-JP.source.WOWOW.Conan06.ass",
+      "format": "ass",
+      "language": "ja-JP",
+      "audio_relation": "source-language",
+      "evidence_kind": "source-language",
+      "role_hint": "C",
+      "notes": "WOWOW Japanese semantic evidence; complex ASS presentation remains immutable"
+    }
+  ],
+  "requirements": {
+    "style_profile": "kiwi-collector-v1",
+    "editing_policy": "proofread",
+    "use_repository_evidence": true,
+    "require_exact_fonts": true,
+    "render_samples": true,
+    "release_zip": true,
+    "special_instructions": "Production pilot for the source-assisted Japanese-audio Simplified-Chinese branch."
+  },
+  "repository": {
+    "full_name": "kiwi4814/SubtitleFlow",
+    "ref": null,
+    "commit_sha": null,
+    "evidence_root": "evidence"
+  }
+}
