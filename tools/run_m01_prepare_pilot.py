@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a reproducible M01 portable-job prepare pilot from repository evidence."""
+"""Run a reproducible M01 portable-job pilot from repository evidence."""
 
 from __future__ import annotations
 
@@ -10,10 +10,13 @@ from pathlib import Path
 
 from subtitleflow.alignment import editable_cues
 from subtitleflow.cue_views import evidence_cues
-from subtitleflow.io import read_json
+from subtitleflow.io import read_json, write_json
 from subtitleflow.jobs import load_portable_job, prepare_portable_job
 from subtitleflow.normalize import load_normalized
+from subtitleflow.pipeline import plan_title
+from subtitleflow.review import decide_candidate
 from subtitleflow.semantic_packet import build_semantic_packet
+from subtitleflow.semantic_proposals import import_semantic_proposal_envelope
 from subtitleflow.workfile import load_workfile
 from subtitleflow.workspace import title_paths
 
@@ -170,6 +173,114 @@ def _diagnostic_samples(alignment: dict[str, object], left_units, right_cues) ->
     }
 
 
+def _controlled_human_review_roundtrip(paths, semantic_packet: dict[str, object]) -> dict[str, object]:
+    """Exercise one known M01 correction in the temporary CI workspace only."""
+    units = semantic_packet.get("units", [])
+    if not isinstance(units, list):
+        raise RuntimeError("semantic packet units must be a list")
+    target = next(
+        (
+            item
+            for item in units
+            if isinstance(item, dict)
+            and "犹太洲" in str(item.get("current_text", ""))
+            and "ユタ州" in str(item.get("source_text", ""))
+        ),
+        None,
+    )
+    if target is None:
+        raise RuntimeError("M01 controlled review fixture could not find the 犹太洲 / ユタ州 unit")
+
+    original_text = str(target["current_text"])
+    corrected_text = original_text.replace("犹太洲", "犹他州")
+    source_text = str(target.get("source_text", ""))
+    candidate_id = "m01-pilot-utah-state-fix"
+    proposal_path = paths.review_proposals / "m01-ci-semantic-proposals.json"
+    proposal_path.parent.mkdir(parents=True, exist_ok=True)
+    write_json(
+        proposal_path,
+        {
+            "schema_version": 1,
+            "kind": "subtitleflow-semantic-proposals",
+            "project_id": semantic_packet["project_id"],
+            "title_id": semantic_packet["title_id"],
+            "branch": semantic_packet["branch"],
+            "packet_input_sha256": semantic_packet["packet_input_sha256"],
+            "producer": "m01-ci-controlled-fixture",
+            "notes": "Regression fixture only; this is not production auto-approval.",
+            "candidates": [
+                {
+                    "candidate_id": candidate_id,
+                    "branch": semantic_packet["branch"],
+                    "unit_id": target["unit_id"],
+                    "original_text": original_text,
+                    "proposed_text": corrected_text,
+                    "change_type": "language-quality",
+                    "reason": (
+                        "Japanese source evidence explicitly says ユタ州; the Chinese seed "
+                        "uses 犹太洲, so the place name should be corrected to 犹他州."
+                    ),
+                    "confidence": 1.0,
+                    "severity": "medium",
+                    "evidence": {"source_text": source_text},
+                    "primary_evidence": {
+                        "role": "C",
+                        "text": source_text,
+                        "cue_ids": list(target.get("source_text_cue_ids", [])),
+                    },
+                    "authority_domain": "source-language",
+                }
+            ],
+        },
+    )
+
+    imported = import_semantic_proposal_envelope(paths, proposal_path)
+    before_decision = plan_title(paths).to_dict()
+    if len(imported) != 1 or imported[0].candidate_id != candidate_id:
+        raise RuntimeError("M01 controlled review fixture did not import exactly one candidate")
+
+    decided = decide_candidate(
+        paths,
+        candidate_id,
+        "approve",
+        note="CI controlled fixture approval; validates the Human Review materialization path.",
+    )
+    reviewed_work = load_workfile(paths, "clean")
+    reviewed_unit = next(unit for unit in reviewed_work.units if unit.id == target["unit_id"])
+    recorded_change = next(
+        (
+            change
+            for change in reviewed_unit.changes
+            if change.rule_id == candidate_id and change.kind == "human-approved-semantic"
+        ),
+        None,
+    )
+    after_decision = plan_title(paths).to_dict()
+    review_stage = read_json(paths.state).get("stages", {}).get("human_review", {})
+
+    return {
+        "controlled_fixture": True,
+        "candidate_id": candidate_id,
+        "unit_id": target["unit_id"],
+        "source_text": source_text,
+        "original_text": original_text,
+        "approved_text": reviewed_unit.final_text,
+        "decision_status": decided.status,
+        "change_recorded": recorded_change is not None,
+        "before_decision": {
+            "next_action": before_decision.get("next_action"),
+            "requires_human": before_decision.get("requires_human"),
+            "can_auto_advance": before_decision.get("can_auto_advance"),
+        },
+        "after_decision": {
+            "next_action": after_decision.get("next_action"),
+            "requires_human": after_decision.get("requires_human"),
+            "can_auto_advance": after_decision.get("can_auto_advance"),
+        },
+        "human_review_stage": review_stage,
+    }
+
+
 def run_pilot() -> dict[str, object]:
     job = load_portable_job(JOB_PATH, source_root=REPO_ROOT)
     sources = _input_paths(job)
@@ -202,6 +313,7 @@ def run_pilot() -> dict[str, object]:
         packet_branch = (
             packet_research.get("branch", {}) if isinstance(packet_research, dict) else {}
         )
+        review_roundtrip = _controlled_human_review_roundtrip(paths, semantic_packet)
 
         checks = {
             "portable_runner_inferred_source_assisted": prepared.workflow_profile
@@ -247,10 +359,33 @@ def run_pilot() -> dict[str, object]:
             "source_evidence_coverage_at_least_80_percent": float(coverage["right_coverage"])
             >= 0.80,
             "no_unmatched_target_cues": int(summary.get("unmatched_left", 0)) == 0,
+            "controlled_review_uses_direct_japanese_evidence": "ユタ州"
+            in str(review_roundtrip.get("source_text", "")),
+            "controlled_review_blocks_for_human_before_decision": review_roundtrip.get(
+                "before_decision", {}
+            ).get("next_action")
+            == "human-review"
+            and review_roundtrip.get("before_decision", {}).get("requires_human") is True,
+            "controlled_review_materializes_known_m01_fix": "犹他州"
+            in str(review_roundtrip.get("approved_text", ""))
+            and "犹太洲" not in str(review_roundtrip.get("approved_text", "")),
+            "controlled_review_records_change_provenance": review_roundtrip.get(
+                "change_recorded"
+            )
+            is True,
+            "controlled_review_advances_to_compile": review_roundtrip.get(
+                "after_decision", {}
+            ).get("next_action")
+            == "compile"
+            and review_roundtrip.get("after_decision", {}).get("requires_human") is False,
+            "controlled_review_gate_passes_after_decision": review_roundtrip.get(
+                "human_review_stage", {}
+            ).get("status")
+            == "passed",
         }
 
         return {
-            "pilot": "doraemon-m01-portable-job-prepare",
+            "pilot": "doraemon-m01-portable-job-semantic-review",
             "status": "passed" if all(checks.values()) else "failed",
             "job": str(JOB_PATH.relative_to(REPO_ROOT)),
             "portable_runner": {
@@ -275,6 +410,7 @@ def run_pilot() -> dict[str, object]:
                 "entity_count": len(packet_branch.get("entities", [])),
                 "fact_count": len(packet_branch.get("facts", [])),
             },
+            "human_review_roundtrip": review_roundtrip,
             "sources": {
                 "S": {
                     "path": str(sources["S"].relative_to(REPO_ROOT)),
