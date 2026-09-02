@@ -16,8 +16,8 @@ from .errors import GateError, ValidationError
 from .fonts import verify_registered_fonts
 from .io import read_json, write_json
 from .util import sha256_file
-from .workflow import branch_release_filename
 from .workfile import load_workfile
+from .workflow import branch_release_filename
 from .workspace import TitlePaths, title_paths
 
 
