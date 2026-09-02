@@ -10,11 +10,14 @@ from pathlib import Path
 
 from subtitleflow.compile import compile_all
 from subtitleflow.formats.ass import parse_ass
-from subtitleflow.io import read_json
+from subtitleflow.io import read_json, write_json
 from subtitleflow.jobs import load_portable_job, prepare_portable_job
+from subtitleflow.pipeline import plan_title
 from subtitleflow.portable_release import build_portable_release_bundle
 from subtitleflow.qa import run_all_qa
+from subtitleflow.review import decide_candidate
 from subtitleflow.semantic_packet import build_semantic_packet
+from subtitleflow.semantic_proposals import import_semantic_proposal_envelope
 from subtitleflow.workfile import load_workfile
 from subtitleflow.workspace import title_paths
 
@@ -97,6 +100,113 @@ def _compiled_checks(ass_path: Path, reconciliation: dict[str, object]) -> dict[
     }
 
 
+def _controlled_human_review_roundtrip(
+    paths, semantic_packet: dict[str, object]
+) -> dict[str, object]:
+    """Exercise one known M01 correction in the temporary CI workspace only."""
+    units = semantic_packet.get("units", [])
+    if not isinstance(units, list):
+        raise RuntimeError("semantic packet units must be a list")
+    target = next(
+        (
+            item
+            for item in units
+            if isinstance(item, dict)
+            and "犹太洲" in str(item.get("current_text", ""))
+            and "ユタ州" in str(item.get("source_text", ""))
+        ),
+        None,
+    )
+    if target is None:
+        raise RuntimeError("M01 controlled review fixture could not find the 犹太洲 / ユタ州 unit")
+
+    original_text = str(target["current_text"])
+    corrected_text = original_text.replace("犹太洲", "犹他州")
+    source_text = str(target.get("source_text", ""))
+    candidate_id = "m01-pilot-utah-state-fix"
+    proposal_path = paths.review_proposals / "m01-ci-semantic-proposals.json"
+    proposal_path.parent.mkdir(parents=True, exist_ok=True)
+    write_json(
+        proposal_path,
+        {
+            "schema_version": 1,
+            "kind": "subtitleflow-semantic-proposals",
+            "project_id": semantic_packet["project_id"],
+            "title_id": semantic_packet["title_id"],
+            "branch": semantic_packet["branch"],
+            "packet_input_sha256": semantic_packet["packet_input_sha256"],
+            "producer": "m01-ci-controlled-fixture",
+            "notes": "Regression fixture only; this is not the full production semantic pass.",
+            "candidates": [
+                {
+                    "candidate_id": candidate_id,
+                    "branch": semantic_packet["branch"],
+                    "unit_id": target["unit_id"],
+                    "original_text": original_text,
+                    "proposed_text": corrected_text,
+                    "change_type": "language-quality",
+                    "reason": (
+                        "Japanese source evidence explicitly says ユタ州; the Chinese seed "
+                        "uses 犹太洲, so the place name should be corrected to 犹他州."
+                    ),
+                    "confidence": 1.0,
+                    "severity": "medium",
+                    "evidence": {"source_text": source_text},
+                    "primary_evidence": {
+                        "role": "C",
+                        "text": source_text,
+                        "cue_ids": list(target.get("source_text_cue_ids", [])),
+                    },
+                    "authority_domain": "source-language",
+                }
+            ],
+        },
+    )
+
+    imported = import_semantic_proposal_envelope(paths, proposal_path)
+    before_decision = plan_title(paths).to_dict()
+    if len(imported) != 1 or imported[0].candidate_id != candidate_id:
+        raise RuntimeError("M01 controlled review fixture did not import exactly one candidate")
+
+    decided = decide_candidate(
+        paths,
+        candidate_id,
+        "approve",
+        note="CI controlled fixture approval; validates Human Review on the JP bilingual branch.",
+    )
+    reviewed_work = load_workfile(paths, "jp")
+    reviewed_unit = next(unit for unit in reviewed_work.units if unit.id == target["unit_id"])
+    recorded_change = next(
+        (
+            change
+            for change in reviewed_unit.changes
+            if change.rule_id == candidate_id and change.kind == "human-approved-semantic"
+        ),
+        None,
+    )
+    after_decision = plan_title(paths).to_dict()
+    review_stage = read_json(paths.state).get("stages", {}).get("human_review", {})
+    return {
+        "controlled_fixture": True,
+        "candidate_id": candidate_id,
+        "unit_id": target["unit_id"],
+        "source_text": source_text,
+        "original_text": original_text,
+        "approved_text": reviewed_unit.final_text,
+        "decision_status": decided.status,
+        "change_recorded": recorded_change is not None,
+        "before_decision": {
+            "next_action": before_decision.get("next_action"),
+            "requires_human": before_decision.get("requires_human"),
+        },
+        "after_decision": {
+            "next_action": after_decision.get("next_action"),
+            "requires_human": after_decision.get("requires_human"),
+        },
+        "human_review_stage": review_stage,
+    }
+
+
 def _bundle_roundtrip(paths, job: dict[str, object], workspace: Path) -> dict[str, object]:
     capabilities = {
         "ffmpeg_libass": True,
@@ -152,6 +262,7 @@ def run_pilot() -> dict[str, object]:
         paths = title_paths(workspace, prepared.project_id, prepared.title_id)
         work = load_workfile(paths, "jp")
         packet = build_semantic_packet(paths, "jp")
+        review_roundtrip = _controlled_human_review_roundtrip(paths, packet)
         alignment = read_json(paths.work / "alignment-JP-C.json")
         reconciliation = read_json(paths.work / "bilingual-reconciliation.json")
         coverage = read_json(paths.work / "bilingual-coverage.json")
@@ -184,6 +295,13 @@ def run_pilot() -> dict[str, object]:
             "existing_jp_roles_are_reused": work.timing_role == "A"
             and work.language_source_role == "B"
             and work.source_language_role == "C",
+            "controlled_review_uses_direct_japanese_evidence": "ユタ州"
+            in str(review_roundtrip.get("source_text", "")),
+            "controlled_review_materializes_known_m01_fix": "犹他州"
+            in str(review_roundtrip.get("approved_text", ""))
+            and "犹太洲" not in str(review_roundtrip.get("approved_text", "")),
+            "controlled_review_records_change_provenance": review_roundtrip.get("change_recorded")
+            is True,
             "jp_reconciliation_keeps_target_atomic": atomic_target
             and alignment.get("group_limits", {}).get("max_left_group") == 1,
             "jp_reconciliation_has_no_unresolved_rows": int(coverage.get("unresolved", -1)) == 0,
@@ -221,6 +339,7 @@ def run_pilot() -> dict[str, object]:
                 "unit_count": packet.get("workfile", {}).get("unit_count"),
                 "packet_input_sha256": packet.get("packet_input_sha256"),
             },
+            "human_review_roundtrip": review_roundtrip,
             "alignment": {
                 "estimated_offset_ms": alignment.get("estimated_offset_ms"),
                 "summary": alignment.get("summary"),
