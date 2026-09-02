@@ -32,8 +32,17 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg fontconfig fonts-dejavu-core
       - name: Tests
         run: uv run pytest -q
-      - name: M01 real-evidence prepare pilot
-        run: uv run python tools/run_m01_prepare_pilot.py
+      - name: M01 real-evidence portable-bundle pilot
+        env:
+          SUBTITLEFLOW_M01_ARTIFACT_DIR: ${{ runner.temp }}/m01-portable-artifact
+        run: uv run python tools/run_m01_artifact_pilot.py
+      - name: Upload M01 portable bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: m01-portable-bundle
+          path: ${{ runner.temp }}/m01-portable-artifact
+          if-no-files-found: error
+          retention-days: 14
       - name: Build
         run: uv build
       - name: CLI smoke
