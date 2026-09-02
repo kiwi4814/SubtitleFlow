@@ -26,7 +26,7 @@ PROFILE_REQUIREMENTS: dict[str, dict[str, set[str]]] = {
 
 def available_roles(paths: TitlePaths) -> set[str]:
     manifest = read_json(paths.manifest)
-    return {str(role) for role in manifest.get("sources", {}).keys()}
+    return {str(role) for role in manifest.get("sources", {})}
 
 
 def active_branches(paths: TitlePaths) -> list[str]:

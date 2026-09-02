@@ -39,7 +39,7 @@ class Cue:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Cue":
+    def from_dict(cls, data: dict[str, Any]) -> Cue:
         cue = cls(**data)
         cue.validate()
         return cue
@@ -63,7 +63,7 @@ class NormalizedSubtitle:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "NormalizedSubtitle":
+    def from_dict(cls, data: dict[str, Any]) -> NormalizedSubtitle:
         cues = [Cue.from_dict(item) for item in data.get("cues", [])]
         return cls(
             schema_version=int(data["schema_version"]),
@@ -93,7 +93,7 @@ class AlignmentGroup:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "AlignmentGroup":
+    def from_dict(cls, data: dict[str, Any]) -> AlignmentGroup:
         return cls(**data)
 
 
@@ -148,7 +148,7 @@ class BranchUnit:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "BranchUnit":
+    def from_dict(cls, data: dict[str, Any]) -> BranchUnit:
         changes = [ChangeRecord(**item) for item in data.get("changes", [])]
         unit = cls(
             id=data["id"],
@@ -190,7 +190,7 @@ class BranchWorkfile:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "BranchWorkfile":
+    def from_dict(cls, data: dict[str, Any]) -> BranchWorkfile:
         return cls(
             schema_version=int(data["schema_version"]),
             project_id=data["project_id"],
@@ -252,7 +252,7 @@ class ReviewCandidate:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ReviewCandidate":
+    def from_dict(cls, data: dict[str, Any]) -> ReviewCandidate:
         candidate = cls(**data)
         candidate.validate()
         return candidate

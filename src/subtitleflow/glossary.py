@@ -31,7 +31,7 @@ class TermRule:
     pack_refs: list[dict[str, str]] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TermRule":
+    def from_dict(cls, data: dict[str, Any]) -> TermRule:
         term_id = str(data.get("id", "")).strip()
         canonical = str(data.get("canonical", "")).strip()
         if not term_id or not canonical:

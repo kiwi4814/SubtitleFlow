@@ -105,7 +105,7 @@ class TranslationQualityAssessment:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TranslationQualityAssessment":
+    def from_dict(cls, data: dict[str, Any]) -> TranslationQualityAssessment:
         item = cls(
             semantic_accuracy=float(data.get("semantic_accuracy", 0.5)),
             terminology_consistency=float(data.get("terminology_consistency", 0.5)),

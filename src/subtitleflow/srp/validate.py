@@ -137,7 +137,9 @@ def validate_pack_dir(pack_dir: Path) -> ValidatedPack:
         by_file[data_file] = parsed
         record_validator = validator(schema_file, registry)
         for line_no, record in enumerate(parsed, 1):
-            for err in sorted(record_validator.iter_errors(record), key=lambda item: list(item.path)):
+            for err in sorted(
+                record_validator.iter_errors(record), key=lambda item: list(item.path)
+            ):
                 errors.append(f"{data_file}:{line_no}: schema: {err.message}")
             record_id = record.get("id")
             if isinstance(record_id, str):
@@ -176,9 +178,7 @@ def validate_pack_dir(pack_dir: Path) -> ValidatedPack:
         if isinstance(record.get("id"), str)
     }
     source_ids = {
-        record.get("id")
-        for record in by_file["sources.jsonl"]
-        if isinstance(record.get("id"), str)
+        record.get("id") for record in by_file["sources.jsonl"] if isinstance(record.get("id"), str)
     }
     evidence_ids = {
         record.get("id")

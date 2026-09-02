@@ -9,7 +9,7 @@ from typing import Any
 from .fonts import require_font_attachments
 from .io import read_json, write_json
 from .style import ass_style_values, load_style_profile
-from .util import run_checked, sha256_file, which
+from .util import ffmpeg_has_libass, run_checked, sha256_file, which
 from .workflow import active_branches, branch_release_filename
 from .workspace import TitlePaths
 
@@ -56,8 +56,12 @@ def run_renderer_qa(paths: TitlePaths, *, max_frames: int = 12) -> dict[str, Any
     This proves font resolution, wrapping and subtitle block geometry. It deliberately does not
     claim face/object/scene-occlusion review; that remains the real-video visual gate.
     """
-    if not which("ffmpeg"):
-        report = {"schema_version": 1, "status": "not-run", "reason": "ffmpeg unavailable"}
+    if not which("ffmpeg") or not ffmpeg_has_libass():
+        report = {
+            "schema_version": 1,
+            "status": "not-run",
+            "reason": "ffmpeg with libass unavailable",
+        }
         write_json(paths.qa / "render-summary.json", report)
         return report
     attachments = require_font_attachments(paths)
@@ -101,7 +105,7 @@ def run_renderer_qa(paths: TitlePaths, *, max_frames: int = 12) -> dict[str, Any
                     for key in ("names", "families", "full_names", "postscript_names"):
                         for value in metadata.get(key, []):
                             staged_names.add(str(value).casefold())
-            filter_value = "ass=subs.ass" + (":fontsdir=fonts" if attachments else "")
+            filter_value = "ass=filename=subs.ass" + (":fontsdir=fonts" if attachments else "")
             for index, timestamp in enumerate(times, start=1):
                 output = output_dir / f"renderer-{index:02d}-{timestamp}ms.png"
                 shifted = timestamp / 1000.0
@@ -138,7 +142,11 @@ def run_renderer_qa(paths: TitlePaths, *, max_frames: int = 12) -> dict[str, Any
                         }
                     )
         for family in sorted(requested_families):
-            matches = [item for item in branch_fontselect if family.casefold() in item["request"].casefold()]
+            matches = [
+                item
+                for item in branch_fontselect
+                if family.casefold() in item["request"].casefold()
+            ]
             if not matches:
                 errors.append({"kind": "font-resolution-unobserved", "family": family})
                 continue

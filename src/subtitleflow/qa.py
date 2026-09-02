@@ -17,8 +17,8 @@ from .srp.resolver import effective_semantic_digest, ensure_resolved
 from .state import invalidate_after_qa, update_stage
 from .style import ass_style_values, layout_settings, load_style_profile
 from .util import sha256_file
-from .workflow import active_branches, branch_release_filename
 from .workfile import load_workfile
+from .workflow import active_branches, branch_release_filename
 from .workspace import TitlePaths, verify_sources
 
 
@@ -50,7 +50,11 @@ def qa_input_snapshot(paths: TitlePaths) -> dict[str, str]:
             try:
                 key = str(path.relative_to(paths.title))
             except ValueError:
-                key = str(path.relative_to(paths.repo)) if path.is_relative_to(paths.repo) else str(path)
+                key = (
+                    str(path.relative_to(paths.repo))
+                    if path.is_relative_to(paths.repo)
+                    else str(path)
+                )
             snapshot[key] = sha256_file(path)
     try:
         semantic_digest = effective_semantic_digest(paths)
@@ -136,11 +140,25 @@ def structural_qa(paths: TitlePaths) -> dict[str, Any]:
                 if unit.source_operation == "source-gap":
                     warnings.append({"branch": branch, "unit": unit.id, "kind": "SOURCE_GAP"})
                 elif unit.source_operation == "unresolved":
-                    errors.append({"branch": branch, "unit": unit.id, "kind": "unresolved-bilingual-reconciliation"})
+                    errors.append(
+                        {
+                            "branch": branch,
+                            "unit": unit.id,
+                            "kind": "unresolved-bilingual-reconciliation",
+                        }
+                    )
                 elif not (unit.source_text or "").strip():
-                    errors.append({"branch": branch, "unit": unit.id, "kind": "missing-japanese-source"})
-            if branch == "clean" and work.metadata.get("source_assisted") and not (unit.source_text or "").strip():
-                warnings.append({"branch": branch, "unit": unit.id, "kind": "missing-source-evidence"})
+                    errors.append(
+                        {"branch": branch, "unit": unit.id, "kind": "missing-japanese-source"}
+                    )
+            if (
+                branch == "clean"
+                and work.metadata.get("source_assisted")
+                and not (unit.source_text or "").strip()
+            ):
+                warnings.append(
+                    {"branch": branch, "unit": unit.id, "kind": "missing-source-evidence"}
+                )
             if previous_end > unit.start_ms:
                 warnings.append(
                     {
@@ -152,13 +170,17 @@ def structural_qa(paths: TitlePaths) -> dict[str, Any]:
                 )
             previous_end = max(previous_end, unit.end_ms)
             if any("low-" in flag and "alignment-confidence" in flag for flag in unit.flags):
-                warnings.append({"branch": branch, "unit": unit.id, "kind": "low-alignment-confidence"})
+                warnings.append(
+                    {"branch": branch, "unit": unit.id, "kind": "low-alignment-confidence"}
+                )
 
     coverage_path = paths.work / "bilingual-coverage.json"
     if coverage_path.is_file():
         coverage = read_json(coverage_path)
         if int(coverage.get("fabricated", 0)) != 0:
-            errors.append({"kind": "source-fabrication", "count": int(coverage.get("fabricated", 0))})
+            errors.append(
+                {"kind": "source-fabrication", "count": int(coverage.get("fabricated", 0))}
+            )
     warnings.extend(_duplicate_sign_candidates(paths))
     errors.extend(approved_review_errors(paths))
     pending = pending_count(paths)
@@ -193,9 +215,7 @@ def terminology_qa(paths: TitlePaths) -> dict[str, Any]:
                 is_srp = hit.get("origin") == "srp"
                 kind = hit.get("kind")
                 enforcement = hit.get("enforcement")
-                if is_srp and mode == "advisory":
-                    warnings.append(item)
-                elif kind == "deprecated":
+                if (is_srp and mode == "advisory") or kind == "deprecated":
                     warnings.append(item)
                 elif is_srp and mode == "enforce":
                     if kind == "forbidden" or enforcement == "locked":
@@ -252,19 +272,42 @@ def layout_qa(paths: TitlePaths) -> dict[str, Any]:
             severity: str | None = None
             reasons: list[str] = []
             if ratio > overflow_ratio:
-                errors.append({"branch": branch, "unit": unit.id, "kind": "estimated-overflow", "width_ratio": round(ratio, 3)})
+                errors.append(
+                    {
+                        "branch": branch,
+                        "unit": unit.id,
+                        "kind": "estimated-overflow",
+                        "width_ratio": round(ratio, 3),
+                    }
+                )
                 severity = "error"
                 reasons.append("overflow")
             elif ratio > very_wide_ratio:
-                warnings.append({"branch": branch, "unit": unit.id, "kind": "very-wide", "width_ratio": round(ratio, 3)})
+                warnings.append(
+                    {
+                        "branch": branch,
+                        "unit": unit.id,
+                        "kind": "very-wide",
+                        "width_ratio": round(ratio, 3),
+                    }
+                )
                 severity = "warning"
                 reasons.append("very-wide")
             elif ratio > wide_ratio:
-                warnings.append({"branch": branch, "unit": unit.id, "kind": "wide", "width_ratio": round(ratio, 3)})
+                warnings.append(
+                    {
+                        "branch": branch,
+                        "unit": unit.id,
+                        "kind": "wide",
+                        "width_ratio": round(ratio, 3),
+                    }
+                )
                 severity = "warning"
                 reasons.append("wide")
             if visual_rows >= max_rows_warning:
-                warnings.append({"branch": branch, "unit": unit.id, "kind": "many-rows", "rows": visual_rows})
+                warnings.append(
+                    {"branch": branch, "unit": unit.id, "kind": "many-rows", "rows": visual_rows}
+                )
                 severity = severity or "warning"
                 reasons.append("excessive-row-count")
             geometry = block_geometry(
@@ -281,14 +324,33 @@ def layout_qa(paths: TitlePaths) -> dict[str, Any]:
             if branch == "jp" and geometry.source_y is not None:
                 source_top = geometry.source_y - geometry.source_height
                 if geometry.target_y >= source_top:
-                    errors.append({"branch": branch, "unit": unit.id, "kind": "bilingual-order-risk", "geometry": geometry.to_dict()})
+                    errors.append(
+                        {
+                            "branch": branch,
+                            "unit": unit.id,
+                            "kind": "bilingual-order-risk",
+                            "geometry": geometry.to_dict(),
+                        }
+                    )
                     severity = "error"
                     reasons.append("bilingual-order-risk")
                 if geometry.target_y - geometry.target_height < 0:
-                    warnings.append({"branch": branch, "unit": unit.id, "kind": "collision-risk", "geometry": geometry.to_dict()})
+                    warnings.append(
+                        {
+                            "branch": branch,
+                            "unit": unit.id,
+                            "kind": "collision-risk",
+                            "geometry": geometry.to_dict(),
+                        }
+                    )
                     severity = severity or "warning"
                     reasons.append("collision-risk")
-            if severity or unit.flags or source_rows and len(source_rows) > 1 or unit.semantic_role.startswith("song-"):
+            if (
+                severity
+                or unit.flags
+                or (source_rows and len(source_rows) > 1)
+                or unit.semantic_role.startswith("song-")
+            ):
                 if len(source_rows) > 1:
                     reasons.append("source-multiline")
                 if unit.semantic_role.startswith("song-"):
@@ -329,7 +391,11 @@ def layout_qa(paths: TitlePaths) -> dict[str, Any]:
 def compiled_ass_qa(paths: TitlePaths) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
-    coverage = read_json(paths.work / "bilingual-coverage.json") if (paths.work / "bilingual-coverage.json").is_file() else {}
+    coverage = (
+        read_json(paths.work / "bilingual-coverage.json")
+        if (paths.work / "bilingual-coverage.json").is_file()
+        else {}
+    )
     for ass in sorted(paths.release.glob("*.ass")):
         if ass.name.endswith(".preview.ass"):
             continue
@@ -341,14 +407,30 @@ def compiled_ass_qa(paths: TitlePaths) -> dict[str, Any]:
                 "protected_events": sum(event.protected for event in doc.events),
             }
             if ass.name == branch_release_filename(paths.title_id, "jp") and coverage:
-                source_events = sum(event.fields.get("Style", "") == "SF-JA" for event in doc.events)
+                source_events = sum(
+                    event.fields.get("Style", "") == "SF-JA" for event in doc.events
+                )
                 expected = int(coverage.get("strict_paired", 0))
                 item["generated_source_events"] = source_events
                 item["expected_paired_source_events"] = expected
                 if source_events > expected:
-                    errors.append({"file": ass.name, "kind": "source-fabrication", "actual": source_events, "expected_max": expected})
+                    errors.append(
+                        {
+                            "file": ass.name,
+                            "kind": "source-fabrication",
+                            "actual": source_events,
+                            "expected_max": expected,
+                        }
+                    )
                 elif source_events < expected:
-                    errors.append({"file": ass.name, "kind": "missing-paired-source-event", "actual": source_events, "expected": expected})
+                    errors.append(
+                        {
+                            "file": ass.name,
+                            "kind": "missing-paired-source-event",
+                            "actual": source_events,
+                            "expected": expected,
+                        }
+                    )
             results.append(item)
         except Exception as exc:
             errors.append({"file": ass.name, "error": str(exc)})
@@ -392,11 +474,7 @@ def run_all_qa(paths: TitlePaths) -> dict[str, Any]:
         write_json(paths.qa / "render-summary.json", renderer)
     renderer_ok = renderer.get("status") == "not-run" or bool(renderer.get("ok"))
     overall = (
-        structural["ok"]
-        and terminology["ok"]
-        and layout["ok"]
-        and compiled["ok"]
-        and renderer_ok
+        structural["ok"] and terminology["ok"] and layout["ok"] and compiled["ok"] and renderer_ok
     )
     report = {
         "schema_version": 2,

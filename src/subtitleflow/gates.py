@@ -42,8 +42,6 @@ def _validate_legacy_research_evidence(paths: TitlePaths) -> dict[str, str]:
     return current
 
 
-
-
 def validate_research_evidence(paths: TitlePaths) -> dict[str, Any]:
     mode = research_mode(paths)
     if mode == "legacy":
@@ -68,7 +66,7 @@ def _require_current_qa(paths: TitlePaths) -> tuple[dict[str, Any], dict[str, st
 
 
 def semantic_qa_evidence_snapshot(paths: TitlePaths) -> dict[str, Any]:
-    summary, current_qa = _require_current_qa(paths)
+    _summary, current_qa = _require_current_qa(paths)
     report = paths.qa / "semantic-review.md"
     _require_nonempty_file(report, "Semantic QA report")
     config = read_json(paths.title_config)
@@ -78,9 +76,8 @@ def semantic_qa_evidence_snapshot(paths: TitlePaths) -> dict[str, Any]:
         "semantic_report_sha256": sha256_file(report),
     }
     mode = research_mode(paths)
-    if (
-        mode == "enforce"
-        or (mode == "legacy" and config.get("quality_gates", {}).get("require_research", True))
+    if mode == "enforce" or (
+        mode == "legacy" and config.get("quality_gates", {}).get("require_research", True)
     ):
         evidence["research"] = validate_research_evidence(paths)
     return evidence
@@ -157,5 +154,14 @@ def mark_visual_qa_complete(paths: TitlePaths, branch: str, *, note: str | None 
     if config.get("quality_gates", {}).get("require_semantic_qa", True):
         validate_semantic_qa_evidence(paths)
     evidence = visual_qa_evidence_snapshot(paths, branch)
-    invalidate_stages(paths, ("release", "remux"), reason=f"{branch} visual QA approved or refreshed")
-    update_stage(paths, f"visual_{branch}", "passed", note=note, frames=len(evidence["frames"]), evidence=evidence)
+    invalidate_stages(
+        paths, ("release", "remux"), reason=f"{branch} visual QA approved or refreshed"
+    )
+    update_stage(
+        paths,
+        f"visual_{branch}",
+        "passed",
+        note=note,
+        frames=len(evidence["frames"]),
+        evidence=evidence,
+    )

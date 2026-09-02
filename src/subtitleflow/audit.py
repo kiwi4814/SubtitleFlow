@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import csv
 from collections import Counter
-from pathlib import Path
 from typing import Any
 
 from .editorial import editorial_context
 from .io import read_json, write_json
 from .review import list_candidates
-from .workflow import active_branches
 from .workfile import load_workfile
+from .workflow import active_branches
 from .workspace import TitlePaths
 
 
@@ -76,7 +75,12 @@ def _change_rows(paths: TitlePaths) -> list[dict[str, Any]]:
 
 def _markdown(rows: list[dict[str, Any]]) -> str:
     counts = Counter(row["change_type"] for row in rows)
-    lines = ["# SubtitleFlow Evidence Change Log", "", f"Semantic/meaningful changes: **{len(rows)}**", ""]
+    lines = [
+        "# SubtitleFlow Evidence Change Log",
+        "",
+        f"Semantic/meaningful changes: **{len(rows)}**",
+        "",
+    ]
     if counts:
         lines.append("## Summary")
         lines.append("")
@@ -130,9 +134,20 @@ def write_release_audit(paths: TitlePaths) -> dict[str, Any]:
     write_json(paths.release / "change-audit.json", audit)
     with (paths.release / "change-audit.csv").open("w", encoding="utf-8-sig", newline="") as handle:
         fieldnames = [
-            "branch", "unit_id", "start_ms", "end_ms", "before", "after", "change_type",
-            "reason", "evidence_grade", "authority_domain", "confidence", "review_status",
-            "final_decision", "source_conflicts",
+            "branch",
+            "unit_id",
+            "start_ms",
+            "end_ms",
+            "before",
+            "after",
+            "change_type",
+            "reason",
+            "evidence_grade",
+            "authority_domain",
+            "confidence",
+            "review_status",
+            "final_decision",
+            "source_conflicts",
         ]
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
@@ -151,19 +166,30 @@ def write_release_audit(paths: TitlePaths) -> dict[str, Any]:
     write_json(paths.release / "alignment-report.json", alignment)
 
     coverage_path = paths.work / "bilingual-coverage.json"
-    coverage = read_json(coverage_path) if coverage_path.is_file() else {"schema_version": 1, "fabricated": 0}
+    coverage = (
+        read_json(coverage_path)
+        if coverage_path.is_file()
+        else {"schema_version": 1, "fabricated": 0}
+    )
     write_json(paths.release / "bilingual-coverage.json", coverage)
 
     pending = [item.to_dict() for item in list_candidates(paths, status="pending")]
-    rec_risks = alignment.get("reconciliation", {}).get("semantic_risks", []) if isinstance(alignment.get("reconciliation"), dict) else []
+    rec_risks = (
+        alignment.get("reconciliation", {}).get("semantic_risks", [])
+        if isinstance(alignment.get("reconciliation"), dict)
+        else []
+    )
     unresolved = {
         "schema_version": 1,
         "pending_review": pending,
         "reconciliation_risks": rec_risks,
         "source_gaps": [
-            item for item in alignment.get("reconciliation", {}).get("pairs", [])
+            item
+            for item in alignment.get("reconciliation", {}).get("pairs", [])
             if item.get("operation") == "source-gap"
-        ] if isinstance(alignment.get("reconciliation"), dict) else [],
+        ]
+        if isinstance(alignment.get("reconciliation"), dict)
+        else [],
     }
     write_json(paths.release / "unresolved.json", unresolved)
 
@@ -186,4 +212,9 @@ def write_release_audit(paths: TitlePaths) -> dict[str, Any]:
         "unresolved.json",
         *[name for name, source in copies.items() if source.is_file()],
     ]
-    return {"schema_version": 1, "files": files, "change_count": len(rows), "summary": audit["summary"]}
+    return {
+        "schema_version": 1,
+        "files": files,
+        "change_count": len(rows),
+        "summary": audit["summary"],
+    }

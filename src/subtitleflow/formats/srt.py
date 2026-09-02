@@ -41,7 +41,7 @@ def parse_srt(path: Path) -> list[Cue]:
         end_ms = parse_srt_time(match.group(2))
         dialogue = normalize_dialogue_text("\n".join(lines[time_index + 1 :]))
         cue = Cue(
-            id=f"srt-{len(cues)+1:06d}",
+            id=f"srt-{len(cues) + 1:06d}",
             index=len(cues),
             start_ms=start_ms,
             end_ms=end_ms,

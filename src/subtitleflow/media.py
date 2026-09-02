@@ -12,9 +12,9 @@ from .fonts import require_font_attachments
 from .io import read_json
 from .state import invalidate_stages, update_stage
 from .util import file_identity, run_checked, sha256_file, which
+from .workfile import load_workfile
 from .workflow import branch_release_filename
 from .workspace import TitlePaths
-from .workfile import load_workfile
 
 
 def expand_media_path(value: str | None) -> Path | None:

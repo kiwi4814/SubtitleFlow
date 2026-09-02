@@ -64,25 +64,51 @@ def styles() -> tuple[dict[str, str], dict[str, str], dict[str, float]]:
 
 
 def test_human_preserve_blocks_style_only_rewrite() -> None:
-    context = editorial_context({"editorial": {"translation_provenance": "human-fansub", "translation_trust": "high", "editing_policy": "preserve"}})
+    context = editorial_context(
+        {
+            "editorial": {
+                "translation_provenance": "human-fansub",
+                "translation_trust": "high",
+                "editing_policy": "preserve",
+            }
+        }
+    )
     assert policy_action(context, "fluency") == "block"
     assert policy_action(context, "mistranslation") == "review"
 
 
 def test_human_proofread_allows_semantic_correction() -> None:
-    context = editorial_context({"editorial": {"translation_provenance": "human-fansub", "translation_trust": "unknown", "editing_policy": "proofread"}})
+    context = editorial_context(
+        {
+            "editorial": {
+                "translation_provenance": "human-fansub",
+                "translation_trust": "unknown",
+                "editing_policy": "proofread",
+            }
+        }
+    )
     assert policy_action(context, "mistranslation") == "allow"
     assert policy_action(context, "fluency") == "allow"
 
 
 def test_human_retranslate_allows_substantial_rewrite() -> None:
-    context = editorial_context({"editorial": {"translation_provenance": "human-fansub", "editing_policy": "retranslate"}})
+    context = editorial_context(
+        {"editorial": {"translation_provenance": "human-fansub", "editing_policy": "retranslate"}}
+    )
     assert policy_action(context, "substantial-rewrite") == "allow"
     assert policy_action(context, "full-retranslation") == "allow"
 
 
 def test_official_provenance_does_not_lock_proofread() -> None:
-    context = editorial_context({"editorial": {"translation_provenance": "official", "translation_trust": "medium", "editing_policy": "proofread"}})
+    context = editorial_context(
+        {
+            "editorial": {
+                "translation_provenance": "official",
+                "translation_trust": "medium",
+                "editing_policy": "proofread",
+            }
+        }
+    )
     assert policy_action(context, "mistranslation") == "allow"
 
 
@@ -114,8 +140,14 @@ def test_auto_requires_assessment_then_recommends_policy() -> None:
 
 
 def test_evidence_conflict_is_primary_explicit_not_corroborated() -> None:
-    assert evidence_grade(primary_explicit=True, independent_support=True, secondary_conflict=True) == "B+"
-    assert evidence_grade(primary_explicit=True, independent_support=True, secondary_conflict=False) == "A"
+    assert (
+        evidence_grade(primary_explicit=True, independent_support=True, secondary_conflict=True)
+        == "B+"
+    )
+    assert (
+        evidence_grade(primary_explicit=True, independent_support=True, secondary_conflict=False)
+        == "A"
+    )
 
 
 def test_one_source_to_two_targets_requires_and_preserves_split_provenance() -> None:
@@ -134,7 +166,9 @@ def test_one_source_to_two_targets_requires_and_preserves_split_provenance() -> 
 def test_two_sources_to_one_target_merges_with_all_source_ids() -> None:
     units = [unit(1, 1000, 3000)]
     source = [cue(1, 1000, 1800, "A。"), cue(2, 1800, 3000, "B。")]
-    result = reconcile_groups(units, source, [group([units[0].id], [item.id for item in source], "1:2")])
+    result = reconcile_groups(
+        units, source, [group([units[0].id], [item.id for item in source], "1:2")]
+    )
     pair = result.pairs[0]
     assert pair.operation == "source-merge"
     assert pair.source_text_cue_ids == ["c1", "c2"]
@@ -152,7 +186,9 @@ def test_source_gap_never_generates_source_text() -> None:
 def test_unresolved_source_split_does_not_duplicate_whole_source() -> None:
     units = [unit(1, 1000, 2000), unit(2, 2000, 3000)]
     source = [cue(1, 1000, 3000, "A。そしてB。")]
-    result = reconcile_groups(units, source, [group([item.id for item in units], [source[0].id], "2:1")])
+    result = reconcile_groups(
+        units, source, [group([item.id for item in units], [source[0].id], "2:1")]
+    )
     assert all(item.operation == "unresolved" for item in result.pairs)
     assert all(item.source_text is None for item in result.pairs)
 
@@ -167,33 +203,88 @@ def test_alignment_grouping_emits_semantic_risk_without_translation_verdict() ->
 
 def test_bilingual_1_plus_1_places_target_above_source() -> None:
     zh, ja, layout = styles()
-    geometry = block_geometry(play_res_x=1920, play_res_y=1080, target_style=zh, source_style=ja, layout=layout, target_text="中文", source_text="日本語", mode="bilingual")
+    geometry = block_geometry(
+        play_res_x=1920,
+        play_res_y=1080,
+        target_style=zh,
+        source_style=ja,
+        layout=layout,
+        target_text="中文",
+        source_text="日本語",
+        mode="bilingual",
+    )
     assert geometry.target_y < geometry.source_y
 
 
 def test_bilingual_1_plus_2_keeps_target_above_all_source_rows() -> None:
     zh, ja, layout = styles()
-    geometry = block_geometry(play_res_x=1920, play_res_y=1080, target_style=zh, source_style=ja, layout=layout, target_text="中文", source_text="日本語一\n日本語二", mode="bilingual")
+    geometry = block_geometry(
+        play_res_x=1920,
+        play_res_y=1080,
+        target_style=zh,
+        source_style=ja,
+        layout=layout,
+        target_text="中文",
+        source_text="日本語一\n日本語二",
+        mode="bilingual",
+    )
     assert geometry.target_y < geometry.source_y - geometry.source_height
 
 
 def test_clean_geometry_does_not_reserve_japanese_row() -> None:
     zh, ja, layout = styles()
-    clean = block_geometry(play_res_x=1920, play_res_y=1080, target_style=zh, source_style=None, layout=layout, target_text="中文", mode="clean")
-    bilingual = block_geometry(play_res_x=1920, play_res_y=1080, target_style=zh, source_style=ja, layout=layout, target_text="中文", source_text="日本語", mode="bilingual")
+    clean = block_geometry(
+        play_res_x=1920,
+        play_res_y=1080,
+        target_style=zh,
+        source_style=None,
+        layout=layout,
+        target_text="中文",
+        mode="clean",
+    )
+    bilingual = block_geometry(
+        play_res_x=1920,
+        play_res_y=1080,
+        target_style=zh,
+        source_style=ja,
+        layout=layout,
+        target_text="中文",
+        source_text="日本語",
+        mode="bilingual",
+    )
     assert clean.target_y > bilingual.target_y
     assert clean.source_y is None
 
 
 def test_op_bilingual_uses_same_order_contract() -> None:
     zh, ja, layout = styles()
-    geometry = block_geometry(play_res_x=1920, play_res_y=1080, target_style=zh, source_style=ja, layout=layout, target_text="中文歌词", source_text="日本語歌詞", mode="bilingual", semantic_role="song-op")
+    geometry = block_geometry(
+        play_res_x=1920,
+        play_res_y=1080,
+        target_style=zh,
+        source_style=ja,
+        layout=layout,
+        target_text="中文歌词",
+        source_text="日本語歌詞",
+        mode="bilingual",
+        semantic_role="song-op",
+    )
     assert geometry.target_y < geometry.source_y
 
 
 def test_op_two_source_rows_cannot_invert() -> None:
     zh, ja, layout = styles()
-    geometry = block_geometry(play_res_x=1920, play_res_y=1080, target_style=zh, source_style=ja, layout=layout, target_text="中文歌词", source_text="日本語一\n日本語二", mode="bilingual", semantic_role="song-op")
+    geometry = block_geometry(
+        play_res_x=1920,
+        play_res_y=1080,
+        target_style=zh,
+        source_style=ja,
+        layout=layout,
+        target_text="中文歌词",
+        source_text="日本語一\n日本語二",
+        mode="bilingual",
+        semantic_role="song-op",
+    )
     assert geometry.target_y < geometry.source_y - geometry.source_height
 
 
@@ -247,7 +338,9 @@ def test_real_libass_synthetic_renderer_smoke(tmp_path: Path) -> None:
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         pytest.skip("ffmpeg not installed")
-    filters = subprocess.run([ffmpeg, "-hide_banner", "-filters"], text=True, capture_output=True, check=True).stdout
+    filters = subprocess.run(
+        [ffmpeg, "-hide_banner", "-filters"], text=True, capture_output=True, check=True
+    ).stdout
     if " ass " not in filters:
         pytest.skip("ffmpeg has no libass filter")
     ass = tmp_path / "specimen.ass"
@@ -257,7 +350,22 @@ def test_real_libass_synthetic_renderer_smoke(tmp_path: Path) -> None:
     )
     out = tmp_path / "frame.png"
     proc = subprocess.run(
-        [ffmpeg, "-hide_banner", "-loglevel", "verbose", "-f", "lavfi", "-i", "color=c=black:s=1920x1080:r=1:d=0.1", "-vf", f"setpts=PTS+2/TB,ass={ass}", "-frames:v", "1", "-y", str(out)],
+        [
+            ffmpeg,
+            "-hide_banner",
+            "-loglevel",
+            "verbose",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=black:s=1920x1080:r=1:d=0.1",
+            "-vf",
+            f"setpts=PTS+2/TB,ass={ass}",
+            "-frames:v",
+            "1",
+            "-y",
+            str(out),
+        ],
         text=True,
         capture_output=True,
         check=True,

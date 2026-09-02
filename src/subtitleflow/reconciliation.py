@@ -69,7 +69,9 @@ class ReconciliationResult:
 
 
 def _join(cues: list[Cue]) -> str:
-    return normalize_dialogue_text("\n".join(item.plain_text for item in cues if item.plain_text.strip()))
+    return normalize_dialogue_text(
+        "\n".join(item.plain_text for item in cues if item.plain_text.strip())
+    )
 
 
 def reconcile_groups(
@@ -110,7 +112,7 @@ def reconcile_groups(
             for unit in left:
                 pairs.append(
                     BilingualPair(
-                        id=f"pair-{len(pairs)+1:06d}",
+                        id=f"pair-{len(pairs) + 1:06d}",
                         target_unit_id=unit.id,
                         start_ms=unit.start_ms,
                         end_ms=unit.end_ms,
@@ -121,7 +123,9 @@ def reconcile_groups(
                         flags=["SOURCE_GAP"],
                     )
                 )
-                risks.append({"kind": "source-gap", "unit_id": unit.id, "alignment_group": group.id})
+                risks.append(
+                    {"kind": "source-gap", "unit_id": unit.id, "alignment_group": group.id}
+                )
             continue
 
         if len(left) == 1:
@@ -129,7 +133,7 @@ def reconcile_groups(
             operation: PairOperation = "exact-pair" if len(right) == 1 else "source-merge"
             pairs.append(
                 BilingualPair(
-                    id=f"pair-{len(pairs)+1:06d}",
+                    id=f"pair-{len(pairs) + 1:06d}",
                     target_unit_id=unit.id,
                     start_ms=unit.start_ms,
                     end_ms=unit.end_ms,
@@ -142,7 +146,9 @@ def reconcile_groups(
                 )
             )
             if len(right) > 1:
-                risks.append({"kind": "source-merge", "unit_id": unit.id, "source_cue_ids": group.right_ids})
+                risks.append(
+                    {"kind": "source-merge", "unit_id": unit.id, "source_cue_ids": group.right_ids}
+                )
             continue
 
         if len(right) == 1:
@@ -153,7 +159,7 @@ def reconcile_groups(
                     fragment = split_decisions.get(unit.id, "").strip() or None
                     pairs.append(
                         BilingualPair(
-                            id=f"pair-{len(pairs)+1:06d}",
+                            id=f"pair-{len(pairs) + 1:06d}",
                             target_unit_id=unit.id,
                             start_ms=unit.start_ms,
                             end_ms=unit.end_ms,
@@ -177,7 +183,7 @@ def reconcile_groups(
                 for unit in left:
                     pairs.append(
                         BilingualPair(
-                            id=f"pair-{len(pairs)+1:06d}",
+                            id=f"pair-{len(pairs) + 1:06d}",
                             target_unit_id=unit.id,
                             start_ms=unit.start_ms,
                             end_ms=unit.end_ms,
@@ -194,7 +200,7 @@ def reconcile_groups(
         for unit in left:
             pairs.append(
                 BilingualPair(
-                    id=f"pair-{len(pairs)+1:06d}",
+                    id=f"pair-{len(pairs) + 1:06d}",
                     target_unit_id=unit.id,
                     start_ms=unit.start_ms,
                     end_ms=unit.end_ms,

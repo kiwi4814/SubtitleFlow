@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from conftest import ass_dialogue, write_ass
+
 from subtitleflow.canon import add_term
 from subtitleflow.compile import compile_all
 from subtitleflow.formats.ass import parse_ass

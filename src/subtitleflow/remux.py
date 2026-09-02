@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from .errors import GateError, ValidationError
 from .gates import (
@@ -194,7 +195,9 @@ def _verify_output_fonts(output: Path, expected: list[dict[str, Any]]) -> None:
     if not expected:
         return
     existing = identify_attachments(output)
-    missing = [item["attachment_name"] for item in expected if not _attachment_exists(existing, item)]
+    missing = [
+        item["attachment_name"] for item in expected if not _attachment_exists(existing, item)
+    ]
     if missing:
         raise GateError(
             "mkvmerge completed but required font attachments were not found in output: "
@@ -215,11 +218,15 @@ def remux(
         raise GateError("Remux blocked: QA summary is missing or failed")
     release_manifest_path = paths.release / "release-manifest.json"
     if not release_manifest_path.exists():
-        raise GateError("Remux blocked: subtitle release has not been frozen with `subflow release`")
+        raise GateError(
+            "Remux blocked: subtitle release has not been frozen with `subflow release`"
+        )
     release_manifest = read_json(release_manifest_path)
     verify_sources(paths)
     if release_manifest.get("qa_input_snapshot") != qa_input_snapshot(paths):
-        raise GateError("Remux blocked: frozen release is stale because subtitle/canon/config/style/font/review inputs changed")
+        raise GateError(
+            "Remux blocked: frozen release is stale because subtitle/canon/config/style/font/review inputs changed"
+        )
     qa_path = paths.qa / "summary.json"
     if release_manifest.get("qa_summary_sha256") != sha256_file(qa_path):
         raise GateError("Remux blocked: QA summary changed after the release was frozen")
@@ -241,7 +248,9 @@ def remux(
     if gates.get("require_semantic_qa", True):
         current = validate_semantic_qa_evidence(paths)
         if current != frozen_gate_evidence.get("semantic_qa"):
-            raise GateError("Remux blocked: semantic QA evidence changed after the release was frozen")
+            raise GateError(
+                "Remux blocked: semantic QA evidence changed after the release was frozen"
+            )
     if gates.get("require_visual_qa", True):
         frozen_visual = frozen_gate_evidence.get("visual", {})
         for branch in active_branches(paths):
@@ -267,7 +276,11 @@ def remux(
         )
     if output is None:
         raw_output = media_cfg.get("output_mkv")
-        output = _expand(str(raw_output)) if raw_output else video.with_name(video.stem + ".subtitleflow.mkv")
+        output = (
+            _expand(str(raw_output))
+            if raw_output
+            else video.with_name(video.stem + ".subtitleflow.mkv")
+        )
     output = output.resolve()
     if os.path.normcase(str(output)) == os.path.normcase(str(video)):
         raise GateError("Remux blocked: output path must not be the same as the input video")
@@ -307,7 +320,9 @@ def remux(
     if dry_run:
         return cmd
     if not which("mkvmerge"):
-        raise GateError("mkvmerge is required. Install MKVToolNix or use --dry-run to inspect the command")
+        raise GateError(
+            "mkvmerge is required. Install MKVToolNix or use --dry-run to inspect the command"
+        )
     output.parent.mkdir(parents=True, exist_ok=True)
     run_checked(cmd, timeout=3600, capture=True)
     _verify_output_fonts(output, all_fonts if bool(fonts_cfg.get("attach_to_mkv", True)) else [])

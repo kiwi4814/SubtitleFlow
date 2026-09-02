@@ -144,7 +144,9 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
                 "provenance_sha256": research_snapshot.get("provenance_sha256"),
                 "blocking_unresolved": research_snapshot.get("blocking_unresolved", 0),
                 "blocking_conflicts": research_snapshot.get("blocking_conflicts", 0),
-                "gate": stages.get("research", {}).get("status") if mode == "enforce" else "advisory",
+                "gate": stages.get("research", {}).get("status")
+                if mode == "enforce"
+                else "advisory",
             }
         )
     elif mode == "legacy":
@@ -179,7 +181,9 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
             "files": audit_files,
         },
         "font_attachments": font_attachments,
-        "media": {"video": next(iter(visual_evidence.values()))["video"] if visual_evidence else None},
+        "media": {
+            "video": next(iter(visual_evidence.values()))["video"] if visual_evidence else None
+        },
         "qa_summary_sha256": sha256_file(qa_path),
         "qa_input_snapshot": current_snapshot,
         "quality_gates": {
@@ -195,9 +199,7 @@ def create_release_manifest(paths: TitlePaths) -> dict[str, Any]:
         },
     }
     write_json(paths.release / "release-manifest.json", manifest)
-    sums = "".join(
-        f"{item['sha256']}  {item['name']}\n" for item in [*files, *audit_files]
-    )
+    sums = "".join(f"{item['sha256']}  {item['name']}\n" for item in [*files, *audit_files])
     (paths.release / "SHA256SUMS").write_text(sums, encoding="utf-8")
     update_stage(
         paths,

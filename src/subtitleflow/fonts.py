@@ -5,9 +5,10 @@ import re
 import shutil
 import zipfile
 from collections import defaultdict
+from collections.abc import Iterable
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from .errors import GateError, ValidationError
 from .formats.ass import parse_ass
@@ -93,9 +94,7 @@ def referenced_font_families(path: Path) -> dict[str, list[str]]:
 def required_fonts(paths: TitlePaths) -> dict[str, list[str]]:
     merged: dict[str, set[str]] = defaultdict(set)
     for ass in sorted(
-        path
-        for path in paths.release.glob("*.ass")
-        if not path.name.endswith(".preview.ass")
+        path for path in paths.release.glob("*.ass") if not path.name.endswith(".preview.ass")
     ):
         for family, reasons in referenced_font_families(ass).items():
             for reason in reasons:
@@ -157,12 +156,19 @@ def load_font_registry(repo: Path, override: Path | None = None) -> dict[str, An
         family = str(entry.get("family", "")).strip()
         canonical_file = str(entry.get("canonical_file", "")).strip()
         digest = str(entry.get("sha256", "")).strip().lower()
-        if not font_id or not family or not canonical_file or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        if (
+            not font_id
+            or not family
+            or not canonical_file
+            or not re.fullmatch(r"[0-9a-f]{64}", digest)
+        ):
             raise ValidationError(
                 "Font registry entries require id, family, canonical_file and a SHA-256 digest"
             )
         if Path(canonical_file).name != canonical_file:
-            raise ValidationError(f"Font registry canonical_file must be a basename: {canonical_file}")
+            raise ValidationError(
+                f"Font registry canonical_file must be a basename: {canonical_file}"
+            )
         if font_id in seen_ids:
             raise ValidationError(f"Duplicate font registry id: {font_id}")
         file_key = canonical_file.casefold()
@@ -241,9 +247,12 @@ def _copy_inventory_item(item: dict[str, str], destination: Path) -> None:
         shutil.copy2(Path(item["value"]), destination)
         return
     archive_path = Path(item["archive"])
-    with zipfile.ZipFile(archive_path) as archive, archive.open(item["value"], "r") as source:
-        with destination.open("wb") as target:
-            shutil.copyfileobj(source, target, length=1024 * 1024)
+    with (
+        zipfile.ZipFile(archive_path) as archive,
+        archive.open(item["value"], "r") as source,
+        destination.open("wb") as target,
+    ):
+        shutil.copyfileobj(source, target, length=1024 * 1024)
 
 
 def verify_registered_fonts(
@@ -254,7 +263,9 @@ def verify_registered_fonts(
 ) -> dict[str, Any]:
     repo = repo.resolve()
     registry = load_font_registry(repo, registry_file)
-    registry_path = Path(str(registry.get("_registry_path", font_registry_path(repo, registry_file))))
+    registry_path = Path(
+        str(registry.get("_registry_path", font_registry_path(repo, registry_file)))
+    )
     local = (local_dir or repo / "fonts" / "local").expanduser().resolve()
     installed: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
@@ -263,9 +274,7 @@ def verify_registered_fonts(
             continue
         path = local / str(entry["canonical_file"])
         if not path.is_file():
-            errors.append(
-                {"id": entry["id"], "file": str(path), "reason": "missing-font-file"}
-            )
+            errors.append({"id": entry["id"], "file": str(path), "reason": "missing-font-file"})
             continue
         actual_sha = sha256_file(path)
         if actual_sha != entry["sha256"]:
@@ -415,7 +424,6 @@ def _load_font_map(paths: TitlePaths, override: Path | None) -> dict[str, list[P
         files = [_expand_path(str(value), base=raw_map.parent) for value in values]
         result[str(family)] = files
     return result
-
 
 
 def fonttools_available() -> bool:
@@ -571,7 +579,9 @@ def _resolved_record(
         "family": family,
         "canonical_family": str(registry_entry.get("family")) if registry_entry else family,
         "path": str(path),
-        "attachment_name": str(registry_entry.get("canonical_file")) if registry_entry else path.name,
+        "attachment_name": str(registry_entry.get("canonical_file"))
+        if registry_entry
+        else path.name,
         "mime_type": font_mime_type(path),
         "sha256": sha256_file(path),
         "size": path.stat().st_size,
@@ -755,7 +765,11 @@ def audit_fonts(
                 {
                     "attachment_name": items[0]["attachment_name"],
                     "files": [
-                        {"path": item["path"], "sha256": item["sha256"], "families": item["families"]}
+                        {
+                            "path": item["path"],
+                            "sha256": item["sha256"],
+                            "families": item["families"],
+                        }
                         for item in sorted(items, key=lambda value: str(value["path"]))
                     ],
                 }

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from .alignment import align_cues, editable_cues
 from .editorial import editorial_context
@@ -23,7 +24,9 @@ def _cue_map(cues: Iterable[Cue]) -> dict[str, Cue]:
 
 
 def _join_text(cues: list[Cue]) -> str:
-    return normalize_dialogue_text("\n".join(cue.plain_text for cue in cues if cue.plain_text.strip()))
+    return normalize_dialogue_text(
+        "\n".join(cue.plain_text for cue in cues if cue.plain_text.strip())
+    )
 
 
 def _alignment_report(result: Any, left_role: str, right_role: str) -> dict[str, Any]:
@@ -102,7 +105,7 @@ def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) ->
             flags.append("context-terminology-review")
         units.append(
             BranchUnit(
-                id=f"clean-{len(units)+1:06d}",
+                id=f"clean-{len(units) + 1:06d}",
                 start_ms=cue.start_ms,
                 end_ms=cue.end_ms,
                 timing_cue_ids=[cue.id],
@@ -161,7 +164,9 @@ def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) ->
                     unit.flags.append("shared-source-evidence-continuation")
                 if not source_cues:
                     unit.flags.append("missing-source-evidence")
-        write_json(paths.work / "alignment-CLEAN-C.json", _alignment_report(result, "clean-work", "C"))
+        write_json(
+            paths.work / "alignment-CLEAN-C.json", _alignment_report(result, "clean-work", "C")
+        )
 
     work = BranchWorkfile(
         schema_version=1,
@@ -232,7 +237,7 @@ def build_tw_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
             flags.append("context-terminology-review")
         units.append(
             BranchUnit(
-                id=f"tw-{len(units)+1:06d}",
+                id=f"tw-{len(units) + 1:06d}",
                 start_ms=left[0].start_ms,
                 end_ms=left[-1].end_ms,
                 timing_cue_ids=group.left_ids,
@@ -312,7 +317,7 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
             flags.append("context-terminology-review")
         units.append(
             BranchUnit(
-                id=f"jp-{len(units)+1:06d}",
+                id=f"jp-{len(units) + 1:06d}",
                 start_ms=left[0].start_ms,
                 end_ms=left[-1].end_ms,
                 timing_cue_ids=group.left_ids,

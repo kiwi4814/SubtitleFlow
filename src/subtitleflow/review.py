@@ -97,7 +97,9 @@ def _semantic_context_fingerprint(paths: TitlePaths, unit: Any) -> str:
     payload = {
         "unit": _unit_fingerprint(unit),
         "source_manifest_sha256": sha256_file(paths.manifest),
-        "editorial": editorial_context(title_config, branch=getattr(unit, "id", "").split("-", 1)[0]).to_dict(),
+        "editorial": editorial_context(
+            title_config, branch=getattr(unit, "id", "").split("-", 1)[0]
+        ).to_dict(),
         "canon": {
             str(path.relative_to(paths.repo)).replace("\\", "/"): sha256_file(path)
             for path in canon_files

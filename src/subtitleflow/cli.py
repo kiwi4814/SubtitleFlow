@@ -116,7 +116,16 @@ def cmd_title_set_media(args: argparse.Namespace) -> Any:
     write_json(paths.title_config, data)
     invalidate_stages(
         paths,
-        ("render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
+        (
+            "render_clean",
+            "render_tw",
+            "render_jp",
+            "visual_clean",
+            "visual_tw",
+            "visual_jp",
+            "release",
+            "remux",
+        ),
         reason="media configuration changed",
     )
     return media
@@ -138,7 +147,22 @@ def cmd_style_set(args: argparse.Namespace) -> Any:
     write_json(paths.title_config, data)
     invalidate_stages(
         paths,
-        ("compile_clean", "compile_tw", "compile_jp", "fonts", "qa", "semantic_qa", "render_clean", "render_tw", "render_jp", "visual_clean", "visual_tw", "visual_jp", "release", "remux"),
+        (
+            "compile_clean",
+            "compile_tw",
+            "compile_jp",
+            "fonts",
+            "qa",
+            "semantic_qa",
+            "render_clean",
+            "render_tw",
+            "render_jp",
+            "visual_clean",
+            "visual_tw",
+            "visual_jp",
+            "release",
+            "remux",
+        ),
         reason="style profile changed",
     )
     return {"profile": profile.get("id"), "display_name": profile.get("display_name")}
@@ -156,7 +180,9 @@ def cmd_fonts_install(args: argparse.Namespace) -> Any:
     return install_registered_fonts(
         _repo(args),
         Path(args.source),
-        registry_file=Path(args.registry_file).expanduser().resolve() if args.registry_file else None,
+        registry_file=Path(args.registry_file).expanduser().resolve()
+        if args.registry_file
+        else None,
         replace=args.replace,
     )
 
@@ -164,7 +190,9 @@ def cmd_fonts_install(args: argparse.Namespace) -> Any:
 def cmd_fonts_verify(args: argparse.Namespace) -> Any:
     return verify_registered_fonts(
         _repo(args),
-        registry_file=Path(args.registry_file).expanduser().resolve() if args.registry_file else None,
+        registry_file=Path(args.registry_file).expanduser().resolve()
+        if args.registry_file
+        else None,
     )
 
 
@@ -364,7 +392,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = title_sub.add_parser("init")
     add_title_selector(p)
     p.add_argument("--name")
-    p.add_argument("--profile", choices=["auto", "full", "single", "source-assisted", "dub", "bilingual"], default="auto")
+    p.add_argument(
+        "--profile",
+        choices=["auto", "full", "single", "source-assisted", "dub", "bilingual"],
+        default="auto",
+    )
     p.add_argument("--series-id")
     p.set_defaults(func=cmd_title_init)
     p = title_sub.add_parser("set-series", help="Set the title's SRP/canon series identity")
@@ -425,7 +457,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("prepare", help="Verify, normalize, align, and seed both branches")
     add_title_selector(p)
-    p.add_argument("--allow-no-opencc", action="store_true", help="Diagnostics only: skip T2S if OpenCC is missing")
+    p.add_argument(
+        "--allow-no-opencc",
+        action="store_true",
+        help="Diagnostics only: skip T2S if OpenCC is missing",
+    )
     p.set_defaults(func=cmd_prepare)
 
     p = sub.add_parser("status", help="Show durable workflow state")
@@ -483,7 +519,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--note")
     p.set_defaults(func=cmd_research_approve)
 
-    p = research_sub.add_parser("status", help="Show research mode, bindings, resolve, and gate state")
+    p = research_sub.add_parser(
+        "status", help="Show research mode, bindings, resolve, and gate state"
+    )
     add_title_selector(p)
     p.set_defaults(func=cmd_research_status)
 
@@ -536,7 +574,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("compile", help="Compile release ASS files")
     add_title_selector(p)
-    p.add_argument("--preview", action="store_true", help="Allow compile with pending reviews; output is marked preview")
+    p.add_argument(
+        "--preview",
+        action="store_true",
+        help="Allow compile with pending reviews; output is marked preview",
+    )
     p.set_defaults(func=cmd_compile)
 
     p = sub.add_parser("qa", help="Run structural, terminology, layout, and compiled ASS QA")
@@ -550,7 +592,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--note")
     p.set_defaults(func=cmd_semantic_qa_mark)
 
-    visual_qa = sub.add_parser("visual-qa", help="Human/vision approval gate for rendered subtitle frames")
+    visual_qa = sub.add_parser(
+        "visual-qa", help="Human/vision approval gate for rendered subtitle frames"
+    )
     visual_qa_sub = visual_qa.add_subparsers(dest="visual_qa_command", required=True)
     p = visual_qa_sub.add_parser("mark-complete")
     add_title_selector(p)

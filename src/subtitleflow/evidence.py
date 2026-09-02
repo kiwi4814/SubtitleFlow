@@ -19,7 +19,7 @@ class EvidenceItem:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EvidenceItem":
+    def from_dict(cls, data: dict[str, Any]) -> EvidenceItem:
         return cls(
             source_role=str(data.get("source_role", "unknown")),
             cue_ids=[str(item) for item in data.get("cue_ids", [])],
@@ -48,7 +48,7 @@ class EvidenceAssessment:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EvidenceAssessment":
+    def from_dict(cls, data: dict[str, Any]) -> EvidenceAssessment:
         primary = data.get("primary")
         return cls(
             grade=str(data.get("grade", "UNRESOLVED")),  # type: ignore[arg-type]

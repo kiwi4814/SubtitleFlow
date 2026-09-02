@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
+import contextlib
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Any
 
 from .errors import GateError, ValidationError
@@ -48,15 +49,11 @@ def _play_resolution(paths: TitlePaths, template: AssDocument) -> tuple[int, int
         if not sep:
             continue
         if key.strip().casefold() == "playresx":
-            try:
+            with contextlib.suppress(ValueError):
                 x = int(raw.strip())
-            except ValueError:
-                pass
         elif key.strip().casefold() == "playresy":
-            try:
+            with contextlib.suppress(ValueError):
                 y = int(raw.strip())
-            except ValueError:
-                pass
     profile_res = load_style_profile(paths).get("play_resolution", {})
     return int(x or profile_res.get("x", 1920)), int(y or profile_res.get("y", 1080))
 
@@ -167,7 +164,9 @@ def _target_events(
     return events
 
 
-def _render_standard(paths: TitlePaths, *, branch: str, template_role: str, filename: str, preview: bool) -> Path:
+def _render_standard(
+    paths: TitlePaths, *, branch: str, template_role: str, filename: str, preview: bool
+) -> Path:
     _ensure_compile_gate(paths, preview=preview)
     work = load_workfile(paths, branch)
     template = _template(paths, template_role)
@@ -241,7 +240,9 @@ def compile_jp_bilingual(paths: TitlePaths, *, preview: bool = False) -> Path:
             raise GateError(f"Reconciliation references missing target unit: {unit_id}")
         operation = str(pair.get("operation", "unresolved"))
         if operation == "unresolved":
-            raise GateError(f"JP compile blocked: unresolved bilingual reconciliation for {unit_id}")
+            raise GateError(
+                f"JP compile blocked: unresolved bilingual reconciliation for {unit_id}"
+            )
         source_text = pair.get("source_text")
         if operation != "source-gap" and not str(source_text or "").strip():
             raise GateError(f"JP compile blocked: {operation} pair {unit_id} has no source text")

@@ -5,8 +5,8 @@ import zipfile
 from pathlib import Path
 
 import pytest
-
 from conftest import write_ass
+
 from subtitleflow.compile import compile_all
 from subtitleflow.fonts import audit_fonts, install_registered_fonts
 from subtitleflow.io import read_json, write_json
@@ -56,7 +56,9 @@ def _make_test_font(path: Path, family: str) -> Path:
     return path
 
 
-def _write_registry(repo: Path, *, font: Path, canonical_file: str, family: str, aliases: list[str]) -> Path:
+def _write_registry(
+    repo: Path, *, font: Path, canonical_file: str, family: str, aliases: list[str]
+) -> Path:
     registry = repo / "fonts" / "font-registry.json"
     registry.parent.mkdir(parents=True, exist_ok=True)
     write_json(
@@ -146,7 +148,9 @@ def test_font_install_matches_by_sha_and_renames_to_registry_canonical_file(tmp_
     assert report["verification"]["installed"][0]["metadata_verified"] is True
 
 
-def test_font_audit_uses_registry_alias_but_freezes_canonical_attachment_name(tmp_path: Path) -> None:
+def test_font_audit_uses_registry_alias_but_freezes_canonical_attachment_name(
+    tmp_path: Path,
+) -> None:
     (tmp_path / "projects").mkdir()
     (tmp_path / "pyproject.toml").write_text(
         "[project]\nname='subtitleflow-test'\nversion='0'\n", encoding="utf-8"
@@ -187,7 +191,9 @@ def test_font_audit_uses_registry_alias_but_freezes_canonical_attachment_name(tm
     assert "文泉驿微米黑" in report["attachments"][0]["metadata"]["families"]
 
 
-def test_registry_exact_sha_resolves_without_fonttools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_registry_exact_sha_resolves_without_fonttools(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     (tmp_path / "projects").mkdir()
     (tmp_path / "pyproject.toml").write_text(
         "[project]\nname='subtitleflow-test'\nversion='0'\n", encoding="utf-8"

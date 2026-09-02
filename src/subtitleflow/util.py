@@ -4,9 +4,9 @@ import hashlib
 import re
 import shutil
 import subprocess
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable, Sequence
 
 from .errors import SubtitleFlowError
 
@@ -49,6 +49,24 @@ def slugify(value: str) -> str:
 
 def which(name: str) -> str | None:
     return shutil.which(name)
+
+
+def ffmpeg_has_libass() -> bool:
+    executable = which("ffmpeg")
+    if not executable:
+        return False
+    try:
+        proc = subprocess.run(
+            [executable, "-hide_banner", "-filters"],
+            text=True,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    filters = proc.stdout + "\n" + proc.stderr
+    return " ass " in filters or " subtitles " in filters
 
 
 def run_checked(

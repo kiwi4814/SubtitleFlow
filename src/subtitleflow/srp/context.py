@@ -30,7 +30,9 @@ def render_context(paths: TitlePaths, effective: dict[str, Any]) -> None:
     if conflicts:
         summary.append("## Conflicts")
         for item in conflicts:
-            summary.append(f"- {item.get('kind')}: {item.get('key') or item.get('id')} — {item.get('message')}")
+            summary.append(
+                f"- {item.get('kind')}: {item.get('key') or item.get('id')} — {item.get('message')}"
+            )
         summary.append("")
     atomic_write_text(paths.research_summary, "\n".join(summary).rstrip() + "\n")
 

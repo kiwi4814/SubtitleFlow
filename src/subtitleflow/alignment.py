@@ -3,8 +3,8 @@ from __future__ import annotations
 import math
 import re
 import statistics
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from .models import AlignmentGroup, Cue
 
@@ -29,7 +29,9 @@ class AlignmentResult:
                 "matched": sum(bool(g.left_ids and g.right_ids) for g in self.groups),
                 "unmatched_left": sum(bool(g.left_ids and not g.right_ids) for g in self.groups),
                 "unmatched_right": sum(bool(g.right_ids and not g.left_ids) for g in self.groups),
-                "low_confidence": sum(g.confidence < 0.72 for g in self.groups if g.left_ids and g.right_ids),
+                "low_confidence": sum(
+                    g.confidence < 0.72 for g in self.groups if g.left_ids and g.right_ids
+                ),
                 "semantic_risk_count": len(risks),
             },
         }
@@ -89,7 +91,13 @@ def _match_cost(
     midpoint = abs((ls + le) - (rs + re)) / 4_000.0
     duration_ratio = abs(math.log(ldur / rdur))
     complexity = 0.12 * max(0, gl + gr - 2)
-    return 0.65 * boundary + 0.55 * midpoint + 1.15 * (1 - overlap_ratio) + 0.35 * duration_ratio + complexity
+    return (
+        0.65 * boundary
+        + 0.55 * midpoint
+        + 1.15 * (1 - overlap_ratio)
+        + 0.35 * duration_ratio
+        + complexity
+    )
 
 
 def _unmatched_cost(cue: Cue, penalty: float) -> float:
@@ -99,15 +107,23 @@ def _unmatched_cost(cue: Cue, penalty: float) -> float:
 
 def _plain_join(cues: Sequence[Cue], ids: list[str]) -> str:
     wanted = set(ids)
-    return " ".join(item.plain_text for item in cues if item.id in wanted and item.plain_text.strip())
+    return " ".join(
+        item.plain_text for item in cues if item.id in wanted and item.plain_text.strip()
+    )
 
 
 def _risk_signals(
-    groups: list[AlignmentGroup], left: Sequence[Cue], right: Sequence[Cue], *, threshold: float = 0.72
+    groups: list[AlignmentGroup],
+    left: Sequence[Cue],
+    right: Sequence[Cue],
+    *,
+    threshold: float = 0.72,
 ) -> list[dict[str, object]]:
     risks: list[dict[str, object]] = []
     number_re = re.compile(r"\d+(?:[.,]\d+)?")
-    negation_re = re.compile(r"(?:ない|ません|なかった|じゃない|ではない|不|没|无|未|别|不要|not|n't|never)", re.I)
+    negation_re = re.compile(
+        r"(?:ない|ません|なかった|じゃない|ではない|不|没|无|未|别|不要|not|n't|never)", re.I
+    )
     for group in groups:
         base = {"alignment_group": group.id, "kind": group.kind, "confidence": group.confidence}
         if group.kind != "1:1":
@@ -123,20 +139,40 @@ def _risk_signals(
         left_text = _plain_join(left, group.left_ids)
         right_text = _plain_join(right, group.right_ids)
         if left_text and right_text:
-            length_ratio = max(len(left_text), len(right_text)) / max(1, min(len(left_text), len(right_text)))
+            length_ratio = max(len(left_text), len(right_text)) / max(
+                1, min(len(left_text), len(right_text))
+            )
             if length_ratio >= 4.0:
-                risks.append({**base, "risk": "abnormal-text-length-ratio", "ratio": round(length_ratio, 3)})
+                risks.append(
+                    {**base, "risk": "abnormal-text-length-ratio", "ratio": round(length_ratio, 3)}
+                )
             left_numbers = number_re.findall(left_text)
             right_numbers = number_re.findall(right_text)
             if left_numbers and right_numbers and left_numbers != right_numbers:
-                risks.append({**base, "risk": "number-conflict", "left": left_numbers, "right": right_numbers})
+                risks.append(
+                    {
+                        **base,
+                        "risk": "number-conflict",
+                        "left": left_numbers,
+                        "right": right_numbers,
+                    }
+                )
             if bool(negation_re.search(left_text)) != bool(negation_re.search(right_text)):
                 risks.append({**base, "risk": "negation-conflict"})
         left_styles = {item.style for item in left if item.id in set(group.left_ids) and item.style}
-        right_styles = {item.style for item in right if item.id in set(group.right_ids) and item.style}
+        right_styles = {
+            item.style for item in right if item.id in set(group.right_ids) and item.style
+        }
         if len(left_styles) == 1 and len(right_styles) == 1 and left_styles != right_styles:
             # Style is weak evidence only. This is a review signal, never a translation verdict.
-            risks.append({**base, "risk": "speaker-or-role-mismatch", "left_styles": sorted(left_styles), "right_styles": sorted(right_styles)})
+            risks.append(
+                {
+                    **base,
+                    "risk": "speaker-or-role-mismatch",
+                    "left_styles": sorted(left_styles),
+                    "right_styles": sorted(right_styles),
+                }
+            )
     return risks
 
 

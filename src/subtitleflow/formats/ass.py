@@ -204,7 +204,9 @@ def build_event_line(event_format: list[str], values: dict[str, str]) -> str:
     return f"Dialogue: {payload}"
 
 
-def _default_style_values(name: str, *, font: str, size: int, margin_v: int, bold: bool) -> dict[str, str]:
+def _default_style_values(
+    name: str, *, font: str, size: int, margin_v: int, bold: bool
+) -> dict[str, str]:
     return {
         "Name": name,
         "Fontname": font,
@@ -282,7 +284,7 @@ def inject_styles(
             "[V4+ Styles]",
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
         ]
-        output[events_start:events_start] = block + [""]
+        output[events_start:events_start] = [*block, ""]
         bounds = _sections(output)
         styles_bound = bounds["[v4+ styles]"]
 
@@ -367,7 +369,11 @@ def render_from_template(
         if event.index in exclude_event_indices:
             continue
         event_style = event.fields.get("Style", "").strip()
-        if event.protected or event_style in preserve_style_names or event.index in preserve_event_indices:
+        if (
+            event.protected
+            or event_style in preserve_style_names
+            or event.index in preserve_event_indices
+        ):
             preserved.append((event.start_ms, event.index, event.raw_line))
 
     merged = preserved + generated_events
@@ -424,12 +430,42 @@ def minimal_ass_document() -> AssDocument:
         path=Path("<generated>"),
         encoding="utf-8",
         lines=lines,
-        events_format=["Layer", "Start", "End", "Style", "Name", "MarginL", "MarginR", "MarginV", "Effect", "Text"],
+        events_format=[
+            "Layer",
+            "Start",
+            "End",
+            "Style",
+            "Name",
+            "MarginL",
+            "MarginR",
+            "MarginV",
+            "Effect",
+            "Text",
+        ],
         style_format=[
-            "Name", "Fontname", "Fontsize", "PrimaryColour", "SecondaryColour",
-            "OutlineColour", "BackColour", "Bold", "Italic", "Underline", "StrikeOut",
-            "ScaleX", "ScaleY", "Spacing", "Angle", "BorderStyle", "Outline", "Shadow",
-            "Alignment", "MarginL", "MarginR", "MarginV", "Encoding",
+            "Name",
+            "Fontname",
+            "Fontsize",
+            "PrimaryColour",
+            "SecondaryColour",
+            "OutlineColour",
+            "BackColour",
+            "Bold",
+            "Italic",
+            "Underline",
+            "StrikeOut",
+            "ScaleX",
+            "ScaleY",
+            "Spacing",
+            "Angle",
+            "BorderStyle",
+            "Outline",
+            "Shadow",
+            "Alignment",
+            "MarginL",
+            "MarginR",
+            "MarginV",
+            "Encoding",
         ],
         events=[],
         cues=[],

@@ -1,4 +1,4 @@
-# START HERE — SubtitleFlow 0.4.1
+# START HERE — SubtitleFlow 0.5.0
 
 SubtitleFlow is a generic subtitle production repository. Pick the evidence you actually have; do not manufacture A/B/C/D just to satisfy a workflow.
 
