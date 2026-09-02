@@ -24,6 +24,8 @@ jobs:
         run: uv run python -m compileall -q src
       - name: Tests
         run: uv run pytest -q
+      - name: M01 real-evidence prepare pilot
+        run: uv run python tools/run_m01_prepare_pilot.py
       - name: Lint
         run: uv run ruff check .
       - name: Format
