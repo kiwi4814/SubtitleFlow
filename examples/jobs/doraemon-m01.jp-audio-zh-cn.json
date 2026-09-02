@@ -39,6 +39,7 @@
     "full_name": "kiwi4814/SubtitleFlow",
     "ref": null,
     "commit_sha": null,
-    "evidence_root": "evidence"
+    "evidence_root": "evidence",
+    "research_pack_path": "evidence/doraemon/research_packs/Doraemon-Theatrical-SRP-v1.0.1"
   }
 }
