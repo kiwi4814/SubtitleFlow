@@ -7,6 +7,10 @@ on:
       - feat/evidence-driven-release-system
   pull_request:
 
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,20 +20,20 @@ jobs:
         with:
           python-version: "3.11"
           enable-cache: true
-      - name: Install renderer dependencies
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg fontconfig fonts-dejavu-core
       - name: Sync environment
         run: uv sync --all-extras --dev
       - name: Compile
         run: uv run python -m compileall -q src
-      - name: Tests
-        run: uv run pytest -q
-      - name: M01 real-evidence prepare pilot
-        run: uv run python tools/run_m01_prepare_pilot.py
       - name: Lint
         run: uv run ruff check .
       - name: Format
         run: uv run ruff format --check .
+      - name: Install renderer dependencies
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fontconfig fonts-dejavu-core
+      - name: Tests
+        run: uv run pytest -q
+      - name: M01 real-evidence prepare pilot
+        run: uv run python tools/run_m01_prepare_pilot.py
       - name: Build
         run: uv build
       - name: CLI smoke
