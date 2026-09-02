@@ -40,7 +40,9 @@ def main() -> int:
 
     files = list(iter_files(root))
     args.output_zip.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(args.output_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+    with zipfile.ZipFile(
+        args.output_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
+    ) as archive:
         for path in files:
             rel = path.relative_to(root).as_posix()
             info = zipfile.ZipInfo(rel, date_time=(1980, 1, 1, 0, 0, 0))
@@ -48,11 +50,16 @@ def main() -> int:
             info.external_attr = 0o644 << 16
             archive.writestr(info, path.read_bytes())
 
-    print(json.dumps({
-        "archive": str(args.output_zip),
-        "sha256": sha256(args.output_zip),
-        "files": len(files),
-    }, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "archive": str(args.output_zip),
+                "sha256": sha256(args.output_zip),
+                "files": len(files),
+            },
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
