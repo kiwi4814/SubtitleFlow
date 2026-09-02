@@ -200,7 +200,10 @@ def select_srp_branch_id(
     if not branch_ids:
         raise ValidationError("Pinned SRP does not declare any branch ids")
     scored = sorted(
-        ((_branch_score(item, intent=intent, internal_branch=internal_branch), item) for item in branch_ids),
+        (
+            (_branch_score(item, intent=intent, internal_branch=internal_branch), item)
+            for item in branch_ids
+        ),
         key=lambda item: (-item[0], item[1]),
     )
     best_score, best = scored[0]
@@ -244,9 +247,7 @@ def _bind_repository_research(
         )
 
     imported = import_pack(paths, pack_path)
-    pack_ref = (
-        f"{imported['pack_id']}@{imported['pack_version']}#{imported['pack_digest']}"
-    )
+    pack_ref = f"{imported['pack_id']}@{imported['pack_version']}#{imported['pack_digest']}"
     set_mode(paths, "enforce")
 
     languages = manifest.get("languages", {})
