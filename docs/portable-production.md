@@ -82,6 +82,50 @@ Producer must not silently create permanent Canon rules while producing one subt
 
 These contracts are intentionally user-language-first. Internal evidence roles may appear as inferred provenance but are not required from the caller.
 
+## Portable job runner
+
+`python -m subtitleflow.jobs` materializes a classified portable job through the existing deterministic engine:
+
+```text
+Portable Job
+  -> project/title workspace
+  -> immutable source import + SHA manifest
+  -> normalization
+  -> active-branch prepare/alignment
+  -> durable state
+  -> next-safe-action planner
+```
+
+It intentionally stops after prepare. Semantic editing, Human Review, QA, rendering, release, and Remux remain owned by the existing state machine and planner. Runtime adapters must not invent parallel stage transitions.
+
+Repository Canon/SRP evidence is also not falsely claimed as consumed by this deterministic prepare step. When a job requests repository evidence, the result says `requested=true, bound=false` until the runtime adapter actually resolves and binds the relevant pack before semantic decisions.
+
+### Real M01 example
+
+The repository contains a reproducible job:
+
+```text
+examples/jobs/doraemon-m01.jp-audio-zh-cn.json
+```
+
+Run it from a SubtitleFlow checkout with:
+
+```bash
+uv run python -m subtitleflow.jobs \
+  examples/jobs/doraemon-m01.jp-audio-zh-cn.json \
+  --workspace /tmp/subtitleflow-m01 \
+  --source-root .
+```
+
+The job uses the real repository M01 evidence:
+
+- WOWOW-aligned Simplified-Chinese ASS as the editable/timing target;
+- WOWOW Japanese ASS as source-language semantic evidence.
+
+The Japanese source is a TV-accessibility-style ASS: positioned dialogue is protected from editing, non-verbal accessibility captions are classified separately, and Rubi/furigana reading annotations remain preserved presentation events but are excluded from semantic-language alignment.
+
+`tools/run_m01_prepare_pilot.py` runs the same job through `prepare_portable_job()` in CI and checks that the runtime reaches `semantic-edit` without bypassing any gate.
+
 ## Planner
 
 `python -m subtitleflow.pipeline PROJECT TITLE` prints the next safe action from durable state plus runtime capabilities and deferred checks.
