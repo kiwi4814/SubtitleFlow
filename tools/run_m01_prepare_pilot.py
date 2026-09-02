@@ -194,16 +194,25 @@ def run_pilot() -> dict[str, object]:
         summary = dict(alignment.get("summary", {}))
         coverage = _alignment_metrics(alignment)
         estimated_offset_ms = int(alignment.get("estimated_offset_ms", 0))
+        repository_evidence = prepared.repository_evidence
+        research_snapshot = repository_evidence.get("snapshot", {})
 
         checks = {
             "portable_runner_inferred_source_assisted": prepared.workflow_profile
             == "source-assisted",
+            "portable_runner_uses_theatrical_series_identity": prepared.series_id
+            == "doraemon-theatrical",
+            "repository_evidence_is_bound": repository_evidence.get("bound") is True,
+            "repository_evidence_uses_expected_pack": repository_evidence.get("pack_id")
+            == "doraemon-theatrical-cn-tw-canon",
+            "repository_evidence_maps_clean_branch": repository_evidence.get("branch_map", {}).get(
+                "clean"
+            )
+            == "jp-audio-zh-cn-modern",
+            "research_gate_has_no_blockers": research_snapshot.get("blocking_conflicts") == 0
+            and research_snapshot.get("blocking_unresolved") == 0,
             "portable_runner_stops_at_semantic_edit": prepared.next_plan.get("next_action")
             == "semantic-edit",
-            "repository_evidence_is_not_falsely_claimed_bound": prepared.repository_evidence.get(
-                "bound"
-            )
-            is False,
             "target_has_editable_dialogue": bool(s_editable),
             "japanese_has_semantic_evidence": bool(c_evidence),
             "protected_japanese_dialogue_survives_as_evidence": bool(protected_evidence_ids),
@@ -226,7 +235,7 @@ def run_pilot() -> dict[str, object]:
                 "series_id": prepared.series_id,
                 "workflow_profile": prepared.workflow_profile,
                 "next_action": prepared.next_plan.get("next_action"),
-                "repository_evidence": prepared.repository_evidence,
+                "repository_evidence": repository_evidence,
             },
             "sources": {
                 "S": {
