@@ -4,7 +4,6 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
 from .models import AlignmentGroup, BranchUnit, Cue
-from .text import normalize_dialogue_text
 
 PairOperation = Literal[
     "exact-pair",
@@ -69,9 +68,35 @@ class ReconciliationResult:
 
 
 def _join(cues: list[Cue]) -> str:
-    return normalize_dialogue_text(
-        "\n".join(item.plain_text for item in cues if item.plain_text.strip())
-    )
+    parts: list[str] = []
+    for item in cues:
+        for line in item.plain_text.splitlines():
+            cleaned = line.strip()
+            if cleaned:
+                parts.append(cleaned)
+    single_line = " ".join(parts)
+    if len(single_line) > 34:
+        mid = len(single_line) // 2
+        for offset in range(len(single_line) // 2):
+            for idx in (mid + offset, mid - offset):
+                if 0 <= idx < len(single_line) and single_line[idx] in (
+                    " ",
+                    "　",
+                    "、",
+                    "，",
+                    "。",
+                    "！",
+                    "？",
+                    "!",
+                    "?",
+                    "➡",
+                    "→",
+                    "…",
+                    "・",
+                    "：",
+                ):
+                    return single_line[: idx + 1].strip() + "\n" + single_line[idx + 1 :].strip()
+    return single_line
 
 
 def reconcile_groups(

@@ -380,7 +380,7 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
         metadata={
             "alignment_ab_offset_ms": ab.estimated_offset_ms,
             "alignment_japanese_offset_ms": pc.estimated_offset_ms,
-            "japanese_alignment_policy": "atomic-target-1:n",
+            "japanese_alignment_policy": "atomic-target-1:1",
             "minimal_editorial_intervention": True,
             "editorial": editorial_context(config, branch="jp").to_dict(),
             "reconciliation_schema": 1,
@@ -393,7 +393,7 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
     jp_alignment["group_limits"] = {
         "max_left_group": 1,
         "max_right_group": max_group,
-        "reason": "keep target subtitle units atomic during bilingual source reconciliation",
+        "reason": "keep target subtitle units atomic and strictly 1:1 during bilingual source reconciliation",
     }
     write_json(paths.work / "alignment-JP-C.json", jp_alignment)
     write_json(paths.work / "bilingual-reconciliation.json", reconciliation.to_dict())

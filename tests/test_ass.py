@@ -45,6 +45,12 @@ def test_render_preserves_protected_event(tmp_path: Path) -> None:
     assert "Style: SF-JA" in output
 
 
+def test_ass_text_normalizes_unsupported_continuation_marker() -> None:
+    from subtitleflow.text import ass_text
+
+    assert ass_text("続➡\n次") == r"続→\N次"
+
+
 def test_parse_protects_high_order_drawing_mode(tmp_path: Path) -> None:
     drawing = ass_dialogue("0:00:04.00", "0:00:06.00", r"{\p5}m 0 0 l 10 0 10 10")
     path = write_ass(

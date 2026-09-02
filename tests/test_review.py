@@ -130,6 +130,32 @@ def test_repo_proposal_is_archived_after_import(tmp_path: Path, sample_cues) -> 
     assert imported[0].proposal_sha256
 
 
+def test_repo_proposal_archive_handles_noncanonical_workspace_path(
+    tmp_path: Path, sample_cues
+) -> None:
+    bootstrap(tmp_path, sample_cues)
+    (tmp_path / "alias-parent").mkdir()
+    paths = title_paths(tmp_path / "alias-parent" / "..", "demo", "movie")
+    unit = load_workfile(paths, "jp").units[0]
+    proposal = paths.review_proposals / "semantic-proposal-alias.json"
+    write_json(
+        proposal,
+        {
+            "branch": "jp",
+            "unit_id": unit.id,
+            "original_text": unit.final_text,
+            "proposed_text": unit.final_text + "！",
+            "reason": "archive provenance through a non-canonical path",
+            "confidence": 0.8,
+        },
+    )
+
+    imported = import_proposals(paths, proposal)
+
+    assert not proposal.exists()
+    assert imported[0].proposal_source.startswith("review/proposals/_imported/")
+
+
 def test_review_approval_rejects_stale_canon_context(tmp_path: Path, sample_cues) -> None:
     import pytest
 

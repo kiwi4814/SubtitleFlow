@@ -168,6 +168,14 @@ def _match_cost(
     gr: int,
     offset_ms: int,
 ) -> float:
+    if gl > 1:
+        for k in range(i, i + gl - 1):
+            if left[k + 1].start_ms - left[k].end_ms > 600:
+                return float("inf")
+    if gr > 1:
+        for k in range(j, j + gr - 1):
+            if right[k + 1].start_ms - right[k].end_ms > 600:
+                return float("inf")
     ls, le = _span(left, i, gl)
     rs, re = _span(right, j, gr, offset_ms)
     ldur = max(1, le - ls)
@@ -177,6 +185,8 @@ def _match_cost(
     union = max(1, union_end - union_start)
     overlap = max(0, min(le, re) - max(ls, rs))
     overlap_ratio = overlap / union
+    if overlap <= 0 or overlap_ratio < 0.20:
+        return float("inf")
     boundary = (abs(ls - rs) + abs(le - re)) / 2_000.0
     midpoint = abs((ls + le) - (rs + re)) / 4_000.0
     duration_ratio = abs(math.log(ldur / rdur))

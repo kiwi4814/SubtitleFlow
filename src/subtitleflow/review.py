@@ -181,7 +181,7 @@ def import_proposals(paths: TitlePaths, proposal_path: Path) -> list[ReviewCandi
     proposal_sha = sha256_file(proposal_path)
     archive_path = _archive_proposal_path(paths, proposal_path)
     if archive_path is not None:
-        proposal_source = str(archive_path.relative_to(paths.title)).replace("\\", "/")
+        proposal_source = str(archive_path.relative_to(paths.title.resolve())).replace("\\", "/")
     else:
         proposal_source = proposal_path.name
     raw = read_json(proposal_path)

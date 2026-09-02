@@ -24,7 +24,10 @@ def normalize_dialogue_text(text: str) -> str:
 
 
 def ass_text(text: str) -> str:
-    return normalize_dialogue_text(text).replace("\n", r"\N")
+    # Japanese evidence uses ➡ as a continuation marker. WQY supports →,
+    # but not ➡, so preserve the marker meaning without system fallback.
+    normalized = normalize_dialogue_text(text).replace("➡", "→")
+    return normalized.replace("\n", r"\N")
 
 
 class TraditionalToSimplified:
