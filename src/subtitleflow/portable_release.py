@@ -301,7 +301,9 @@ def _qa_contract(
         qa.append(_qa_item("full-video-visual-qa", "passed", evidence={"stage": visual_stage}))
         qa.append(_qa_item("scene-occlusion", "passed", evidence={"stage": visual_stage}))
     else:
-        reason = "Full-video scene-aware visual QA requires readable source video and explicit approval."
+        reason = (
+            "Full-video scene-aware visual QA requires readable source video and explicit approval."
+        )
         qa.append(_qa_item("full-video-visual-qa", "deferred", reason=reason))
         qa.append(_qa_item("scene-occlusion", "deferred", reason=reason))
         deferred.extend(["full-video-visual-qa", "scene-occlusion"])
@@ -387,9 +389,7 @@ def build_portable_release_bundle(
     outputs: list[dict[str, str]] = []
 
     subtitle_destination = bundle_dir / "subtitles" / ass_path.name
-    outputs.append(
-        _copy_output(ass_path, subtitle_destination, bundle_root=bundle_dir, kind="ass")
-    )
+    outputs.append(_copy_output(ass_path, subtitle_destination, bundle_root=bundle_dir, kind="ass"))
 
     render_summary = qa_summary.get("renderer", {})
     if not isinstance(render_summary, dict):
@@ -403,9 +403,7 @@ def build_portable_release_bundle(
             if not source.is_file():
                 raise GateError(f"Renderer QA frame is missing: {source}")
             destination = bundle_dir / "renders" / source.name
-            outputs.append(
-                _copy_output(source, destination, bundle_root=bundle_dir, kind="render")
-            )
+            outputs.append(_copy_output(source, destination, bundle_root=bundle_dir, kind="render"))
 
     portable_qa_summary = _portableize_paths(
         qa_summary,
