@@ -346,9 +346,7 @@ def _portable_bundle_roundtrip(paths, job: dict[str, object], workspace: Path) -
         "plan_after_qa": plan_after_qa,
         "manifest": {
             "runtime": manifest.get("engine", {}).get("runtime"),
-            "archival_release_frozen": manifest.get("portable", {}).get(
-                "archival_release_frozen"
-            ),
+            "archival_release_frozen": manifest.get("portable", {}).get("archival_release_frozen"),
             "deferred": manifest.get("deferred", []),
             "qa_status": qa_status,
             "ass_outputs": len(ass_outputs),
@@ -486,9 +484,7 @@ def run_pilot() -> dict[str, object]:
             "portable_bundle_contains_ass": bundle_manifest.get("ass_outputs") == 1,
             "portable_bundle_contains_render_pngs": int(bundle_manifest.get("render_outputs", 0))
             > 0,
-            "portable_bundle_marks_deterministic_checks_passed": qa_status.get(
-                "deterministic-qa"
-            )
+            "portable_bundle_marks_deterministic_checks_passed": qa_status.get("deterministic-qa")
             == "passed"
             and qa_status.get("exact-font-audit") == "passed"
             and qa_status.get("registered-font-assets") == "passed"
