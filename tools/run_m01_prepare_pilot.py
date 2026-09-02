@@ -17,6 +17,7 @@ from subtitleflow.cli import main as cli_main
 from subtitleflow.cue_views import evidence_cues
 from subtitleflow.io import read_json
 from subtitleflow.normalize import load_normalized
+from subtitleflow.workfile import load_workfile
 from subtitleflow.workspace import title_paths
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -130,8 +131,18 @@ def _cue_view(cue) -> dict[str, object]:
     }
 
 
-def _diagnostic_samples(alignment: dict[str, object], left_cues, right_cues) -> dict[str, object]:
-    left_map = {cue.id: cue for cue in left_cues}
+def _unit_view(unit) -> dict[str, object]:
+    return {
+        "id": unit.id,
+        "start_ms": unit.start_ms,
+        "end_ms": unit.end_ms,
+        "semantic_role": unit.semantic_role,
+        "text": unit.final_text,
+    }
+
+
+def _diagnostic_samples(alignment: dict[str, object], left_units, right_cues) -> dict[str, object]:
+    left_map = {unit.id: unit for unit in left_units}
     right_map = {cue.id: cue for cue in right_cues}
     groups = alignment.get("groups", [])
     if not isinstance(groups, list):
@@ -159,9 +170,9 @@ def _diagnostic_samples(alignment: dict[str, object], left_cues, right_cues) -> 
                     "kind": group.get("kind"),
                     "confidence": confidence,
                     "left": [
-                        _cue_view(left_map[str(cue_id)])
-                        for cue_id in left_ids
-                        if str(cue_id) in left_map
+                        _unit_view(left_map[str(unit_id)])
+                        for unit_id in left_ids
+                        if str(unit_id) in left_map
                     ],
                     "right": [
                         _cue_view(right_map[str(cue_id)])
@@ -229,6 +240,7 @@ def run_pilot() -> dict[str, object]:
         paths = title_paths(workspace, project_id, title_id)
         normalized_s = load_normalized(paths, "S")
         normalized_c = load_normalized(paths, "C")
+        clean_work = load_workfile(paths, "clean")
         s_editable = editable_cues(normalized_s.cues)
         c_editable = editable_cues(normalized_c.cues)
         c_evidence = evidence_cues(normalized_c.cues)
@@ -274,6 +286,9 @@ def run_pilot() -> dict[str, object]:
                 "C_protected_cues": normalized_c.protected_count,
                 "C_editable_cues": len(c_editable),
                 "C_evidence_cues": len(c_evidence),
+                "C_accessibility_sfx_cues": sum(
+                    cue.semantic_role == "accessibility-sfx" for cue in normalized_c.cues
+                ),
                 "C_protected_evidence_cues": len(protected_evidence_ids),
                 "C_matched_protected_evidence_cues": len(matched_protected_ids),
             },
@@ -287,7 +302,7 @@ def run_pilot() -> dict[str, object]:
                 "total_cost": alignment.get("total_cost"),
                 "summary": summary,
                 "coverage": coverage,
-                "samples": _diagnostic_samples(alignment, s_editable, c_evidence),
+                "samples": _diagnostic_samples(alignment, clean_work.units, c_evidence),
             },
             "checks": checks,
         }
