@@ -80,6 +80,10 @@ def main() -> int:
 
     def capturing_builder(*args, **kwargs):
         nonlocal captured_bundle
+        if args:
+            qa_path = Path(args[0].qa) / "summary.json"
+            if qa_path.is_file():
+                print("M01_PREBUNDLE_QA=" + qa_path.read_text(encoding="utf-8"))
         result = original_builder(*args, **kwargs)
         archive = kwargs.get("archive_path")
         if not captured_bundle and archive is not None:
