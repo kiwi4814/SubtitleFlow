@@ -55,6 +55,55 @@ def _validate_manifest(manifest: dict[str, Any], *, source_root: Path) -> None:
         raise ValidationError(f"Invalid portable release manifest{where}: {exc.message}") from exc
 
 
+def _portableize_paths(
+    value: Any,
+    *,
+    title_root: Path,
+    workspace_root: Path,
+    source_root: Path,
+) -> Any:
+    """Replace runtime-specific absolute paths with stable portable URI-like labels."""
+    if isinstance(value, dict):
+        return {
+            str(key): _portableize_paths(
+                item,
+                title_root=title_root,
+                workspace_root=workspace_root,
+                source_root=source_root,
+            )
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [
+            _portableize_paths(
+                item,
+                title_root=title_root,
+                workspace_root=workspace_root,
+                source_root=source_root,
+            )
+            for item in value
+        ]
+    if not isinstance(value, str):
+        return value
+
+    path = Path(value)
+    if not path.is_absolute():
+        return value
+    roots = (
+        ("title", title_root.resolve()),
+        ("workspace", workspace_root.resolve()),
+        ("source-root", source_root.resolve()),
+    )
+    for label, root in roots:
+        try:
+            relative = path.resolve().relative_to(root)
+        except (ValueError, OSError):
+            continue
+        suffix = relative.as_posix()
+        return f"{label}://{suffix}" if suffix != "." else f"{label}://"
+    return f"external://{path.name}"
+
+
 def _copy_output(
     source: Path,
     destination: Path,
@@ -265,7 +314,10 @@ def _qa_contract(
             _qa_item(
                 "mkv-remux",
                 "deferred",
-                reason="MKV remux/attachment verification belongs to a runtime with the target media and MKVToolNix.",
+                reason=(
+                    "MKV remux/attachment verification belongs to a runtime with the target "
+                    "media and MKVToolNix."
+                ),
                 evidence={"stage": remux_stage},
             )
         )
@@ -355,19 +407,32 @@ def build_portable_release_bundle(
                 _copy_output(source, destination, bundle_root=bundle_dir, kind="render")
             )
 
+    portable_qa_summary = _portableize_paths(
+        qa_summary,
+        title_root=paths.title,
+        workspace_root=paths.repo,
+        source_root=source_root,
+    )
     reports_dir = bundle_dir / "reports"
     outputs.append(
-        _write_report_output(reports_dir / "qa.json", qa_summary, bundle_root=bundle_dir)
+        _write_report_output(
+            reports_dir / "qa.json",
+            portable_qa_summary,
+            bundle_root=bundle_dir,
+        )
     )
-    font_report = qa_summary.get("fonts", {})
+    font_report = portable_qa_summary.get("fonts", {})
     if not isinstance(font_report, dict):
         font_report = {}
     outputs.append(
         _write_report_output(reports_dir / "fonts.json", font_report, bundle_root=bundle_dir)
     )
+    portable_render_summary = portable_qa_summary.get("renderer", {})
     outputs.append(
         _write_report_output(
-            reports_dir / "render.json", render_summary, bundle_root=bundle_dir
+            reports_dir / "render.json",
+            portable_render_summary,
+            bundle_root=bundle_dir,
         )
     )
 
@@ -382,7 +447,13 @@ def build_portable_release_bundle(
         }
     )
 
-    font_inventory = verify_registered_fonts(paths.repo)
+    font_inventory_raw = verify_registered_fonts(source_root)
+    font_inventory = _portableize_paths(
+        font_inventory_raw,
+        title_root=paths.title,
+        workspace_root=paths.repo,
+        source_root=source_root,
+    )
     outputs.append(
         _write_report_output(
             reports_dir / "registered-fonts.json",
@@ -395,7 +466,7 @@ def build_portable_release_bundle(
         paths,
         branch=branch,
         qa_summary=qa_summary,
-        font_inventory=font_inventory,
+        font_inventory=font_inventory_raw,
         runtime_capabilities=runtime_capabilities,
     )
 
@@ -479,8 +550,6 @@ def build_portable_release_bundle(
         }
     )
 
-    # summary.md was added after the first validation pass, so finalize and validate the manifest
-    # once more before freezing the deterministic archive.
     manifest["outputs"] = outputs
     _validate_manifest(manifest, source_root=source_root)
     write_json(bundle_dir / "manifest.json", manifest)
