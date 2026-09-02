@@ -35,8 +35,11 @@ def _run_cli(argv: list[str]) -> None:
 
 
 def _input_paths(job: dict[str, object]) -> dict[str, Path]:
+    inputs = job.get("inputs")
+    if not isinstance(inputs, list):
+        raise RuntimeError("job inputs must be a list")
     result: dict[str, Path] = {}
-    for item in job["inputs"]:  # type: ignore[index]
+    for item in inputs:
         if not isinstance(item, dict):
             raise RuntimeError("job input must be an object")
         role = item.get("role_hint")
@@ -83,6 +86,19 @@ def _alignment_metrics(alignment: dict[str, object]) -> dict[str, object]:
         "right_cues": right_total,
         "right_matched_cues": right_matched,
         "right_coverage": round(right_matched / right_total, 6) if right_total else 0.0,
+    }
+
+
+def _cue_diagnostics(cues) -> dict[str, object]:
+    style_counts = Counter(cue.style or "<empty>" for cue in cues)
+    role_counts = Counter(cue.semantic_role for cue in cues)
+    timing_counts = Counter((cue.start_ms, cue.end_ms) for cue in cues)
+    return {
+        "style_counts": dict(sorted(style_counts.items())),
+        "semantic_role_counts": dict(sorted(role_counts.items())),
+        "unique_timing_spans": len(timing_counts),
+        "multi_event_timing_spans": sum(count > 1 for count in timing_counts.values()),
+        "max_events_same_timing_span": max(timing_counts.values(), default=0),
     }
 
 
@@ -146,12 +162,15 @@ def run_pilot() -> dict[str, object]:
 
         alignment = read_json(paths.work / "alignment-CLEAN-C.json")
         groups = alignment.get("groups", [])
-        used_right_ids = {
-            str(cue_id)
-            for group in groups
-            if isinstance(group, dict)
-            for cue_id in group.get("right_ids", [])
-        }
+        used_right_ids: set[str] = set()
+        if not isinstance(groups, list):
+            raise RuntimeError("alignment report groups must be a list")
+        for group in groups:
+            if not isinstance(group, dict):
+                continue
+            right_ids = group.get("right_ids", [])
+            if isinstance(right_ids, list):
+                used_right_ids.update(str(cue_id) for cue_id in right_ids)
         matched_protected_ids = protected_evidence_ids & used_right_ids
         summary = dict(alignment.get("summary", {}))
         coverage = _alignment_metrics(alignment)
@@ -190,8 +209,17 @@ def run_pilot() -> dict[str, object]:
                 "C_protected_evidence_cues": len(protected_evidence_ids),
                 "C_matched_protected_evidence_cues": len(matched_protected_ids),
             },
-            "alignment_summary": summary,
-            "alignment_coverage": coverage,
+            "source_diagnostics": {
+                "S": _cue_diagnostics(s_editable),
+                "C_all": _cue_diagnostics(normalized_c.cues),
+                "C_evidence": _cue_diagnostics(c_evidence),
+            },
+            "alignment": {
+                "estimated_offset_ms": alignment.get("estimated_offset_ms"),
+                "total_cost": alignment.get("total_cost"),
+                "summary": summary,
+                "coverage": coverage,
+            },
             "checks": checks,
         }
 
