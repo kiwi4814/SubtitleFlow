@@ -1,0 +1,3 @@
+interface:
+  display_name: "SubtitleFlow Producer"
+  short_description: "Produce evidence-driven collector ASS subtitle releases"
