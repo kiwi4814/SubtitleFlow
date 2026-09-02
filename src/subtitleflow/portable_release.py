@@ -62,17 +62,27 @@ def _portableize_paths(
     workspace_root: Path,
     source_root: Path,
 ) -> Any:
-    """Replace runtime-specific absolute paths with stable portable URI-like labels."""
+    """Replace runtime-specific absolute paths with stable portable URI-like labels.
+
+    Both JSON values and JSON-object keys are normalized because QA provenance may use an
+    absolute asset path as a dictionary key (for example source-asset SHA maps).
+    """
     if isinstance(value, dict):
-        return {
-            str(key): _portableize_paths(
+        portable: dict[str, Any] = {}
+        for key, item in value.items():
+            portable_key = _portableize_paths(
+                str(key),
+                title_root=title_root,
+                workspace_root=workspace_root,
+                source_root=source_root,
+            )
+            portable[str(portable_key)] = _portableize_paths(
                 item,
                 title_root=title_root,
                 workspace_root=workspace_root,
                 source_root=source_root,
             )
-            for key, item in value.items()
-        }
+        return portable
     if isinstance(value, list):
         return [
             _portableize_paths(
