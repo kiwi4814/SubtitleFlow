@@ -68,3 +68,23 @@ def test_accessibility_sfx_classifier_is_conservative():
     assert classify_event_role(style="Default", text="(スネ夫)").role == "dialogue"
     assert classify_event_role(style="Default", text="(一同)えっ？").role == "dialogue"
     assert classify_event_role(style="Default", text="ピー助！").role == "dialogue"
+
+
+def test_ruby_style_is_preserved_as_annotation_not_semantic_dialogue():
+    classification = classify_event_role(style="Rubi", text="ももたろうじるし")
+    assert classification.role == "annotation"
+    assert classification.basis == "ruby-style"
+
+    ruby = Cue(
+        id="ass-000004",
+        index=3,
+        start_ms=4000,
+        end_ms=5000,
+        text="ももたろうじるし",
+        plain_text="ももたろうじるし",
+        style="Rubi",
+        protected=True,
+        protected_reason=r"complex ASS tag \pos(",
+        semantic_role=classification.role,
+    )
+    assert evidence_cues([ruby]) == []
