@@ -13,6 +13,7 @@ from subtitleflow.cue_views import evidence_cues
 from subtitleflow.io import read_json
 from subtitleflow.jobs import load_portable_job, prepare_portable_job
 from subtitleflow.normalize import load_normalized
+from subtitleflow.semantic_packet import build_semantic_packet
 from subtitleflow.workfile import load_workfile
 from subtitleflow.workspace import title_paths
 
@@ -184,6 +185,7 @@ def run_pilot() -> dict[str, object]:
         normalized_s = load_normalized(paths, "S")
         normalized_c = load_normalized(paths, "C")
         clean_work = load_workfile(paths, "clean")
+        semantic_packet = build_semantic_packet(paths, "clean")
         s_editable = editable_cues(normalized_s.cues)
         c_editable = editable_cues(normalized_c.cues)
         c_evidence = evidence_cues(normalized_c.cues)
@@ -196,6 +198,8 @@ def run_pilot() -> dict[str, object]:
         estimated_offset_ms = int(alignment.get("estimated_offset_ms", 0))
         repository_evidence = prepared.repository_evidence
         research_snapshot = repository_evidence.get("snapshot", {})
+        packet_research = semantic_packet.get("research", {})
+        packet_branch = packet_research.get("branch", {}) if isinstance(packet_research, dict) else {}
 
         checks = {
             "portable_runner_inferred_source_assisted": prepared.workflow_profile
@@ -213,6 +217,24 @@ def run_pilot() -> dict[str, object]:
             and research_snapshot.get("blocking_unresolved") == 0,
             "portable_runner_stops_at_semantic_edit": prepared.next_plan.get("next_action")
             == "semantic-edit",
+            "semantic_packet_covers_all_target_units": semantic_packet.get("workfile", {}).get(
+                "unit_count"
+            )
+            == 824,
+            "semantic_packet_uses_proofread_policy": semantic_packet.get("editorial", {}).get(
+                "effective_policy"
+            )
+            == "proofread",
+            "semantic_packet_uses_enforced_research": packet_research.get("mode") == "enforce",
+            "semantic_packet_matches_research_digest": packet_research.get(
+                "effective_semantic_sha256"
+            )
+            == research_snapshot.get("effective_semantic_sha256"),
+            "semantic_packet_contains_canon_terms": bool(packet_branch.get("terms")),
+            "semantic_packet_requires_human_review": semantic_packet.get(
+                "proposal_contract", {}
+            ).get("human_review_required")
+            is True,
             "target_has_editable_dialogue": bool(s_editable),
             "japanese_has_semantic_evidence": bool(c_evidence),
             "protected_japanese_dialogue_survives_as_evidence": bool(protected_evidence_ids),
@@ -236,6 +258,20 @@ def run_pilot() -> dict[str, object]:
                 "workflow_profile": prepared.workflow_profile,
                 "next_action": prepared.next_plan.get("next_action"),
                 "repository_evidence": repository_evidence,
+            },
+            "semantic_packet": {
+                "packet_input_sha256": semantic_packet.get("packet_input_sha256"),
+                "packet_sha256": semantic_packet.get("packet_sha256"),
+                "unit_count": semantic_packet.get("workfile", {}).get("unit_count"),
+                "priority_counts": semantic_packet.get("workfile", {}).get("priority_counts"),
+                "editorial_policy": semantic_packet.get("editorial", {}).get("effective_policy"),
+                "research_mode": packet_research.get("mode"),
+                "effective_semantic_sha256": packet_research.get("effective_semantic_sha256"),
+                "srp_branch_id": packet_branch.get("srp_branch_id"),
+                "term_count": len(packet_branch.get("terms", [])),
+                "decision_count": len(packet_branch.get("decisions", [])),
+                "entity_count": len(packet_branch.get("entities", [])),
+                "fact_count": len(packet_branch.get("facts", [])),
             },
             "sources": {
                 "S": {
