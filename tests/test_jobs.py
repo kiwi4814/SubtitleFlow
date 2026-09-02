@@ -1,11 +1,13 @@
 import json
 from pathlib import Path
 
+from subtitleflow.io import read_json
 from subtitleflow.jobs import (
     infer_workflow_profile,
     prepare_portable_job,
     select_srp_branch_id,
 )
+from subtitleflow.workspace import title_paths
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -100,12 +102,15 @@ def test_prepare_portable_source_assisted_job_stops_at_planner(tmp_path):
     }
     job_path = tmp_path / "job.json"
     job_path.write_text(json.dumps(job, ensure_ascii=False), encoding="utf-8")
+    workspace = tmp_path / "workspace"
 
     result = prepare_portable_job(
         job_path,
-        workspace=tmp_path / "workspace",
+        workspace=workspace,
         source_root=REPO_ROOT,
     ).to_dict()
+    paths = title_paths(workspace, "test-project", "m01")
+    config = read_json(paths.title_config)
 
     assert result["project_id"] == "test-project"
     assert result["title_id"] == "m01"
@@ -117,3 +122,10 @@ def test_prepare_portable_source_assisted_job_stops_at_planner(tmp_path):
     assert result["next_plan"]["next_action"] == "semantic-edit"
     assert result["repository_evidence"]["requested"] is False
     assert result["repository_evidence"]["bound"] is False
+    assert config["style"]["profile"] == str(
+        (REPO_ROOT / "styles" / "kiwi-collector-v1.json").resolve()
+    )
+    assert config["fonts"]["directories"] == [str((REPO_ROOT / "fonts" / "local").resolve())]
+    assert config["fonts"]["registry_file"] == str(
+        (REPO_ROOT / "fonts" / "font-registry.json").resolve()
+    )
