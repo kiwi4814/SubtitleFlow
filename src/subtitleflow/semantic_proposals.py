@@ -26,7 +26,9 @@ def validate_semantic_proposal_envelope(paths, proposal_path: Path) -> dict[str,
     if raw.get("schema_version") != 1:
         raise ValidationError("Semantic proposal envelope schema_version must be 1")
     if raw.get("kind") != "subtitleflow-semantic-proposals":
-        raise ValidationError("Semantic proposal envelope kind must be subtitleflow-semantic-proposals")
+        raise ValidationError(
+            "Semantic proposal envelope kind must be subtitleflow-semantic-proposals"
+        )
 
     project_id = str(raw.get("project_id", ""))
     title_id = str(raw.get("title_id", ""))
