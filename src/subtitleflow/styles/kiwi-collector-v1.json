@@ -3,12 +3,65 @@
   "id": "kiwi-collector-v1",
   "display_name": "Kiwi Collector v1",
   "description": "Collector-style ASS profile with deterministic clean/bilingual block geometry.",
-  "play_resolution": {"x": 1920, "y": 1080},
-  "script_info": {"WrapStyle": "0", "ScaledBorderAndShadow": "yes", "YCbCr Matrix": "TV.709"},
+  "play_resolution": {
+    "x": 1920,
+    "y": 1080
+  },
+  "script_info": {
+    "WrapStyle": "0",
+    "ScaledBorderAndShadow": "yes",
+    "YCbCr Matrix": "TV.709"
+  },
   "mode": "hybrid",
   "styles": {
-    "SF-ZH": {"Fontname": "WenQuanYi Micro Hei", "Fontsize": "60", "PrimaryColour": "&H00D2D2D2", "SecondaryColour": "&H000000FF", "OutlineColour": "&H00000000", "BackColour": "&H00000000", "Bold": "-1", "Italic": "0", "Underline": "0", "StrikeOut": "0", "ScaleX": "100", "ScaleY": "105", "Spacing": "0", "Angle": "0", "BorderStyle": "1", "Outline": "2", "Shadow": "0", "Alignment": "2", "MarginL": "10", "MarginR": "10", "MarginV": "103", "Encoding": "1"},
-    "SF-JA": {"Fontname": "WenQuanYi Micro Hei", "Fontsize": "50", "PrimaryColour": "&H000E95CE", "SecondaryColour": "&H000000FF", "OutlineColour": "&H00000000", "BackColour": "&H00000000", "Bold": "0", "Italic": "0", "Underline": "0", "StrikeOut": "0", "ScaleX": "100", "ScaleY": "100", "Spacing": "0", "Angle": "0", "BorderStyle": "1", "Outline": "2", "Shadow": "0", "Alignment": "2", "MarginL": "10", "MarginR": "10", "MarginV": "45", "Encoding": "1"}
+    "SF-ZH": {
+      "Fontname": "WenQuanYi Micro Hei",
+      "Fontsize": "60",
+      "PrimaryColour": "&H00D2D2D2",
+      "SecondaryColour": "&H000000FF",
+      "OutlineColour": "&H00000000",
+      "BackColour": "&H00000000",
+      "Bold": "-1",
+      "Italic": "0",
+      "Underline": "0",
+      "StrikeOut": "0",
+      "ScaleX": "100",
+      "ScaleY": "105",
+      "Spacing": "0",
+      "Angle": "0",
+      "BorderStyle": "1",
+      "Outline": "2",
+      "Shadow": "0",
+      "Alignment": "2",
+      "MarginL": "10",
+      "MarginR": "10",
+      "MarginV": "103",
+      "Encoding": "1"
+    },
+    "SF-JA": {
+      "Fontname": "WenQuanYi Micro Hei",
+      "Fontsize": "50",
+      "PrimaryColour": "&H000E95CE",
+      "SecondaryColour": "&H000000FF",
+      "OutlineColour": "&H00000000",
+      "BackColour": "&H00000000",
+      "Bold": "0",
+      "Italic": "0",
+      "Underline": "0",
+      "StrikeOut": "0",
+      "ScaleX": "100",
+      "ScaleY": "100",
+      "Spacing": "0",
+      "Angle": "0",
+      "BorderStyle": "1",
+      "Outline": "2",
+      "Shadow": "0",
+      "Alignment": "2",
+      "MarginL": "10",
+      "MarginR": "10",
+      "MarginV": "45",
+      "Encoding": "1"
+    }
   },
   "layout": {
     "single_line_preferred": true,
@@ -31,19 +84,68 @@
     "require_all_referenced_fonts": true,
     "preserve_source_special_styles": true,
     "required_families": [
-      {"family": "WenQuanYi Micro Hei", "role": "dialogue", "required": true},
-      {"family": "Source Han Sans CN Heavy", "role": "note", "required": false},
-      {"family": "CloudZongYiGBK", "role": "title", "required": false},
-      {"family": "方正粗圆_GBK", "role": "song-sign", "required": false},
-      {"family": "Source Han Serif CN", "role": "special-sign", "required": false}
+      {
+        "family": "WenQuanYi Micro Hei",
+        "role": "dialogue",
+        "required": true
+      },
+      {
+        "family": "Source Han Sans CN Heavy",
+        "role": "note",
+        "required": false
+      },
+      {
+        "family": "CloudZongYiGBK",
+        "role": "title",
+        "required": false
+      },
+      {
+        "family": "方正粗圆_GBK",
+        "role": "song-sign",
+        "required": false
+      },
+      {
+        "family": "Source Han Serif CN",
+        "role": "special-sign",
+        "required": false
+      }
     ],
     "registry": "subtitleflow-default-fonts-v1"
   },
-  "event_overrides": {"SF-ZH": "\\blur2", "SF-JA": "\\blur2"},
+  "event_overrides": {
+    "SF-ZH": "\\blur2",
+    "SF-JA": "\\blur2"
+  },
   "source_preservation": {
     "preserve_complex_events": true,
     "preserve_special_styles": true,
-    "special_style_names": ["note", "注释", "title", "标题", "song", "歌词", "screen", "sign", "ruby", "staff", "fx", "effect", "karaoke", "wantedposter", "formal", "formalscreentext", "document", "newspaper", "prop", "screentext", "screen_text"],
-    "special_style_prefixes": ["op", "ed", "in"]
+    "special_style_names": [
+      "note",
+      "注释",
+      "title",
+      "标题",
+      "song",
+      "歌词",
+      "screen",
+      "sign",
+      "ruby",
+      "staff",
+      "fx",
+      "effect",
+      "karaoke",
+      "wantedposter",
+      "formal",
+      "formalscreentext",
+      "document",
+      "newspaper",
+      "prop",
+      "screentext",
+      "screen_text"
+    ],
+    "special_style_prefixes": [
+      "op",
+      "ed",
+      "in"
+    ]
   }
 }

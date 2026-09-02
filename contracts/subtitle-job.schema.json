@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://subtitleflow.local/contracts/subtitle-job.schema.json",
+  "title": "SubtitleFlow Portable Job",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "intent", "inputs"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "job_id": {"type": "string", "minLength": 1},
+    "project_id": {"type": ["string", "null"]},
+    "title_id": {"type": ["string", "null"]},
+    "series_id": {"type": ["string", "null"]},
+    "display_name": {"type": ["string", "null"]},
+    "intent": {
+      "enum": [
+        "jp-audio-zh-cn",
+        "tw-dub-zh-cn",
+        "jp-audio-zh-cn-ja",
+        "jp-zh-bilingual",
+        "polish-existing",
+        "auto"
+      ]
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$"},
+          "format": {"enum": ["ass", "ssa", "srt", "vtt", "unknown"]},
+          "language": {"type": ["string", "null"]},
+          "audio_relation": {
+            "enum": ["jp-audio", "tw-dub", "other-dub", "source-language", "unknown"]
+          },
+          "evidence_kind": {
+            "enum": [
+              "target-subtitle",
+              "timing-reference",
+              "translation-reference",
+              "source-language",
+              "dub-transcript",
+              "screenshot",
+              "video-clip",
+              "unknown"
+            ]
+          },
+          "role_hint": {"enum": ["S", "A", "B", "C", "D", null]},
+          "notes": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "style_profile": {"type": "string", "default": "kiwi-collector-v1"},
+        "editing_policy": {"enum": ["preserve", "proofread", "retranslate", "auto"]},
+        "use_repository_evidence": {"type": "boolean", "default": true},
+        "require_exact_fonts": {"type": "boolean", "default": true},
+        "render_samples": {"type": "boolean", "default": true},
+        "release_zip": {"type": "boolean", "default": true},
+        "special_instructions": {"type": ["string", "null"]}
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "full_name": {"type": "string", "default": "kiwi4814/SubtitleFlow"},
+        "ref": {"type": ["string", "null"]},
+        "commit_sha": {"type": ["string", "null"]},
+        "evidence_root": {"type": "string", "default": "evidence"},
+        "research_pack_path": {"type": ["string", "null"]}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {"type": "boolean"},
+      "properties": {
+        "ffmpeg_libass": {"type": "boolean"},
+        "exact_fonts": {"type": "boolean"},
+        "full_video": {"type": "boolean"},
+        "mkvtoolnix": {"type": "boolean"}
+      }
+    }
+  }
+}

@@ -34,13 +34,6 @@ def _template(paths: TitlePaths, role: str) -> AssDocument:
     return minimal_ass_document()
 
 
-def _profile_styles(paths: TitlePaths) -> dict[str, dict[str, str]]:
-    return {
-        "SF-ZH": ass_style_values(paths, "SF-ZH"),
-        "SF-JA": ass_style_values(paths, "SF-JA"),
-    }
-
-
 def _play_resolution(paths: TitlePaths, template: AssDocument) -> tuple[int, int]:
     x: int | None = None
     y: int | None = None
@@ -56,6 +49,47 @@ def _play_resolution(paths: TitlePaths, template: AssDocument) -> tuple[int, int
                 y = int(raw.strip())
     profile_res = load_style_profile(paths).get("play_resolution", {})
     return int(x or profile_res.get("x", 1920)), int(y or profile_res.get("y", 1080))
+
+
+def _ass_number(value: float) -> str:
+    if value.is_integer():
+        return str(int(value))
+    return f"{value:.3f}".rstrip("0").rstrip(".")
+
+
+def _profile_styles(
+    paths: TitlePaths, template: AssDocument | None = None
+) -> dict[str, dict[str, str]]:
+    styles = {
+        "SF-ZH": ass_style_values(paths, "SF-ZH"),
+        "SF-JA": ass_style_values(paths, "SF-JA"),
+    }
+    if template is None:
+        return styles
+
+    profile = load_style_profile(paths)
+    nominal_resolution = profile.get("play_resolution", {})
+    try:
+        nominal_y = int(nominal_resolution.get("y", 1080))
+    except (AttributeError, TypeError, ValueError):
+        nominal_y = 1080
+    _play_x, play_y = _play_resolution(paths, template)
+    if nominal_y <= 0 or play_y <= 0 or nominal_y == play_y:
+        return styles
+
+    # ASS font size is expressed in the template's authored coordinate space. Keep that
+    # coordinate space intact so preserved \pos/\move/\clip events remain correct, while
+    # scaling only generated dialogue typography from the profile's nominal 1080p canvas.
+    scale = play_y / nominal_y
+    for style_name, values in styles.items():
+        raw_size = values.get("Fontsize")
+        try:
+            values["Fontsize"] = _ass_number(float(raw_size) * scale)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError(
+                f"Style {style_name} has invalid Fontsize for template scaling: {raw_size!r}"
+            ) from exc
+    return styles
 
 
 def _excluded_event_indices(template: AssDocument) -> set[int]:
@@ -125,7 +159,7 @@ def _target_events(
     serial_base: int = 1_000_000,
 ) -> list[tuple[int, int, str]]:
     events: list[tuple[int, int, str]] = []
-    styles = _profile_styles(paths)
+    styles = _profile_styles(paths, template)
     layout = layout_settings(paths)
     play_x, play_y = _play_resolution(paths, template)
     for index, unit in enumerate(units, start=1):
@@ -173,7 +207,7 @@ def _render_standard(
     rendered = render_from_template(
         template,
         _target_events(template, work.units, paths=paths, mode="clean"),
-        style_values=_profile_styles(paths),
+        style_values=_profile_styles(paths, template),
         preserve_style_names=set(),
         preserve_event_indices=_preserved_event_indices(template),
         exclude_event_indices=_excluded_event_indices(template),
@@ -227,7 +261,7 @@ def compile_jp_bilingual(paths: TitlePaths, *, preview: bool = False) -> Path:
     template = _template(paths, "A")
     reconciliation = _reconciliation(paths)
     units = {item.id: item for item in work.units}
-    styles = _profile_styles(paths)
+    styles = _profile_styles(paths, template)
     layout = layout_settings(paths)
     play_x, play_y = _play_resolution(paths, template)
     events: list[tuple[int, int, str]] = []

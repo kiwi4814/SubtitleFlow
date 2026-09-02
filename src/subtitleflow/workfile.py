@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .alignment import align_cues, editable_cues
+from .cue_views import evidence_cues
 from .editorial import editorial_context
 from .errors import GateError, ValidationError
 from .glossary import apply_glossary, load_glossary
@@ -136,7 +137,7 @@ def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) ->
         if not has_c:
             raise GateError("Clean source-assisted mode requires role C, but C is missing")
         c = load_normalized(paths, "C")
-        c_cues = editable_cues(c.cues)
+        c_cues = evidence_cues(c.cues)
         alignment_cfg = config.get("alignment", {})
         proxy = _make_proxy_cues(units)
         result = align_cues(
@@ -199,7 +200,7 @@ def build_tw_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
     a = load_normalized(paths, "A")
     d = load_normalized(paths, "D")
     a_cues = editable_cues(a.cues)
-    d_cues = editable_cues(d.cues)
+    d_cues = evidence_cues(d.cues)
     alignment_cfg = config.get("alignment", {})
     result = align_cues(
         a_cues,
@@ -283,8 +284,8 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
     b = load_normalized(paths, "B")
     c = load_normalized(paths, "C")
     a_cues = editable_cues(a.cues)
-    b_cues = editable_cues(b.cues)
-    c_cues = editable_cues(c.cues)
+    b_cues = evidence_cues(b.cues)
+    c_cues = evidence_cues(c.cues)
     alignment_cfg = config.get("alignment", {})
     max_group = int(alignment_cfg.get("max_group", 3))
     unmatched_penalty = float(alignment_cfg.get("unmatched_penalty", 3.0))
@@ -333,7 +334,14 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
         )
 
     proxy = _make_proxy_cues(units)
-    pc = align_cues(proxy, c_cues, max_group=max_group, unmatched_penalty=unmatched_penalty)
+    pc = align_cues(
+        proxy,
+        c_cues,
+        max_group=max_group,
+        max_left_group=1,
+        max_right_group=max_group,
+        unmatched_penalty=unmatched_penalty,
+    )
     split_raw = branch_cfg.get("source_split_decisions", {})
     if split_raw and not isinstance(split_raw, dict):
         raise ValidationError("jp_branch.source_split_decisions must be an object")
@@ -372,6 +380,7 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
         metadata={
             "alignment_ab_offset_ms": ab.estimated_offset_ms,
             "alignment_japanese_offset_ms": pc.estimated_offset_ms,
+            "japanese_alignment_policy": "atomic-target-1:n",
             "minimal_editorial_intervention": True,
             "editorial": editorial_context(config, branch="jp").to_dict(),
             "reconciliation_schema": 1,
@@ -380,7 +389,13 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
     output = paths.work / "jp.json"
     write_json(output, work.to_dict())
     write_json(paths.work / "alignment-A-B.json", _alignment_report(ab, "A", "B"))
-    write_json(paths.work / "alignment-JP-C.json", _alignment_report(pc, "JP-work", "C"))
+    jp_alignment = _alignment_report(pc, "JP-work", "C")
+    jp_alignment["group_limits"] = {
+        "max_left_group": 1,
+        "max_right_group": max_group,
+        "reason": "keep target subtitle units atomic during bilingual source reconciliation",
+    }
+    write_json(paths.work / "alignment-JP-C.json", jp_alignment)
     write_json(paths.work / "bilingual-reconciliation.json", reconciliation.to_dict())
     write_json(paths.work / "bilingual-coverage.json", reconciliation.coverage())
     return output
