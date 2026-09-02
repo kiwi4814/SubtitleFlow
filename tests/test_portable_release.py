@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from subtitleflow.portable_release import _portableize_paths, _zip_deterministic
 
 
