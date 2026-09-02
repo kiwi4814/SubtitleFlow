@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .alignment import align_cues, editable_cues
+from .cue_views import evidence_cues
 from .editorial import editorial_context
 from .errors import GateError, ValidationError
 from .glossary import apply_glossary, load_glossary
@@ -136,7 +137,7 @@ def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) ->
         if not has_c:
             raise GateError("Clean source-assisted mode requires role C, but C is missing")
         c = load_normalized(paths, "C")
-        c_cues = editable_cues(c.cues)
+        c_cues = evidence_cues(c.cues)
         alignment_cfg = config.get("alignment", {})
         proxy = _make_proxy_cues(units)
         result = align_cues(
@@ -199,7 +200,7 @@ def build_tw_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
     a = load_normalized(paths, "A")
     d = load_normalized(paths, "D")
     a_cues = editable_cues(a.cues)
-    d_cues = editable_cues(d.cues)
+    d_cues = evidence_cues(d.cues)
     alignment_cfg = config.get("alignment", {})
     result = align_cues(
         a_cues,
@@ -283,8 +284,8 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
     b = load_normalized(paths, "B")
     c = load_normalized(paths, "C")
     a_cues = editable_cues(a.cues)
-    b_cues = editable_cues(b.cues)
-    c_cues = editable_cues(c.cues)
+    b_cues = evidence_cues(b.cues)
+    c_cues = evidence_cues(c.cues)
     alignment_cfg = config.get("alignment", {})
     max_group = int(alignment_cfg.get("max_group", 3))
     unmatched_penalty = float(alignment_cfg.get("unmatched_penalty", 3.0))
