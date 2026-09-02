@@ -64,6 +64,11 @@ def test_semantic_packet_contains_adapter_context_without_mutating_review(tmp_pa
     prepared = prepare_portable_job(job_path, workspace=workspace, source_root=REPO_ROOT)
     paths = title_paths(workspace, prepared.project_id, prepared.title_id)
 
+    candidates_path = paths.review / "candidates.json"
+    state_path = paths.state
+    candidates_before = candidates_path.read_bytes()
+    state_before = state_path.read_bytes()
+
     packet = build_semantic_packet(paths, "clean")
 
     assert packet["kind"] == "subtitleflow-semantic-packet"
@@ -76,4 +81,5 @@ def test_semantic_packet_contains_adapter_context_without_mutating_review(tmp_pa
     assert packet["proposal_contract"]["human_review_required"] is True
     assert len(packet["packet_input_sha256"]) == 64
     assert len(packet["packet_sha256"]) == 64
-    assert not (paths.review / "candidates.json").exists()
+    assert candidates_path.read_bytes() == candidates_before
+    assert state_path.read_bytes() == state_before
