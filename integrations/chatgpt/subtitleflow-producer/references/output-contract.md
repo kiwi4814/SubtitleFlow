@@ -12,6 +12,7 @@ SubtitleFlow-<title>-<branch>.zip
 │   ├── source-fragment-ledger.jsonl
 │   ├── changes.jsonl
 │   ├── punctuation-review.jsonl
+│   ├── human-review.md            # required for OCR/dub-clean; may contain zero actionable items
 │   └── canon-gaps.jsonl          # only when non-empty
 ├── renders/                      # only when actual render evidence exists
 └── manifest.json
@@ -27,13 +28,22 @@ Also record:
 - actual geometry gate result, including cross-mode leakage such as monolingual y=430 remnants;
 - `textual_uncertainty` separately from `audio_validation_deferred`;
 - whether any render used exact registered font bytes or font fallback;
-- independent convergence pass result and `new_major_semantic_or_provenance_issue` for Golden candidates.
+- independent convergence pass result and `new_major_semantic_or_provenance_issue` for Golden candidates;
+- OCR/dub-clean human-review counts (`must_confirm`, `optional_listen`), plus whether exact dub-audio fidelity is `verified`, `pending-human-review`, or `waived`.
 
 A source event with one final ref is not automatically fully presented. Fragment coverage is authoritative. Ledgers/reports, not ASS Effect text alone, are authoritative provenance.
+
+## Human-review report
+
+For OCR/dub-clean, `human-review.md` is a compact exception queue governed by `human-review-policy.md`, not a complete QA history. Default to 3-8 actionable items, re-filter queues above 10, show issue-confidence and repair-confidence separately, and include ambiguous dub divergence only when actual listening can distinguish adaptation from OCR/transcription error.
+
+If `MUST_CONFIRM > 0`, do not describe the release as fully matched to Taiwan-dub speech.
 
 ## Change report
 
 Classify material changes as `hard_semantic_fix`, `source_reconciliation_fix`, `canon_enforced`, `presentation_required`, `stylistic_optional`, or `overedit_revert`. Late-stage stylistic alternatives normally remain unchanged.
+
+When clear same-cut Taiwan-dub audio proves the hard-sub/OCR wording does not match what the actor actually said, record the wording change as `dub_audio_override` with the audio/listening evidence provenance.
 
 ## Golden scope
 
