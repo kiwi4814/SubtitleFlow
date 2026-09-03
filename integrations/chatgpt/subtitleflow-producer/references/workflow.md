@@ -24,7 +24,7 @@ For Japanese-audio bilingual production, do not invent auxiliary Japanese unless
 
 ## 5. Strong-model semantic editing
 
-Review the whole production. For Japanese-audio Chinese, Japanese semantics is authoritative and Chinese is a seed. For Taiwan-dub OCR cleanup, credible dub hard-sub/transcript/audio wording is authoritative and Japanese is challenge/context evidence.
+Review the whole production. For Japanese-audio Chinese, Japanese semantics is authoritative and Chinese is a seed. For Taiwan-dub OCR cleanup aimed at speech-exact subtitles, clear same-cut dub audio is highest wording/delivery authority; reliable same-dub hard-sub/transcript follows; OCR is evidence to recover that wording; Japanese is challenge/context evidence. Allow real dub adaptation instead of normalizing it back to Japanese.
 
 Apply Minimal Edit. In OCR branches, explicitly challenge plausible-Han failures: direction/deixis, negation, quantities, names, sentence-final particles, short replies, duplicated Han, and punctuation that changes speech act.
 
@@ -40,16 +40,22 @@ For dub OCR cleanup, reverse-scan removed/non-presented OCR units for plausible 
 
 Do not rescue severe long lines with `fscx < 85` or ordinary dialogue `\\N`.
 
-## 8. Independent post-fix convergence
+## 8. Bounded human review
+
+For OCR/dub cleanup, produce `reports/human-review.md` using `human-review-policy.md`. Keep only cases where user listening materially improves exact recovery. Distinguish confirmed dub divergence from ambiguous dub divergence. Default to 3-8 actionable items per feature film and re-filter any queue above 10.
+
+If `MUST_CONFIRM > 0`, exact dub-audio fidelity remains `pending-human-review` even if narrower automated Web gates pass.
+
+## 9. Independent post-fix convergence
 
 An independent audit must not inherit prior PASS decisions as truth. Re-audit immutable source evidence against the current candidate.
 
 If a major issue is found, fix it, promote a new RC, and run a **second independent post-fix pass**. Golden requires that later pass to report zero new major semantic/provenance findings. Do not declare Golden in the same pass that discovered a major issue.
 
-## 9. Render evidence and truthfulness
+## 10. Render evidence and truthfulness
 
 Synthetic libass rendering can support presentation QA. Record the actual selected font. If the registered font bytes are unavailable and libass falls back, label the render supplemental/fallback and keep exact-font validation deferred.
 
-## 10. Completion states
+## 11. Completion states
 
 Use `draft`, `candidate`, `reviewed`, `release-candidate`, `final`, and `Golden Regression` accurately. Record exact Golden scope and separate `textual_uncertainty` from `audio_validation_deferred`. Missing real-video/font/remux capabilities are deferred, not passed.
