@@ -1,6 +1,6 @@
 ---
 name: subtitleflow-producer
-description: Produce, polish, align, QA, independently re-audit, and package collector-grade ASS subtitles directly in ChatGPT/Web from uploaded subtitle files, using strong-model semantic judgment plus deterministic audits. Use for Japanese-audio Simplified-Chinese subtitles, Taiwan-dub Simplified-Chinese subtitles, Japanese-Chinese bilingual ASS, subtitle repair, OCR/dub cleanup, alignment/reconciliation fixes, Canon-aware terminology enforcement, late-stage regression audit, Golden convergence, punctuation/notation repair, and collector release candidates. Consume existing Canon/SRP/evidence selectively from GitHub when useful, but do not depend on cloning or running the local SubtitleFlow repository.
+description: Produce, polish, align, QA, independently re-audit, and package collector-grade ASS subtitles directly in ChatGPT/Web from uploaded subtitle files, using strong-model semantic judgment plus deterministic audits. Use for Japanese-audio Simplified-Chinese subtitles, Taiwan-dub source-form Traditional/Simplified Chinese subtitles, Japanese-Chinese bilingual ASS, subtitle repair, OCR/dub cleanup, alignment/reconciliation fixes, Canon-aware terminology enforcement, late-stage regression audit, Golden convergence, punctuation/notation repair, and collector release candidates. Consume existing Canon/SRP/evidence selectively from GitHub when useful, but do not depend on cloning or running the local SubtitleFlow repository.
 ---
 
 # SubtitleFlow Producer
@@ -28,6 +28,7 @@ Read `references/production-invariants.md` before any production.
 Read `references/regression-policy.md` for Minimal Edit, fragment-level closure, duplicate short-fragment matching, plausible-Han OCR challenge, independent re-audit, conditional source challenge, anti-overedit, and Golden convergence.
 Read `references/punctuation-policy.md` whenever Chinese/Japanese punctuation, source notation, quotation, speaker labels, ellipsis, dub OCR particles, short replies, or delivery is involved.
 Read `references/layout-policy.md` whenever line width, wrapping, `fscx`, monolingual/bilingual geometry, sequential presentation splits, or synthetic-canvas rendering is involved.
+Read `references/character-form-policy.md` whenever Chinese OCR cleanup may require Traditional/Simplified source-form preservation or dual character-form deliverables.
 Read `references/evidence-policy.md` when Canon/SRP or conflicting source claims matter.
 Read `references/output-contract.md` before packaging.
 Read `references/m01-regression-fixtures.md` when validating alignment, punctuation, notation, Canon, accounting, over-edit, duplicate matching, OCR cleanup, dub divergence, or layout regressions.
@@ -57,7 +58,9 @@ Do not convert these judgments into blind regex rules. Deterministic checks may 
 
 ## Taiwan-dub OCR cleanup
 
-For a Taiwan-dub hard-sub OCR cleanup branch:
+For a Taiwan-dub hard-sub OCR cleanup branch, produce character forms under `references/character-form-policy.md`: clean and freeze the source-form master first; generate Simplified only as a deterministic derivative when the retained OCR is Traditional. If the retained OCR is already Simplified, emit only the Simplified master. Never independently rewrite the Simplified derivative.
+
+For wording/evidence:
 
 - credible Taiwan hard-sub OCR/dub transcript/audio is **wording authority**;
 - Japanese and Japanese-audio Chinese are **challenge/context evidence**, not replacement wording authority;
@@ -65,6 +68,7 @@ For a Taiwan-dub hard-sub OCR cleanup branch:
 - absence of a Japanese counterpart is not sufficient reason to delete readable Taiwan-dub hard-sub text;
 - preserve Taiwan-specific wording and terminology unless the user explicitly requests another release profile;
 - distinguish `textual_uncertainty` from `audio_validation_deferred`: readable source-authentic wording should not remain textually unresolved merely because matching dub audio is unavailable.
+- treat the cleaned source-form OCR master as authoritative final wording; character-form projections inherit wording, punctuation, timing, segmentation, layout, and provenance without independent edits.
 
 During late-stage OCR QA, challenge plausible-looking Han errors, not only garbage. Scan semantic oppositions and confusables such as `这/那`, `来/去`, `上/下`, `前/后`, negation, quantities, names, sentence-final `吗/嘛/吧`, short affirmative responses, duplicated valid Han, and punctuation that changes speech act.
 
