@@ -12,7 +12,7 @@ Preferred lifecycle:
 
 Keep provenance, trust, editing policy, and Canon separate. `official` does not automatically mean semantically correct for every branch. Taiwan-dub wording and Japanese-audio Chinese translation are distinct intents.
 
-For Japanese-audio Chinese, source-language semantics is the semantic authority; the existing Chinese subtitle remains a translation seed. For Taiwan-dub Chinese, credible dub wording/audio/transcript is the wording authority.
+For Japanese-audio Chinese, source-language semantics is the semantic authority; the existing Chinese subtitle remains a translation seed. For Taiwan-dub Chinese whose goal is exact spoken fidelity, authority is ordered: clear same-cut Taiwan-dub audio first; reliable same-dub transcript or directly readable original hard-sub next; corroborated OCR after that. Japanese and Japanese-audio Chinese are challenge/context evidence, not Taiwan-dub wording authority. Dubbing may legitimately adapt the Japanese for performance, lip-sync, rhythm, humor, characterization, or localization.
 
 ## Canon boundary
 
@@ -28,5 +28,7 @@ A temporary production choice is not a permanent Canon update. Record its contex
 ## Primary source challenge
 
 Treat the pinned primary Japanese source as high-confidence semantic authority, not an unchallengeable absolute truth. Use independent challenge evidence only when a case is disputed/high-risk or the primary source itself appears suspect. Do not make ordinary production research every line online.
+
+For Taiwan-dub speech-exact work, Japanese is never the wording authority for the dub. A Japanese/Taiwan-dub mismatch may represent legitimate dubbing adaptation rather than an OCR defect.
 
 When challenged, compare provenance/version/context and semantic fit; do not use simple majority voting across subtitle files.
