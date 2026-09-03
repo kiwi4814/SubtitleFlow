@@ -2,77 +2,51 @@
 
 Use strong-model judgment to decide semantic segmentation first. Layout may project those decisions; it must not conceal a bad reconciliation.
 
-## Default bilingual presentation — single-line only
+## Select presentation mode before geometry
+
+Presentation geometry is mode-specific. Select `clean` / monolingual, `bilingual`, song, or another explicit profile before emitting ASS positions. Never reuse a bilingual language-row anchor merely because the same `SF-ZH` style is used.
 
 For the bundled 640x480 collector reference profile:
 
-- Chinese: exactly one line, `SF-ZH`, `\\an2\\pos(320,430)`.
-- Japanese: exactly one line, `SF-JA`, `\\an2\\pos(320,460)`.
-- Use `\\q2` so the renderer does not silently rewrap a line.
-- Prefer `fscx=100`. Minor compression is acceptable only after semantic/source-fragment review.
-- `fscx < 85` is not an acceptable automatic fix.
-- Ordinary collector output must contain no explicit `\\N` in Chinese or Japanese dialogue.
+- **clean / monolingual Simplified Chinese:** exactly one line, `SF-ZH`, `\\an2\\pos(320,453)`; this is `round(480 * 0.944)`.
+- **bilingual Chinese:** exactly one line, `SF-ZH`, `\\an2\\pos(320,430)`.
+- **bilingual Japanese:** exactly one line, `SF-JA`, `\\an2\\pos(320,460)`.
+- use `\\q2` so the renderer does not silently rewrap a line;
+- prefer `fscx=100`; `fscx < 85` is not an acceptable automatic fix;
+- ordinary collector output must contain no explicit `\\N` dialogue line break.
 
-The user's collector preference is sequential single-line presentation, not stacked multi-line presentation. Do not introduce a two-line Japanese layout as a rescue mechanism.
+A monolingual release with every Chinese cue still at y=430 is a presentation-profile projection failure, not a harmless stylistic choice. Audit the whole release for mode leakage whenever one cue is found at the wrong anchor.
 
 ## Long-line resolution order
 
-When either language is too wide, investigate in this order:
+When a line is too wide, investigate in this order:
 
 1. source-fragment over-assembly or false merge;
-2. target/source sentence boundary and speaker ownership;
-3. unnecessary translation verbosity or removable source formatting spaces;
+2. sentence boundary and speaker ownership;
+3. unnecessary translation verbosity or removable formatting spaces;
 4. safe one-line compression at or above 85;
-5. split the semantic presentation into two or more sequential bilingual events.
+5. split the semantic presentation into sequential events when the active profile permits it.
 
 A visually long line can expose a reconciliation defect. Never treat geometry as isolated from evidence.
 
-## Sequential presentation splitting
+## Sequential bilingual presentation splitting
 
 When a genuine source cue contains multiple semantic clauses but must remain one source evidence unit, keep the evidence unit intact and split only the presentation projection.
 
-Each projected segment must:
+Each projected segment must contain exactly one Chinese and one Japanese line, stay inside the original source time span, split at a real semantic/prosodic boundary, preserve source order/ownership, avoid duplicate or missing words, keep `ZH y=430` / `JA y=460`, and avoid `\\N`.
 
-- contain exactly one Chinese line and one Japanese line;
-- remain inside the original source cue time span;
-- split at a real semantic/prosodic boundary chosen by strong-model judgment;
-- preserve source order and fragment ownership;
-- avoid duplicate or missing words across segments;
-- keep ordinary geometry (`ZH y=430`, `JA y=460`);
-- avoid `\\N` entirely.
+Use exact sub-cue timestamps when available. Otherwise infer the boundary conservatively, mark `PRESENTATION_SPLIT_INFERRED`, and defer audio-precise timing. Never represent inferred timing as source-authored timing.
 
-If the source provides exact sub-cue timestamps, use them. If it provides only one coarse cue with no internal timing boundary, infer the split conservatively from semantic clause structure and reading burden. Mark every affected presentation event `PRESENTATION_SPLIT_INFERRED` and treat audio-precise timing as deferred until real media is available.
-
-An inferred split must never extend source material outside the original cue interval and must never be represented as source-authored timing.
-
-Do not infer a split if it would create an unreadably short segment. If a semantic split would require a segment below the active minimum-duration/readability policy, stop and report a timing-review requirement rather than restoring a two-line cue or forcing `fscx < 85`.
+Do not infer a split that creates an unreadably short segment. Report a timing-review requirement rather than restoring two-line dialogue or forcing `fscx < 85`.
 
 ## Evidence vs presentation
 
-A source cue such as:
-
-```text
-A clause\\NB clause
-```
-
-may remain one source/evidence unit while the release contains:
-
-```text
-[t0, ts]  ZH-A / JA-A
-[ts, t1]  ZH-B / JA-B
-```
-
-This is a presentation split, not evidence falsification. Record the relationship in provenance/ledger output.
+Evidence units may be N:M while presentation is visually 1:1 or sequential. Record presentation splits and inferred boundaries in provenance rather than altering source evidence identity.
 
 ## Renderer evidence without movie media
 
-When no MKV/video is available, an FFmpeg/libass synthetic canvas rendered with the exact registered font files is valid evidence for:
+Synthetic FFmpeg/libass rendering can validate line count, wrapping, spacing, compression, clipping, bounds, punctuation, and font selection/fallback diagnostics.
 
-- font selection/fallback diagnostics;
-- line count and explicit wrapping;
-- horizontal compression;
-- Chinese/Japanese spacing;
-- clipping and canvas bounds;
-- punctuation/source-notation presentation.
+**Exact-font PASS requires the exact registered font bytes.** If libass falls back because the registered font is unavailable, the render may be retained as supplemental stress evidence but must be labeled fallback-font evidence and cannot certify exact glyph metrics.
 
-It is not evidence for scene occlusion or exact timing against spoken audio. Inferred presentation-split boundaries remain timing-deferred until real media is available.
+Synthetic rendering is never evidence for real-scene occlusion or exact timing against spoken audio.

@@ -2,95 +2,54 @@
 
 ## 1. Intake and immutable evidence
 
-Inventory uploaded files without changing source bytes. Detect format, language, timing usefulness, likely audio relationship, duplicates, ASS styles/override tags, and source notation patterns.
+Inventory uploads without changing source bytes. Detect format, language, timing usefulness, likely audio relationship, duplicates, ASS styles/override tags, source notation, and whether the requested output is monolingual, bilingual, dub-clean, or another release profile.
 
-Infer the requested viewing release from natural language. Do not require S/A/B/C/D terminology from the user.
-
-Determine the review mode:
-
-- normal production/editing;
-- conservative late-stage regression audit;
-- independent Golden-convergence audit.
-
-Regression/audit mode uses the stricter Minimal Edit policy in `regression-policy.md`.
+Choose normal production, conservative regression audit, or independent Golden-convergence audit.
 
 ## 2. Selective long-term evidence
 
-When the title/series needs established terminology or research, selectively read the compatible Canon/SRP/evidence snapshot from GitHub. Do not clone the repository and do not require local SubtitleFlow execution.
-
-Evidence priority:
-
-1. explicit user instruction for this release;
-2. compatible title/branch Canon decision;
-3. compatible series/branch Canon decision;
-4. source-language semantics / relevant dub wording for the requested audio;
-5. other credible localized evidence;
-6. existing translation as an editing seed;
-7. model inference, clearly marked and never promoted to permanent Canon automatically.
-
-Use conditional source challenge only for disputed/high-risk cases under `evidence-policy.md` and `regression-policy.md`.
+Read only compatible Canon/SRP/evidence when needed. Do not require a clone or local Core runtime. Evidence priority is: explicit user release instruction; compatible title/series Canon; authoritative source/dub evidence for the requested audio; other credible localized evidence; translation seed; model inference.
 
 ## 3. Build ledgers before editing
 
-Create a stable target ledger for every baseline target unit and a source-fragment ledger for spoken source evidence. Preserve speaker/delivery/notation metadata separately from presentation text.
+Create stable target and source-fragment ledgers. Preserve speaker/delivery/notation metadata separately. Do not close an event merely because it has one final ref. Bind repeated short fragments with timing/order/speaker/adjacency evidence.
 
-Do not close a source event merely because it has one final reference. When one source event contains multiple semantic pieces, create accountable fragment/spans and derive the event status from their coverage.
-
-Do not let source cleanup discard spoken fragments. Do not declare SOURCE_GAP after a single local miss.
-
-For short/repeated fragments, text equality alone is insufficient. Bind using timing neighborhood, monotonic order, speaker, adjacent fragments, candidate distance, and parallel structure. Preserve separate source identity for simultaneous identical calls.
+Component parsing must round-trip semantic source spans and must not consume a valid leading Han character as a structural marker without explicit syntax.
 
 ## 4. Reconciliation
 
-Align by timing plus semantics, speaker, sequence, and fragment consumption. Support N:M relations and fragments. Different speakers or simultaneous reactions default against automatic merge unless semantics proves they belong together.
+Align by timing plus semantics, speaker, sequence, and fragment consumption. Support N:M and dub-only source content. Before declaring a gap, inspect nearby cues, prefix/suffix fragments, multi-target:one-source possibilities, speaker overlap, translation-seed expansion, and redundancy.
 
-Before declaring a gap, inspect nearby source cues, unconsumed prefix/suffix fragments, N-target:1-source possibilities, speaker overlap, translation-seed expansion, and redundant target information.
-
-Classify gaps/redundancies explicitly rather than using one generic bucket.
-
-For Japanese-audio bilingual production, do **not** invent auxiliary Japanese merely to preserve visual 1:1. `JA_AUX_RECONSTRUCTED` is disabled by default and may be used only when the user explicitly requests a viewer-assist profile that permits reconstructed language; it must remain clearly non-source provenance.
+For Japanese-audio bilingual production, do not invent auxiliary Japanese unless the user explicitly selects a viewer-assist reconstruction profile.
 
 ## 5. Strong-model semantic editing
 
-Use the model to review the whole production, prioritizing high-risk units but not skipping normal units blindly. For Japanese-audio Chinese, Japanese semantics is authoritative and the existing Chinese subtitle is a translation seed rather than target truth.
+Review the whole production. For Japanese-audio Chinese, Japanese semantics is authoritative and Chinese is a seed. For Taiwan-dub OCR cleanup, credible dub hard-sub/transcript/audio wording is authoritative and Japanese is challenge/context evidence.
 
-Judge mistranslation, omission, proper nouns, sentence boundaries, source-fragment ownership, calls/reactions, and semantic punctuation in context.
-
-Apply the Minimal Edit invariant: keep a correct, substantively complete, correctly owned, Canon-compliant target rather than rewriting it for style. In conservative regression mode, new text edits are limited to clear mistranslation, substantive omission, source ownership/alignment error, or pinned Canon violation.
-
-Classify accepted diffs under `regression-policy.md`. After a broad or unexpectedly large late-stage diff, run the reverse over-edit audit before accepting it.
+Apply Minimal Edit. In OCR branches, explicitly challenge plausible-Han failures: direction/deixis, negation, quantities, names, sentence-final particles, short replies, duplicated Han, and punctuation that changes speech act.
 
 ## 6. Canon and release-style projection
 
-Apply selected release-profile Canon after semantic wording is decided, then audit forbidden aliases. Do not normalize an unfrozen long-tail term just because another external translation is common; record a Canon gap when durable research is needed.
-
-Project the semantic model into deterministic layout/typography. Evidence N:M relations do not need to become presentation N:M; visual 1:1 is a presentation choice only.
-
-For punctuation and notation, follow `punctuation-policy.md`. For line width, `fscx`, sequential single-line splitting, inferred presentation timing, and canvas rendering, follow `layout-policy.md`.
+Apply active release Canon after semantic wording is decided. Then select presentation mode and project deterministic layout. **Mode selection precedes coordinates.** For the bundled 640x480 reference profile, clean monolingual Chinese uses y=453; bilingual Chinese/Japanese use y=430/y=460.
 
 ## 7. QA with feedback loops
 
-Run deterministic inventory/accounting/typography/layout audits, then perform model-led review of flagged semantic risks.
+Run deterministic inventory/accounting/typography/layout audits, then model-led semantic risk review. Route semantic/accounting/punctuation/layout/Canon failures back to the appropriate editing stage. Treat any user-found defect as a full-release bug class.
 
-Allow these explicit loops:
+For dub OCR cleanup, reverse-scan removed/non-presented OCR units for plausible spoken content and compare material OCR-to-final diffs for over-edit or accidental Japan-track normalization.
 
-- semantic QA -> reconciliation;
-- coverage/accounting QA -> reconciliation;
-- punctuation QA -> semantic editing/reconciliation;
-- severe layout overflow -> reconciliation or retranslation before scaling;
-- Canon QA -> semantic editing/normalization;
-- user feedback -> corresponding bug-class full-release scan.
+Do not rescue severe long lines with `fscx < 85` or ordinary dialogue `\\N`.
 
-Do not solve a severe long-line problem by silently shrinking text or by introducing a stacked two-line dialogue. Treat `fscx < 85` or any ordinary dialogue `\N` as a hard review condition. First re-check reconciliation and wording; if the source cue still contains multiple semantic clauses, project it as sequential one-line bilingual events under `layout-policy.md`. When the source lacks an internal timestamp, mark the presentation boundary inferred and keep exact audio timing deferred.
+## 8. Independent post-fix convergence
 
-## 8. Independent re-audit and convergence
+An independent audit must not inherit prior PASS decisions as truth. Re-audit immutable source evidence against the current candidate.
 
-When the user requests independent regression audit, do not inherit previous PASS labels, ledger dispositions, source ownership, punctuation judgments, or Canon judgments as truth. Re-audit immutable source evidence against the candidate ASS; prior reports are supporting evidence only.
+If a major issue is found, fix it, promote a new RC, and run a **second independent post-fix pass**. Golden requires that later pass to report zero new major semantic/provenance findings. Do not declare Golden in the same pass that discovered a major issue.
 
-Use `references/regression-policy.md` for the Golden convergence loop. A candidate may become Golden only after an independent pass reports zero new major semantic/provenance issues.
+## 9. Render evidence and truthfulness
 
-Once Golden, stop open-ended linguistic polishing unless material new evidence, a pinned Canon change, a real defect, or a requested profile change reopens the artifact.
+Synthetic libass rendering can support presentation QA. Record the actual selected font. If the registered font bytes are unavailable and libass falls back, label the render supplemental/fallback and keep exact-font validation deferred.
 
-## 9. Completion states
+## 10. Completion states
 
-Use `draft`, `candidate`, `reviewed`, `release-candidate`, `final`, and `Golden Regression` accurately. `final` requires every mandatory Web semantic/accounting/presentation gate to pass. Golden scope must be explicit. Missing real-video/font/remux capabilities must be reported as deferred, not passed.
+Use `draft`, `candidate`, `reviewed`, `release-candidate`, `final`, and `Golden Regression` accurately. Record exact Golden scope and separate `textual_uncertainty` from `audio_validation_deferred`. Missing real-video/font/remux capabilities are deferred, not passed.

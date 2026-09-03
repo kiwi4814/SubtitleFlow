@@ -5,38 +5,40 @@ Use these as known failure classes, not as a substitute for full-title review. K
 | Time / sample | Failure class | Expected lesson |
 |---|---|---|
 | 01:33 | source fragment split | `これ 本物？` and `もちろんさ` must not be swallowed into one target line. |
-| 02:50 | source notation leakage | `《...》` is delivery metadata in this source family; hide marker while preserving inner-voice/narration provenance. |
+| 02:33 `一个恐龙爪子…` | component-prefix loss | component parsing must not consume semantic leading `一`; round-trip source text after component extraction. |
+| single component labeled `split` | false split accounting | one meaningful component + one final ref is not a split; verify all split dispositions structurally. |
+| 02:50 | source notation leakage | `《...》` is delivery metadata in this source family; hide marker while preserving provenance. |
 | 03:04–03:08 | cross-cue notation | narration/source-notation span crosses cue boundaries; per-line regex is insufficient. |
 | 04:39–04:48 | literal quotation | Japanese quotation marks used for read/quoted text must not be stripped as generic metadata. |
-| 06:49–06:59 | source over-assembly + layout | do not pull multiple continuation fragments into one `fscx67` line; re-audit fragment order/speaker ownership. |
-| 24:12 | sequential presentation split | do not use `fscx83` or two-line JA; split the coarse source cue at the real clause boundary into two sequential one-line bilingual events and mark inferred sub-timing when no raw internal timestamp exists. |
-| 34:00 | source ownership leakage | `ちょ… ちょっと` must not leak into the pair for `むちゃだよ そんな 定員オーバーだ 降りてくれ`, or vice versa. |
-| 39:15–39:20 | continuation ownership + sequential split | keep each camping clause with the correct semantic fragment and project the long 39:15 cue as sequential one-line bilingual events, not `fscx77` or stacked JA. |
-| 48:03–48:11 | continuation ownership + sequential split | distinguish the continuation prefix from the final Take-copter clause; project the 48:03 coarse cue as sequential one-line bilingual events before the 48:07 conclusion. |
-| 1:00:31 | narration + sequential split | strip source delivery brackets from presentation, preserve narration provenance, and split the coarse two-clause narration into two sequential one-line bilingual events rather than `fscx78` or two-line JA. |
-| 1:04:05–1:04:29 | cascade reconciliation + layout | `fscx59` is a symptom of over-assembly; restore source-fragment sequence and account every moved/folded target unit. |
-| `タイムパトロールだ 観念しろ` | partial source-event fake closure | a final ref covering only `タイムパトロールだ` must leave `観念しろ` unresolved; any event-level ref is not full fragment coverage. |
-| `目が回る！` | meaningful short source falsely omitted | a short independent spoken sentence is not automatically an expendable reaction; present it when it has valid narrative/presentation space. |
-| repeated `ふ～ん / うん / あっ` | duplicate short-fragment matching | exact text must not bind source refs without temporal/order/speaker/adjacency evidence. |
-| simultaneous `ドラえもん！` | simultaneous identical call | preserve two independent source identities/final refs when two source fragments/speakers call the same name. |
-| target seed without JP source | unsupported seed expansion | do not fabricate `JA_AUX_RECONSTRUCTED` merely to preserve visible 1:1. Default Japanese-audio collector production to source-backed Japanese only. |
-| `露营舱` vs `露营胶囊` | anti-overedit / Canon boundary | if `露营舱` is semantically valid and the term is not frozen in pinned Canon, Producer must not replace it merely because an external common translation exists; record a Canon gap if durable research is needed. |
-| `タイムふろしき -> 时光布` | pinned Canon enforcement | for the Mainland-modern branch, enforce the pinned locked value `时光布` even when historical subtitles contain a genuine older alias such as `时光包巾`. |
-| 09:10 | seed ellipsis inertia | seed `大雄...` must not override emphatic `のび太！`. |
-| 17:14 | target accounting | target narrative content must never silently disappear. |
+| 06:49–06:59 | source over-assembly + layout | do not pull multiple continuation fragments into one severe-compression line. |
 | 17:21 | deterministic layout | bilingual spacing must be release-profile driven. |
-| 25:54 | seed ellipsis inertia | `よ～し！` requires speech-act review, not mechanical `... -> ……`. |
-| 30:34 | Canon gate | obsolete Mainland alias must be caught across the entire release. |
-| 33:20 | exclamatory question | `何だって！` can naturally require Chinese `？！`; do not mirror punctuation mechanically. |
-| 37:08 | speaker cleanup + spoken fragment | `(一同)` is metadata, but `あっ？` is spoken and must not disappear silently; call punctuation must be re-evaluated. |
-| 47:00–47:20 | redundant target expansion | target count is not narrative-integrity truth; fold only with explicit ledger reason. |
-| 48:26 | semantic punctuation + translation | truncated/threatening seed must be checked against full Japanese semantics rather than preserving ellipsis blindly. |
-| 51:37 | vocative/exclamation vs ellipsis | object call/name may be emphatic even if seed uses ellipsis. |
+| clean monolingual Chinese at y=430 | presentation-mode leakage | bundled 640x480 `clean` Chinese must project to y=453; y=430 is the bilingual Chinese row. Scan all cues, not one. |
+| 24:12 | sequential presentation split | split a coarse multi-clause bilingual cue sequentially rather than use `fscx83` or two-line JA. |
+| ~25:45 `那只恐龙我们要定了吗？` | plausible-Han OCR particle | challenge `吗/嘛`; context/source evidence supports assertive `那只恐龙我们要定了嘛！`. |
+| ~34:38 dub `哆啦A梦！` vs JA `目が回る！` | dub divergence anti-overwrite | Taiwan hard-sub independently supports the dub wording; Japanese mismatch is challenge evidence, not replacement authority. |
+| readable dub cue `行礼` without JA counterpart | dub-only source authenticity | absence from the Japanese track is not deletion evidence; preserve readable dub hard-sub text and defer audio-exact verification. |
+| `偶雨 / 阏 / 量倒 / 程快` | plausible-looking OCR glyph errors | do not stop at garbage detection; scan valid-Han confusables with semantics/context. |
+| `是……` vs corroborated affirmative `はっ！ / 是！` | short-reply punctuation OCR | short affirmative delivery can be corrupted into ellipsis; restore `是！` when evidence is strong. |
+| ~1:19:10 `在那边` vs `こっちだ / 在这边` | deictic OCR reversal | explicitly challenge `这/那`, direction and proximal/distal meaning across the full release. |
+| 34:00 | source ownership leakage | `ちょ… ちょっと` must not leak into another speaker's pair. |
+| 39:15–39:20 | continuation ownership + sequential split | keep each clause with the correct source fragment. |
+| 48:03–48:11 | continuation ownership + sequential split | distinguish continuation prefix from final Take-copter clause. |
+| 1:00:31 | narration + sequential split | preserve narration provenance and split coarse multi-clause presentation. |
+| 1:04:05–1:04:29 | cascade reconciliation + layout | severe compression can signal over-assembly; restore source-fragment sequence. |
+| `タイムパトロールだ 観念しろ` | partial source-event fake closure | a ref covering only the first fragment must leave the second unresolved. |
+| `目が回る！` | meaningful short source falsely omitted | short independent speech is not automatically expendable. |
+| repeated `ふ～ん / うん / あっ` | duplicate short-fragment matching | exact text alone must not bind source refs. |
+| simultaneous `ドラえもん！` | simultaneous identical call | preserve independent source identities/final refs. |
+| target seed without JP source | unsupported seed expansion | do not fabricate Japanese solely to preserve visual 1:1. |
+| `露营舱` vs `露营胶囊` | anti-overedit / Canon boundary | do not normalize a valid unfrozen term from popularity. |
+| `タイムふろしき -> 时光布` | pinned Canon enforcement | enforce a locked Mainland-modern value when that profile is active. |
+| 09:10 / 25:54 / 51:37 / 1:00:41 | seed ellipsis inertia | semantic delivery outranks inherited seed ellipsis. |
+| 17:14 | target accounting | narrative content must never silently disappear. |
+| 30:34 | Canon gate | scan obsolete aliases across the whole release. |
+| 33:20 | exclamatory question | `何だって！` may naturally require Chinese `？！`; do not mirror mechanically. |
+| 37:08 | speaker cleanup + spoken fragment | speaker metadata removal must not delete adjacent speech. |
+| 47:00–47:20 | redundant target expansion | fold only with explicit ledger reason. |
 | 52:04 | parallel-speaker false merge | time overlap does not justify merging simultaneous speakers. |
-| 58:23 | mismatch may be valid | source `が！` can be grammatically elliptical; Chinese may legitimately trail off. Require model context judgment. |
-| 1:00:41 | seed punctuation + wording | `許してよ！` should not inherit an unsupported trailing ellipsis. |
-| 1:15:22 | repeated call | repeated vocative should preserve emphatic calling delivery without seed-ellipsis inertia. |
-| 1:20:05 | call/exclamation | `ドラえもん！` is a high-confidence call, not trailing hesitation. |
-| 1:27:28 | anti-overcorrection fixture | `さようなら！` may still be rendered as emotional `再见……` if scene/context justifies it; mismatch is not auto-failure. |
+| 58:23 / 1:27:28 | mismatch may be valid | punctuation/wording mismatch itself is a review signal, not auto-failure. |
 
-When the user reports a failure matching one of these classes, scan the full release for the same class.
+When a failure matching one of these classes is found, scan the full release for the same class.

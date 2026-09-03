@@ -4,8 +4,7 @@ Default archive:
 
 ```text
 SubtitleFlow-<title>-<branch>.zip
-├── subtitles/
-│   └── <release>.ass
+├── subtitles/<release>.ass
 ├── reports/
 │   ├── summary.md
 │   ├── qa.json
@@ -15,61 +14,37 @@ SubtitleFlow-<title>-<branch>.zip
 │   ├── punctuation-review.jsonl
 │   └── canon-gaps.jsonl          # only when non-empty
 ├── renders/                      # only when actual render evidence exists
-│   └── *.png
 └── manifest.json
 ```
 
 ## Required accounting
 
-Record at minimum:
+Record input names/hashes, release intent, Canon/SRP provenance when used, baseline/accounted/unaccounted counts, source-fragment total/resolved/unresolved counts, invalid refs, source-order violations, provenance classes, unresolved semantic/punctuation/Canon issues, and output ASS SHA-256.
 
-- input file names and SHA-256 values;
-- title/series and release intent when known;
-- compatible Canon/SRP provenance when used;
-- baseline target unit count;
-- accounted target unit count;
-- unaccounted target count (must be zero for release-candidate/final);
-- source spoken-fragment total/resolved/unresolved counts;
-- source-event `presented_full` / `presented_partial` / resolved-nonpresented / unresolved counts when event-level summaries are emitted;
-- invalid final-reference count;
-- substantive source-order violation count;
-- source provenance classes used (original/recovered/realigned/reconstructed);
-- unresolved semantic/punctuation/Canon issues;
-- output ASS SHA-256.
+Also record:
 
-A source event with at least one final reference is not automatically fully presented. Fragment coverage is authoritative for spoken-source closure.
+- presentation mode (`clean`, `bilingual`, etc.) and expected geometry/anchor;
+- actual geometry gate result, including cross-mode leakage such as monolingual y=430 remnants;
+- `textual_uncertainty` separately from `audio_validation_deferred`;
+- whether any render used exact registered font bytes or font fallback;
+- independent convergence pass result and `new_major_semantic_or_provenance_issue` for Golden candidates.
 
-`final.ass` alone is not authoritative provenance. ASS `Effect` or comments may expose convenient provenance hints, but the ledgers/reports are authoritative.
+A source event with one final ref is not automatically fully presented. Fragment coverage is authoritative. Ledgers/reports, not ASS Effect text alone, are authoritative provenance.
 
 ## Change report
 
-Classify material changes using:
-
-- `hard_semantic_fix`
-- `source_reconciliation_fix`
-- `canon_enforced`
-- `presentation_required`
-- `stylistic_optional`
-- `overedit_revert`
-
-In conservative regression/audit mode, `stylistic_optional` should normally remain unchanged in the ASS and may be recorded only as a non-blocking observation.
+Classify material changes as `hard_semantic_fix`, `source_reconciliation_fix`, `canon_enforced`, `presentation_required`, `stylistic_optional`, or `overedit_revert`. Late-stage stylistic alternatives normally remain unchanged.
 
 ## Golden scope
 
-If a candidate reaches Golden convergence, record the exact Golden scope, such as `web-semantic-provenance`, plus all deferred checks. Do not imply that semantic/provenance Golden status proves exact-font, video-render, audio-timing, MKV/remux, or archival-final status.
+Do not declare Golden in the same independent pass that discovers and fixes a major issue. After repair, run another independent pass. Golden requires zero new major semantic/provenance findings on that post-fix pass.
+
+Record exact Golden scope and all deferred checks. Semantic/provenance/presentation Golden status does not prove exact-font, video, audio timing, MKV/remux, or archival-final status.
 
 ## QA truthfulness
 
-Separate Web checks from environment-dependent archival checks:
-
-- semantic/accounting/Canon/punctuation/layout checks may pass in Web when actually performed;
-- synthetic libass rendering may pass only if real FFmpeg/libass rendering occurred with known fonts;
-- full-video timing/occlusion requires actual video evidence;
-- exact font-byte audit requires actual font files;
-- MKV attachment/remux requires actual MKVToolNix work.
-
-Never label a deferred or unavailable check as passed.
+Synthetic libass rendering may pass only for what was actually rendered. **A fallback-font render cannot be reported as exact-font PASS.** Exact-font validation requires the exact registered bytes. Full-video timing/occlusion requires video evidence; MKV attachment/remux requires actual MKVToolNix work.
 
 ## Deterministic packaging
 
-Use stable ordering, UTF-8 JSON, normalized portable paths, and output hashes. Do not leak runtime-specific absolute paths into packaged reports.
+Use stable ordering, UTF-8 JSON, portable paths, manifests, and hashes. Do not leak runtime-specific absolute paths into packaged reports.
