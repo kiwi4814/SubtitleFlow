@@ -21,7 +21,8 @@ Use strong-model judgment for language and semantic decisions. Use bundled scrip
 8. Run deterministic audits and model-led high-risk QA. Iterate back to reconciliation/editing when QA exposes semantic or layout problems.
 9. For late-stage candidates, run anti-overedit review and, when requested, an independent regression re-audit that does not inherit previous PASS decisions as truth.
 10. If the independent pass finds a material bug, fix the candidate and run another genuinely independent post-fix pass. Golden requires zero new major semantic/provenance findings on that post-fix pass.
-11. Package the ASS plus provenance/accounting/QA reports. Call it `Golden Regression` only for the exact scope actually proven.
+11. For OCR/dub cleanup, build the bounded human-review queue. If mandatory listening remains, mark exact dub-audio fidelity `pending-human-review`.
+12. Package the ASS plus provenance/accounting/QA reports. Call it `Golden Regression` only for the exact scope actually proven.
 
 Read `references/workflow.md` for the full flow and feedback loops.
 Read `references/production-invariants.md` before any production.
@@ -29,6 +30,7 @@ Read `references/regression-policy.md` for Minimal Edit, fragment-level closure,
 Read `references/punctuation-policy.md` whenever Chinese/Japanese punctuation, source notation, quotation, speaker labels, ellipsis, dub OCR particles, short replies, or delivery is involved.
 Read `references/layout-policy.md` whenever line width, wrapping, `fscx`, monolingual/bilingual geometry, sequential presentation splits, or synthetic-canvas rendering is involved.
 Read `references/character-form-policy.md` whenever Chinese OCR cleanup may require Traditional/Simplified source-form preservation or dual character-form deliverables.
+Read `references/human-review-policy.md` for OCR review-budgeting, dub-audio authority, ambiguous dub divergence, confidence scoring, and user listening handoff.
 Read `references/evidence-policy.md` when Canon/SRP or conflicting source claims matter.
 Read `references/output-contract.md` before packaging.
 Read `references/m01-regression-fixtures.md` when validating alignment, punctuation, notation, Canon, accounting, over-edit, duplicate matching, OCR cleanup, dub divergence, or layout regressions.
@@ -62,15 +64,15 @@ For a Taiwan-dub hard-sub OCR cleanup branch, produce character forms under `ref
 
 For wording/evidence:
 
-- credible Taiwan hard-sub OCR/dub transcript/audio is **wording authority**;
+- for exact Taiwan-dub spoken fidelity, clear same-cut **dub audio is the highest wording/delivery authority**; reliable same-dub hard-sub/transcript follows, then OCR evidence;
 - Japanese and Japanese-audio Chinese are **challenge/context evidence**, not replacement wording authority;
-- a Japanese mismatch can expose OCR corruption, but it can also be a genuine dub divergence;
+- a Japanese mismatch can expose OCR corruption, but it can also be a genuine dub divergence caused by dubbing adaptation; Japanese never automatically overwrites clear dub evidence;
 - absence of a Japanese counterpart is not sufficient reason to delete readable Taiwan-dub hard-sub text;
 - preserve Taiwan-specific wording and terminology unless the user explicitly requests another release profile;
 - distinguish `textual_uncertainty` from `audio_validation_deferred`: readable source-authentic wording should not remain textually unresolved merely because matching dub audio is unavailable.
 - treat the cleaned source-form OCR master as authoritative final wording; character-form projections inherit wording, punctuation, timing, segmentation, layout, and provenance without independent edits.
 
-During late-stage OCR QA, challenge plausible-looking Han errors, not only garbage. Scan semantic oppositions and confusables such as `这/那`, `来/去`, `上/下`, `前/后`, negation, quantities, names, sentence-final `吗/嘛/吧`, short affirmative responses, duplicated valid Han, and punctuation that changes speech act.
+During late-stage OCR QA, challenge plausible-looking Han errors, not only garbage. Produce a compact `human-review.md` under `references/human-review-policy.md`; do not dump all uncertainty on the user. Scan semantic oppositions and confusables such as `这/那`, `来/去`, `上/下`, `前/后`, negation, quantities, names, sentence-final `吗/嘛/吧`, short affirmative responses, duplicated valid Han, and punctuation that changes speech act.
 
 ## Source accounting discipline
 
