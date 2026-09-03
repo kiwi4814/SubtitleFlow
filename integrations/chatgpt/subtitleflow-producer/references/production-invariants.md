@@ -13,8 +13,9 @@ These invariants are mandatory and outrank cosmetic symmetry or convenient QA nu
 9. **Minimal Edit** — `KEEP` is the default when text is semantically correct, substantively complete, source-owned correctly, and Canon-compliant.
 10. **Lossless Component Parsing** — structural parsing must never consume valid semantic characters. A leading `一` or other Han character is content unless explicit syntax proves otherwise. Round-trip source spans after component extraction.
 11. **Truthful Split State** — label a unit `split` only when it actually yields multiple independently meaningful components/presentation units. One component plus one final ref is not a split.
-12. **Dub Authority Boundary** — on a Taiwan-dub hard-sub cleanup branch, readable dub-source wording outranks Japanese-track wording for what the dub says. Japanese disagreement is a challenge signal, not automatic replacement authority.
-13. **Uncertainty Scope** — separate textual uncertainty from unavailable audio/video validation. Do not keep readable source-authentic wording textually unresolved solely because media verification is deferred.
+12. **Dub Authority Boundary** — on a Taiwan-dub cleanup branch, actual same-cut dub speech is the highest authority for exact spoken wording/delivery; reliable same-dub hard-sub/transcript follows; Japanese-track wording is challenge/context evidence only. A real dub adaptation must not be normalized back to Japanese.
+13. **Human Review Is Bounded** — unresolved cases go to the user only when listening materially improves exact recovery. Do not export a broad uncertainty dump; apply the review budget and confidence rules in `human-review-policy.md`.
+14. **Uncertainty Scope** — separate textual uncertainty from unavailable audio/video validation. Do not keep readable source-authentic wording textually unresolved solely because media verification is deferred.
 
 ## Target accounting states
 
