@@ -97,7 +97,7 @@ Styling and semantic editing are separate. Changing the style profile invalidate
 
 ## Stage 10 — Deterministic QA and font audit
 
-`subflow qa` checks source integrity, structural validity, pending/unmaterialized review, terminology, alignment warnings, layout estimates and reparses compiled ASS. Its input snapshot also binds the current workfiles/compiled ASS, canon JSON, proposal files, configured font registry/font map and, in advisory/enforce research modes, the Effective Knowledge semantic digest. Later upstream semantic changes therefore stale the QA result without making provenance-only changes unnecessarily invalidate visual work.
+`subflow qa` checks source integrity, structural validity, fragment-level spoken-source closure, pending/unmaterialized review, terminology, alignment warnings, layout estimates and reparses compiled ASS. Its source-accounting gate rejects unresolved/partially presented fragments, invalid final references, invalid source ownership, unexplained non-presentation and substantive source-order inversions. Its input snapshot also binds the current workfiles/compiled ASS, canon JSON, proposal files, configured font registry/font map and, in advisory/enforce research modes, the Effective Knowledge semantic digest. Later upstream semantic changes therefore stale the QA result without making provenance-only changes unnecessarily invalidate visual work.
 
 Low-confidence alignment is currently reported as a warning. A durable alignment-review ledger with `Approve / Adjust / Defer` is the recommended next gate; simply converting the warning into a hard error would create no legitimate unlock path. Until that ledger exists, low-confidence alignments are a known production gap and require operator review before Release.
 

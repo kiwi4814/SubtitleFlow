@@ -63,3 +63,29 @@ def test_compile_preserves_protected_and_release_passes(tmp_path: Path, sample_c
     assert qa["ok"] is True
     manifest = create_release_manifest(paths)
     assert len(manifest["files"]) == 2
+    accounting = read_json(paths.release / "source-accounting.json")
+    assert accounting["coverage"]["source_spoken_fragments_unresolved"] == 0
+    assert accounting["source_events"]
+
+    coverage_path = paths.work / "bilingual-coverage.json"
+    coverage = read_json(coverage_path)
+    coverage["source_spoken_fragments_unresolved"] = 1
+    write_json(coverage_path, coverage)
+    blocked = run_all_qa(paths)
+    assert blocked["ok"] is False
+    assert any(
+        item["kind"] == "unresolved-source-fragments" for item in blocked["structural"]["errors"]
+    )
+
+    reconciliation_path = paths.work / "bilingual-reconciliation.json"
+    reconciliation = read_json(reconciliation_path)
+    coverage["schema_version"] = 1
+    reconciliation["schema_version"] = 1
+    reconciliation["coverage"] = coverage
+    write_json(coverage_path, coverage)
+    write_json(reconciliation_path, reconciliation)
+    legacy = run_all_qa(paths)
+    assert any(
+        item["kind"] == "source-accounting-migration-required"
+        for item in legacy["structural"]["errors"]
+    )

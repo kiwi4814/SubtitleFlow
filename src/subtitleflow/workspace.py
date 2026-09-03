@@ -212,6 +212,7 @@ def default_title_config(
             "translation_source": "B",
             "japanese_source": "C",
             "timing_source": "A",
+            "source_fragment_decisions": {},
         },
         "style": {
             "profile": "kiwi-collector-v1",

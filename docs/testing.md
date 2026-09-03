@@ -70,3 +70,5 @@ Before delivery:
 ## v0.5 release-system regressions
 
 The release-system suite covers human preserve/proofread/retranslate behavior, explicit-user-policy priority over Auto, evidence conflict grading, 1:N split provenance, N:1 merge provenance, SOURCE_GAP/fabrication guards, alignment semantic-risk signals, clean-vs-bilingual geometry, ZH1+JA2 collision inversion, OP bilingual layout, Style2 classification, translator-credit exclusion, style-profile drift, release audit fields, and a real FFmpeg/libass synthetic render smoke test. `tests/fixtures/release-system/` is the durable real-world specimen for 1+1, 1+2, screen-text overlap, OP, source gap, human proofread and primary-vs-secondary evidence conflict.
+
+`tests/test_source_accounting.py` contains minimal M01-derived regressions for partial source-event closure, meaningful short spoken fragments, explicit omission reasons, adjacent ownership leakage, repeated short-source order, simultaneous identical calls, invalid final references and legacy/structured source splits. The complete copyrighted M01 Golden ASS is not a public test fixture.

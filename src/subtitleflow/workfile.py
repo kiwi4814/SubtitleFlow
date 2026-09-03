@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from .alignment import align_cues, editable_cues
+from .alignment import align_cues, alignment_cues, editable_cues
 from .editorial import editorial_context
 from .errors import GateError, ValidationError
 from .glossary import apply_glossary, load_glossary
@@ -136,7 +136,9 @@ def build_clean_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) ->
         if not has_c:
             raise GateError("Clean source-assisted mode requires role C, but C is missing")
         c = load_normalized(paths, "C")
-        c_cues = editable_cues(c.cues)
+        # C is semantic evidence, not an editable output track. Keep protected
+        # source events eligible for alignment when their ASS text is textual.
+        c_cues = alignment_cues(c.cues, include_protected=True)
         alignment_cfg = config.get("alignment", {})
         proxy = _make_proxy_cues(units)
         result = align_cues(
@@ -284,7 +286,9 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
     c = load_normalized(paths, "C")
     a_cues = editable_cues(a.cues)
     b_cues = editable_cues(b.cues)
-    c_cues = editable_cues(c.cues)
+    # C is semantic evidence, not an editable output track. Keep protected
+    # source events eligible for alignment when their ASS text is textual.
+    c_cues = alignment_cues(c.cues, include_protected=True)
     alignment_cfg = config.get("alignment", {})
     max_group = int(alignment_cfg.get("max_group", 3))
     unmatched_penalty = float(alignment_cfg.get("unmatched_penalty", 3.0))
@@ -338,11 +342,16 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
     if split_raw and not isinstance(split_raw, dict):
         raise ValidationError("jp_branch.source_split_decisions must be an object")
     split_decisions = {str(key): str(value) for key, value in dict(split_raw).items()}
+    fragment_raw = branch_cfg.get("source_fragment_decisions", {})
+    if fragment_raw and not isinstance(fragment_raw, dict):
+        raise ValidationError("jp_branch.source_fragment_decisions must be an object")
+    fragment_decisions = dict(fragment_raw)
     reconciliation = reconcile_groups(
         units,
         c_cues,
         pc.groups,
         split_decisions=split_decisions,
+        fragment_decisions=fragment_decisions,
     )
     units_by_id = {unit.id: unit for unit in units}
     for pair in reconciliation.pairs:
@@ -374,7 +383,7 @@ def build_jp_workfile(paths: TitlePaths, *, allow_no_opencc: bool = False) -> Pa
             "alignment_japanese_offset_ms": pc.estimated_offset_ms,
             "minimal_editorial_intervention": True,
             "editorial": editorial_context(config, branch="jp").to_dict(),
-            "reconciliation_schema": 1,
+            "reconciliation_schema": 2,
         },
     )
     output = paths.work / "jp.json"

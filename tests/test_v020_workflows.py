@@ -114,7 +114,10 @@ def test_source_assisted_profile_adds_source_evidence_without_retiming(tmp_path:
     )
     c = write_ass(
         tmp_path / "c.ass",
-        [("0:00:01.12", "0:00:03.12", "こんにちは"), ("0:00:03.22", "0:00:05.12", "行こう")],
+        [
+            ("0:00:01.12", "0:00:03.12", r"{\pos(100,100)}こんにちは"),
+            ("0:00:03.22", "0:00:05.12", r"{\pos(100,100)}行こう"),
+        ],
     )
     add_source(paths, "S", s)
     add_source(paths, "C", c)

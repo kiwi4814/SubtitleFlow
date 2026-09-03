@@ -1,4 +1,4 @@
-# START HERE — SubtitleFlow 0.5.0
+# START HERE — SubtitleFlow 0.6.0
 
 SubtitleFlow is a generic subtitle production repository. Pick the evidence you actually have; do not manufacture A/B/C/D just to satisfy a workflow.
 
@@ -157,4 +157,4 @@ Read `docs/workflow.md` next.
 
 New titles persist an `editorial` context in `title.json`. `preserve` is the conservative default; use `proofread` when B is only a translation seed that must be checked line-by-line against C, `retranslate` when B is merely reference material, or `auto` when quality is unknown and a structured Translation Quality Assessment should select a recommendation first. Provenance (`official`, `human-fansub`, etc.) never implies trust. See `docs/evidence-driven-release.md`.
 
-For JP, rerun `subflow prepare` after upgrading an older title so the work directory gains first-class reconciliation and bilingual-coverage artifacts before compile.
+For JP, rerun `subflow prepare` after upgrading an older title so the work directory gains schema-2 reconciliation, fragment-level source accounting and bilingual-coverage artifacts before deterministic QA and Release.

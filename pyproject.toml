@@ -1,6 +1,6 @@
 [project]
 name = "subtitleflow"
-version = "0.5.0"
+version = "0.6.0"
 description = "Evidence-driven subtitle polishing, bilingual production, font-safe ASS styling, and MKV remux workflow"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -55,6 +55,7 @@ pythonpath = ["src"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+extend-exclude = ["integrations/chatgpt/subtitleflow-producer/scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]

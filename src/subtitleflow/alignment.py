@@ -3,10 +3,13 @@ from __future__ import annotations
 import math
 import re
 import statistics
+from bisect import bisect_left, bisect_right
+from collections import Counter
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .models import AlignmentGroup, Cue
+from .text import normalize_dialogue_text, strip_ass_tags
 
 
 @dataclass(slots=True)
@@ -37,31 +40,68 @@ class AlignmentResult:
         }
 
 
+_ALIGNMENT_ROLES = {"dialogue", "song-op", "song-ed", "song-insert"}
+_OFFSET_LIMIT_MS = 120_000
+_OFFSET_BIN_MS = 250
+
+
+def _alignment_plain_text(cue: Cue) -> str:
+    """Return dialogue text with ASS override tags removed for evidence matching."""
+    raw_text = cue.text or cue.plain_text
+    return normalize_dialogue_text(strip_ass_tags(raw_text))
+
+
+def alignment_cues(cues: Sequence[Cue], *, include_protected: bool = False) -> list[Cue]:
+    """Select cues for alignment without making protected source events editable.
+
+    Protected ASS events can still carry textual semantic evidence (for example a
+    Japanese line positioned with ``\\pos``). Return sanitized cue copies for
+    alignment while retaining the original cue protection and raw text.
+    """
+    selected: list[Cue] = []
+    for cue in cues:
+        if cue.event_type.lower() != "dialogue":
+            continue
+        if cue.protected and not include_protected:
+            continue
+        if not cue.include_in_release or cue.semantic_role not in _ALIGNMENT_ROLES:
+            continue
+        plain_text = _alignment_plain_text(cue)
+        if not plain_text:
+            continue
+        selected.append(
+            cue if cue.plain_text == plain_text else replace(cue, plain_text=plain_text)
+        )
+    return selected
+
+
 def editable_cues(cues: Sequence[Cue]) -> list[Cue]:
-    return [
-        cue
-        for cue in cues
-        if cue.event_type.lower() == "dialogue"
-        and not cue.protected
-        and cue.plain_text.strip()
-        and cue.include_in_release
-        and cue.semantic_role in {"dialogue", "song-op", "song-ed", "song-insert"}
-    ]
+    """Select unprotected cues that may seed an editable branch workfile."""
+    return alignment_cues(cues)
 
 
 def estimate_offset_ms(left: Sequence[Cue], right: Sequence[Cue]) -> int:
+    """Estimate a timeline offset from the dominant nearby start-time difference.
+
+    Positional sampling assumes both files cover the same span and have similar cue
+    counts. Source evidence can contain extra opening/closing or multi-line events,
+    so use a robust difference cluster instead.
+    """
     if not left or not right:
         return 0
-    samples = min(31, len(left), len(right))
+    right_starts = [cue.start_ms for cue in right]
     diffs: list[int] = []
-    if samples == 1:
-        return right[0].start_ms - left[0].start_ms
-    for k in range(samples):
-        li = round(k * (len(left) - 1) / (samples - 1))
-        ri = round(k * (len(right) - 1) / (samples - 1))
-        diffs.append(right[ri].start_ms - left[li].start_ms)
-    median = int(statistics.median(diffs))
-    return median if abs(median) <= 120_000 else 0
+    for cue in left:
+        start = bisect_left(right_starts, cue.start_ms - _OFFSET_LIMIT_MS)
+        end = bisect_right(right_starts, cue.start_ms + _OFFSET_LIMIT_MS)
+        diffs.extend(right_starts[index] - cue.start_ms for index in range(start, end))
+    if not diffs:
+        return 0
+    buckets = Counter(round(diff / _OFFSET_BIN_MS) * _OFFSET_BIN_MS for diff in diffs)
+    bucket = max(buckets, key=lambda value: (buckets[value], -abs(value)))
+    cluster = [diff for diff in diffs if round(diff / _OFFSET_BIN_MS) * _OFFSET_BIN_MS == bucket]
+    median = int(statistics.median(cluster))
+    return median if abs(median) <= _OFFSET_LIMIT_MS else 0
 
 
 def _span(cues: Sequence[Cue], start: int, count: int, offset_ms: int = 0) -> tuple[int, int]:
@@ -108,7 +148,9 @@ def _unmatched_cost(cue: Cue, penalty: float) -> float:
 def _plain_join(cues: Sequence[Cue], ids: list[str]) -> str:
     wanted = set(ids)
     return " ".join(
-        item.plain_text for item in cues if item.id in wanted and item.plain_text.strip()
+        _alignment_plain_text(item)
+        for item in cues
+        if item.id in wanted and _alignment_plain_text(item)
     )
 
 

@@ -49,6 +49,8 @@ Alignment answers **which source/target cues belong together**. Reconciliation s
 
 A source gap is never repaired by translating target text back into the source language. Verified bilingual coverage reports exact pairs, source splits, source merges, source gaps, unresolved pairs and `fabricated`; a final release requires `fabricated = 0`.
 
+Spoken-source closure is computed separately at fragment/span level. A source event with one final reference is not automatically complete. Explicit fragment decisions may mark content `presented`, `merged_presented`, `folded_with_reason`, `parallel_reaction_omitted_with_reason`, `nonverbal`, or `unresolved`; non-presented closure requires a reason. Core derives event status, validates reference ownership/order, and blocks Release on unresolved substantive fragments or `presented_partial` events. It deliberately does not decide semantic split boundaries or whether a short reaction is expendable.
+
 For every sourced final bilingual pair, target and source events use identical Start/End timestamps.
 
 ## Semantic risk from alignment
@@ -95,6 +97,7 @@ A release can include:
 - `source-provenance.json`
 - `alignment-report.json`
 - `bilingual-coverage.json`
+- `source-accounting.json`
 - `unresolved.json`
 - `qa-report.json`
 - `layout-report.json`
@@ -105,4 +108,4 @@ Raw A/B/C/D/S sources remain immutable and source hashes remain in the source ma
 
 ## Compatibility
 
-The project/workfile schema version is not bumped. New `Cue`, `BranchUnit`, `ChangeRecord` and `ReviewCandidate` fields are optional/defaulted so existing JSON continues to load. Existing JP workfiles must rerun `subflow prepare` before a new bilingual compile because reconciliation is now a first-class required artifact. Release Manifest remains schema version 4 for compatibility; audit artifact metadata is added as optional fields.
+The project/workfile schema version is not bumped. New `Cue`, `BranchUnit`, `ChangeRecord` and `ReviewCandidate` fields are optional/defaulted so existing JSON continues to load. Bilingual reconciliation and coverage artifacts are schema 2. Existing schema-1 artifacts remain readable, but must rerun `subflow prepare` before deterministic QA can authorize a new Release. Release Manifest remains schema version 4 for compatibility; audit artifact metadata is added as optional fields.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0
+
+- Added fragment-level spoken-source accounting with stable source identities, explicit dispositions/reasons, final-reference integrity, ownership validation and deterministic event-level closure.
+- Made unresolved fragments, partially presented source events, invalid refs, missing disposition reasons and substantive source-order violations block deterministic QA and Release.
+- Upgraded bilingual reconciliation/coverage artifacts to schema 2 while retaining the legacy `source_split_decisions` adapter; older schema-1 artifacts remain readable but must rerun `prepare` before a new Release.
+- Added first-class `source-accounting.json` release evidence and M01-derived minimal regressions for partial events, meaningful short lines, ownership leakage, repeated/parallel calls, unsupported source expansion and Canon boundaries.
+- Added the independent `subtitleflow-producer` ChatGPT/Web Skill as a repository mirror without coupling Web production to the local runtime.
+
 ## 0.5.0
 
 - Separated translation provenance, translation trust and editing policy; added centralized `preserve` / `proofread` / `retranslate` / assessment-first `auto` behavior with explicit user-policy priority.

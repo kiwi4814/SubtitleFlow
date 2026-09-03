@@ -87,4 +87,8 @@ No font binary is copied into persistent project data by font audit.
 
 `Cue` carries optional `semantic_role`, `position_intent`, and release-inclusion state. `BranchUnit` may carry `source_operation` and parent/source cue IDs. `ChangeRecord` and `ReviewCandidate` may carry primary/secondary evidence, authority domain, evidence grade, conflicts, confidence, proposal source, review status, and final decision. All additions are optional/defaulted; the workfile schema stays at version 1.
 
-JP prepare writes `work/bilingual-reconciliation.json` and `work/bilingual-coverage.json`. Reconciliation operations are `exact-pair`, `source-split`, `source-merge`, `source-gap`, and `unresolved`; `fabricated` must remain zero. Release Manifest stays schema 4 and adds optional `audit` metadata pointing to first-class audit files.
+JP prepare writes schema-2 `work/bilingual-reconciliation.json` and `work/bilingual-coverage.json`. Reconciliation operations remain `exact-pair`, `source-split`, `source-merge`, `source-gap`, and `unresolved`; `fabricated` must remain zero.
+
+Reconciliation now also carries `source_fragments`, derived `source_events`, and `accounting_issues`. Each fragment retains its source cue identity and character span, explicit disposition/reason, target-unit references, and generated final pair references. Event status is derived as `presented_full`, `presented_partial`, `resolved_nonpresented`, or `unresolved`; an event with any unresolved fragment is never closed merely because another fragment has a final reference.
+
+`bilingual-coverage.json` reports spoken-fragment totals/resolution, event-status counts, invalid references, invalid ownership and substantive source-order violations. Release writes the same evidence to `source-accounting.json`. Release Manifest stays schema 4 and adds optional `audit` metadata pointing to first-class audit files.

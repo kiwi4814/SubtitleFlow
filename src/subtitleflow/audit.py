@@ -173,6 +173,20 @@ def write_release_audit(paths: TitlePaths) -> dict[str, Any]:
     )
     write_json(paths.release / "bilingual-coverage.json", coverage)
 
+    reconciliation_data = (
+        alignment.get("reconciliation", {})
+        if isinstance(alignment.get("reconciliation"), dict)
+        else {}
+    )
+    source_accounting = {
+        "schema_version": 1,
+        "source_fragments": reconciliation_data.get("source_fragments", []),
+        "source_events": reconciliation_data.get("source_events", []),
+        "accounting_issues": reconciliation_data.get("accounting_issues", []),
+        "coverage": coverage,
+    }
+    write_json(paths.release / "source-accounting.json", source_accounting)
+
     pending = [item.to_dict() for item in list_candidates(paths, status="pending")]
     rec_risks = (
         alignment.get("reconciliation", {}).get("semantic_risks", [])
@@ -183,6 +197,12 @@ def write_release_audit(paths: TitlePaths) -> dict[str, Any]:
         "schema_version": 1,
         "pending_review": pending,
         "reconciliation_risks": rec_risks,
+        "source_fragments": [
+            item
+            for item in reconciliation_data.get("source_fragments", [])
+            if item.get("disposition") == "unresolved"
+        ],
+        "source_accounting_issues": reconciliation_data.get("accounting_issues", []),
         "source_gaps": [
             item
             for item in alignment.get("reconciliation", {}).get("pairs", [])
@@ -209,6 +229,7 @@ def write_release_audit(paths: TitlePaths) -> dict[str, Any]:
         "source-provenance.json",
         "alignment-report.json",
         "bilingual-coverage.json",
+        "source-accounting.json",
         "unresolved.json",
         *[name for name, source in copies.items() if source.is_file()],
     ]

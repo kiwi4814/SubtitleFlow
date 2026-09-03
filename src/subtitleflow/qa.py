@@ -175,12 +175,55 @@ def structural_qa(paths: TitlePaths) -> dict[str, Any]:
                 )
 
     coverage_path = paths.work / "bilingual-coverage.json"
-    if coverage_path.is_file():
+    reconciliation_path = paths.work / "bilingual-reconciliation.json"
+    if "jp" in active_branches(paths) and (
+        not coverage_path.is_file() or not reconciliation_path.is_file()
+    ):
+        errors.append(
+            {
+                "kind": "missing-source-accounting",
+                "message": "rerun `subflow prepare` to generate fragment-level source accounting",
+            }
+        )
+    if coverage_path.is_file() and reconciliation_path.is_file():
         coverage = read_json(coverage_path)
         if int(coverage.get("fabricated", 0)) != 0:
             errors.append(
                 {"kind": "source-fabrication", "count": int(coverage.get("fabricated", 0))}
             )
+        reconciliation = read_json(reconciliation_path)
+        if (
+            int(coverage.get("schema_version", 1)) < 2
+            or int(reconciliation.get("schema_version", 1)) < 2
+        ):
+            errors.append(
+                {
+                    "kind": "source-accounting-migration-required",
+                    "message": "rerun `subflow prepare` to generate fragment-level source accounting",
+                }
+            )
+        if reconciliation.get("coverage") != coverage:
+            errors.append({"kind": "source-accounting-coverage-mismatch"})
+        blocker_fields = {
+            "source_spoken_fragments_unresolved": "unresolved-source-fragments",
+            "source_events_presented_partial": "partially-presented-source-events",
+            "invalid_final_refs": "invalid-final-refs",
+            "invalid_fragment_ownership": "invalid-fragment-ownership",
+            "substantive_source_order_violations": "substantive-source-order-violations",
+            "missing_disposition_reasons": "missing-source-disposition-reasons",
+        }
+        for field, kind in blocker_fields.items():
+            count = int(coverage.get(field, 0))
+            if count:
+                errors.append({"kind": kind, "count": count})
+        directly_blocking_issues = {
+            "duplicate-final-ref",
+            "presented-fragment-without-final-ref",
+            "nonpresented-fragment-with-final-ref",
+        }
+        for issue in reconciliation.get("accounting_issues", []):
+            if isinstance(issue, dict) and issue.get("kind") in directly_blocking_issues:
+                errors.append({"kind": "source-accounting-integrity", "issue": issue})
     warnings.extend(_duplicate_sign_candidates(paths))
     errors.extend(approved_review_errors(paths))
     pending = pending_count(paths)

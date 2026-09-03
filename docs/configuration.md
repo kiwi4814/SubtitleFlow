@@ -209,3 +209,34 @@ Relax a gate only as an explicit project decision. Research remains optional by 
 `translation_provenance` records origin only. `translation_trust` records the current project's quality judgment. `editing_policy` controls the edit envelope: `preserve`, `proofread`, `retranslate`, or `auto`. Branch-specific objects such as `editorial.jp` may override the top-level values. Explicit policies always outrank any quality-assessment recommendation. `auto` requires `quality_assessment` before semantic proposals are imported. Existing v0.4 titles without `editorial` retain legacy preserve-like Minimal Editorial Intervention.
 
 For 1-source-to-N-target Japanese reconciliation, `jp_branch.source_split_decisions` may persist explicit target-unit-to-source-fragment decisions. This field records editorial split decisions; SubtitleFlow never invents them with a language model inside the deterministic engine.
+
+For authoritative fragment-level source accounting, use `jp_branch.source_fragment_decisions`. Keys are normalized C cue IDs. Spans index the normalized `plain_text`; `target_unit_ids` are mapped to generated final pair references by Core:
+
+```json
+{
+  "jp_branch": {
+    "source_fragment_decisions": {
+      "ass-000123": [
+        {
+          "id": "ass-000123#call",
+          "span": {"start": 0, "end": 9},
+          "text": "タイムパトロールだ",
+          "disposition": "presented",
+          "target_unit_ids": ["jp-000321"]
+        },
+        {
+          "id": "ass-000123#command",
+          "span": {"start": 10, "end": 14},
+          "text": "観念しろ",
+          "disposition": "unresolved",
+          "target_unit_ids": []
+        }
+      ]
+    }
+  }
+}
+```
+
+Supported dispositions are `presented`, `merged_presented`, `folded_with_reason`, `parallel_reaction_omitted_with_reason`, `nonverbal`, and `unresolved`. Every legitimate non-presented disposition requires a non-empty `reason`; a folded fragment may reference the presentation unit that absorbed it. Core validates spans, references, source ownership, fragment order and coverage; it does not infer semantic fragment boundaries with NLP.
+
+The legacy `source_split_decisions` string map remains accepted. Core derives ordered spans when possible and leaves any uncovered substantive source text unresolved. Existing reconciliation schema-1 files remain readable for inspection/compile compatibility, but deterministic QA requires rerunning `subflow prepare` before creating a new Release.
